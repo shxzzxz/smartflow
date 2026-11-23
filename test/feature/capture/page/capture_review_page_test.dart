@@ -12,6 +12,36 @@ import 'package:smartflow/feature/shared/view_model/ui_action_outcome.dart';
 import 'package:smartflow/feature/transaction/presentation/transaction_form_prefill.dart';
 
 void main() {
+  for (final entry in [
+    (PaymentScreenshotScene.unknown, 'expense'),
+    (PaymentScreenshotScene.transfer, 'transfer'),
+  ]) {
+    testWidgets(
+      'partial ${entry.$1.name} opens its form and passes all initial values',
+      (tester) async {
+        final prefill = TransactionFormPrefill(
+          occurredAt: DateTime(2026, 4, 5),
+          note: '示例说明',
+          reviewMessage: '',
+        );
+        TransactionFormPrefill? received;
+        await _openReview(
+          tester,
+          CaptureReviewResult(
+            payment: RecognizedPayment(scene: entry.$1, product: '示例说明'),
+            reviewMessage: '',
+            prefill: prefill,
+          ),
+          onFormOpen: (value) => received = value,
+        );
+        expect(find.text('form:${entry.$2}'), findsOneWidget);
+        expect(received, same(prefill));
+        expect(received!.amount, isNull);
+        expect(find.byType(CaptureReviewPage), findsNothing);
+      },
+    );
+  }
+
   testWidgets(
     'ordinary screenshot income opens the income form for confirmation',
     (tester) async {
@@ -44,12 +74,6 @@ void main() {
       'form:expense',
     ),
     (
-      PaymentScreenshotScene.transfer,
-      CaptureManualAction.transfer,
-      '手动记录转账',
-      'form:transfer',
-    ),
-    (
       PaymentScreenshotScene.refund,
       CaptureManualAction.transactions,
       '前往交易记录',
@@ -71,7 +95,9 @@ void main() {
           CaptureReviewResult(
             payment: RecognizedPayment(
               scene: entry.$1,
-              amount: Money.parse('10'),
+              amount: entry.$1 == PaymentScreenshotScene.unknown
+                  ? null
+                  : Money.parse('10'),
             ),
             reviewMessage: '该场景需要手动处理。',
             manualAction: entry.$2,
@@ -135,8 +161,9 @@ void main() {
 
 Future<void> _openReview(
   WidgetTester tester,
-  CaptureReviewResult result,
-) async {
+  CaptureReviewResult result, {
+  void Function(TransactionFormPrefill?)? onFormOpen,
+}) async {
   final router = GoRouter(
     initialLocation: '/capture',
     routes: [
@@ -154,9 +181,14 @@ Future<void> _openReview(
       ),
       GoRoute(
         path: '/transaction/new',
-        builder: (_, state) => Scaffold(
-          body: Text('form:${state.uri.queryParameters['mode'] ?? 'expense'}'),
-        ),
+        builder: (_, state) {
+          onFormOpen?.call(state.extra as TransactionFormPrefill?);
+          return Scaffold(
+            body: Text(
+              'form:${state.uri.queryParameters['mode'] ?? 'expense'}',
+            ),
+          );
+        },
       ),
     ],
   );

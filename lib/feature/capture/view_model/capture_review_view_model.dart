@@ -112,7 +112,7 @@ class CaptureReviewViewModel extends Notifier<CaptureReviewState> {
             payment: payment,
             reviewMessage: '',
             prefill: TransactionFormPrefill(
-              amount: payment.amount!,
+              amount: payment.amount,
               occurredAt: payment.occurredAt ?? _now(),
               note: payment.product ?? '',
               reviewMessage: '',
@@ -121,7 +121,17 @@ class CaptureReviewViewModel extends Notifier<CaptureReviewState> {
             ),
           );
         }
-        final mapping = await rules.resolvePayment(payment);
+        final mapping = await rules.resolvePayment(
+          payment.scene == PaymentScreenshotScene.unknown
+              ? RecognizedPayment(
+                  direction: RecognizedPaymentDirection.expense,
+                  paymentMethod: payment.paymentMethod,
+                  paymentMethodReliable: payment.paymentMethodReliable,
+                  accountMatchingText: payment.accountMatchingText,
+                  categoryMatchingText: payment.categoryMatchingText,
+                )
+              : payment,
+        );
         final counterparties = await counterpartyQuery.listCounterparties();
         final settlement = mapping.settlementAccountId;
         final categoryId = mapping.categoryId;
@@ -146,7 +156,7 @@ class CaptureReviewViewModel extends Notifier<CaptureReviewState> {
           payment: payment,
           reviewMessage: reviewMessage,
           prefill: TransactionFormPrefill(
-            amount: payment.amount!,
+            amount: payment.amount,
             occurredAt: occurredAt,
             note: noteParts.join(' · '),
             reviewMessage: reviewMessage,
@@ -185,6 +195,6 @@ String _manualReviewMessage(RecognizedPayment payment) {
     PaymentScreenshotScene.repayment => '请前往账户记录还款。',
     PaymentScreenshotScene.expense ||
     PaymentScreenshotScene.income => '未识别到实际金额，请手动填写。',
-    PaymentScreenshotScene.unknown => '未识别到收支场景，请手动记账。',
+    PaymentScreenshotScene.unknown => '未识别到交易信息，请重新选择截图或手动记账。',
   };
 }

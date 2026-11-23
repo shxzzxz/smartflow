@@ -17,16 +17,20 @@ class RecognizePaymentScreenshot {
     required PaymentScreenshotOcr ocr,
     required PaymentScreenshotParser parser,
     required Future<RecognitionRuleCatalog> Function() loadRules,
+    Future<RecognizedPayment> Function(RecognizedPayment)? resolveScene,
   }) : _ocr = ocr,
        _parser = parser,
-       _loadRules = loadRules;
+       _loadRules = loadRules,
+       _resolveScene = resolveScene;
 
   final PaymentScreenshotOcr _ocr;
   final PaymentScreenshotParser _parser;
   final Future<RecognitionRuleCatalog> Function() _loadRules;
+  final Future<RecognizedPayment> Function(RecognizedPayment)? _resolveScene;
 
   Future<RecognizedPayment> call(String shareId) async {
-    final payment = _parser.parse(await _ocr.recognize(shareId));
+    final parsed = _parser.parse(await _ocr.recognize(shareId));
+    final payment = await _resolveScene?.call(parsed) ?? parsed;
     _logger.info(() {
       final fields = {
         'imageId': shareId,

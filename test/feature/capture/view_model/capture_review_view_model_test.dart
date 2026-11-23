@@ -26,6 +26,106 @@ final _captureProvider = captureReviewViewModelProvider('test-capture');
 final _captureTime = DateTime(2026, 4, 5, 14, 30);
 
 void main() {
+  for (final direction in RecognizedPaymentDirection.values) {
+    test(
+      'partial $direction prefill retains time and note without an amount',
+      () async {
+        final container = _container(
+          _Recognizer(
+            () async => RecognizedPayment(
+              direction: direction,
+              occurredAt: _captureTime,
+              counterparty: '示例书店',
+              product: '图书',
+            ),
+          ),
+        );
+        final outcome = await container
+            .read(_captureProvider.notifier)
+            .recognize('share');
+        final result = (outcome as UiActionSuccess<CaptureReviewResult>).value;
+        expect(result.prefill, isNotNull);
+        expect(result.prefill!.amount, isNull);
+        expect(result.prefill!.occurredAt, _captureTime);
+        expect(result.prefill!.note, '图书 · 示例书店');
+        expect(result.manualAction, isNull);
+      },
+    );
+  }
+
+  test(
+    'unknown scenes preserve extracted values and use expense rule targets',
+    () async {
+      final container = _container(
+        _Recognizer(
+          () async => RecognizedPayment(
+            scene: PaymentScreenshotScene.unknown,
+            amount: Money.parse('12.35'),
+            occurredAt: _captureTime,
+            paymentMethod: '日常银行卡',
+            product: '图书',
+            counterparty: '示例书店',
+            categoryMatchingText: '图书',
+          ),
+        ),
+        accounts: [_account('card', '日常银行卡')],
+        categories: [
+          CategoryNode(
+            account: _account('books', '书籍', type: AccountType.expense),
+          ),
+        ],
+        rules: [
+          RecognitionRule(
+            id: 'books',
+            kind: RecognitionRuleKind.category,
+            keywords: ['图书'],
+            priority: 1,
+            targetAccountId: 'books',
+            targetCategoryKind: ImportCategoryKind.expense,
+          ),
+        ],
+      );
+      final outcome = await container
+          .read(_captureProvider.notifier)
+          .recognize('share');
+      final result = (outcome as UiActionSuccess<CaptureReviewResult>).value;
+      expect(result.payment.scene, PaymentScreenshotScene.unknown);
+      expect(result.prefill, isNotNull);
+      expect(result.prefill!.amount, Money.parse('12.35'));
+      expect(result.prefill!.occurredAt, _captureTime);
+      expect(result.prefill!.settlementAccountId, 'card');
+      expect(result.prefill!.categoryId, 'books');
+      expect(result.prefill!.note, '图书 · 示例书店');
+      expect(result.manualAction, isNull);
+    },
+  );
+
+  test(
+    'transfer details can prefill with neither amount nor account clues',
+    () async {
+      final container = _container(
+        _Recognizer(
+          () async => RecognizedPayment(
+            scene: PaymentScreenshotScene.transfer,
+            occurredAt: _captureTime,
+            product: '内部资金调拨',
+          ),
+        ),
+      );
+      final outcome = await container
+          .read(_captureProvider.notifier)
+          .recognize('share');
+      final result = (outcome as UiActionSuccess<CaptureReviewResult>).value;
+      expect(result.prefill, isNotNull);
+      expect(result.prefill!.amount, isNull);
+      expect(result.prefill!.occurredAt, _captureTime);
+      expect(result.prefill!.note, '内部资金调拨');
+      expect(result.prefill!.fromAccountId, isNull);
+      expect(result.prefill!.toAccountId, isNull);
+      expect(result.manualAction, isNull);
+    },
+  );
+
   for (final occurredAt in [null, _captureTime]) {
     test(
       'ordinary payments have no review notices with timestamp $occurredAt',
@@ -84,15 +184,10 @@ void main() {
   );
 
   test(
-    'unknown direction, missing amounts and complex scenes require explicit manual handling',
+    'empty recognition and excluded scenes require explicit manual handling',
     () async {
       final cases = [
-        (
-          PaymentScreenshotScene.unknown,
-          CaptureManualAction.chooseScene,
-          Money.parse('12.35'),
-        ),
-        (PaymentScreenshotScene.expense, CaptureManualAction.expense, null),
+        (PaymentScreenshotScene.unknown, CaptureManualAction.chooseScene, null),
         (
           PaymentScreenshotScene.unpaid,
           CaptureManualAction.chooseScene,
@@ -101,11 +196,6 @@ void main() {
         (
           PaymentScreenshotScene.refund,
           CaptureManualAction.transactions,
-          Money.parse('12.35'),
-        ),
-        (
-          PaymentScreenshotScene.transfer,
-          CaptureManualAction.transfer,
           Money.parse('12.35'),
         ),
         (

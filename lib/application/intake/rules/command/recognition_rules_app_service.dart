@@ -225,6 +225,29 @@ class RecognitionRulesAppService {
     );
   });
 
+  Future<RecognizedPayment> resolveScreenshotScene(
+    RecognizedPayment payment,
+  ) async {
+    if ((!payment.isOrdinary &&
+            payment.scene != PaymentScreenshotScene.unknown) ||
+        !payment.transferFromAccountReliable ||
+        !payment.transferToAccountReliable ||
+        payment.transferFromAccount?.trim().isNotEmpty != true ||
+        payment.transferToAccount?.trim().isNotEmpty != true) {
+      return payment;
+    }
+    final targets = await _targets.findAvailableTargets();
+    final resolver = IntakeTargetResolver(
+      rules: await _loadCatalog(targets),
+      targets: targets.where((target) => target.isFundAccount).toList(),
+    );
+    final from = resolver.resolveUniqueAccount(payment.transferFromAccount!);
+    final to = resolver.resolveUniqueAccount(payment.transferToAccount!);
+    return from != null && to != null && from != to
+        ? payment.asTransfer()
+        : payment;
+  }
+
   Future<RecognizedPaymentMapping> resolvePayment(
     RecognizedPayment payment,
   ) async {

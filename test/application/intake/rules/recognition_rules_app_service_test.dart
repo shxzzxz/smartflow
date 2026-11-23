@@ -60,6 +60,102 @@ void main() {
       );
 
   test(
+    'two distinct uniquely identified own accounts establish a transfer',
+    () async {
+      targets.items.add(_account('destination', '我的银行卡'));
+      final payment = RecognizedPayment(
+        scene: PaymentScreenshotScene.unknown,
+        amount: Money.parse('30'),
+        occurredAt: DateTime(2026, 4, 5),
+        product: '账户调拨',
+        transferFromAccount: '日常付款',
+        transferToAccount: '我的银行卡',
+      );
+      final resolved = await service.resolveScreenshotScene(payment);
+      expect(resolved.scene, PaymentScreenshotScene.transfer);
+      expect(resolved.amount, payment.amount);
+      expect(resolved.occurredAt, payment.occurredAt);
+      expect(resolved.product, payment.product);
+      final mapping = await service.resolveTransfer(resolved);
+      expect(mapping.fromAccountId, 'wallet');
+      expect(mapping.toAccountId, 'destination');
+      expect(
+        (await service.resolvePayment(_payment(text: '瑞幸'))).categoryId,
+        'drinks',
+      );
+    },
+  );
+
+  test(
+    'explicit account keyword rules can establish ownership on both sides',
+    () async {
+      targets.items.add(_account('destination', '我的银行卡'));
+      for (final entry in [('1111', 'wallet'), ('2222', 'destination')]) {
+        await service.save(
+          service
+              .newRule(RecognitionRuleKind.account)
+              .copyWith(keywords: [entry.$1], targetAccountId: entry.$2),
+        );
+      }
+      final resolved = await service.resolveScreenshotScene(
+        RecognizedPayment(
+          direction: RecognizedPaymentDirection.expense,
+          amount: Money.parse('30'),
+          transferFromAccount: '示例银行(1111)',
+          transferToAccount: '示例银行(2222)',
+        ),
+      );
+      expect(resolved.scene, PaymentScreenshotScene.transfer);
+    },
+  );
+
+  test(
+    'aliases, ambiguous names and nonfund accounts do not prove ownership',
+    () async {
+      targets.items.addAll([
+        _account('bank', '建设银行储蓄卡'),
+        _account('duplicate-a', '同名卡'),
+        _account('duplicate-b', '同名卡'),
+        _account('receivable', '应收款', isFundAccount: false),
+      ]);
+      for (final destination in ['建行', '同名卡', '应收款', '日常付款']) {
+        final payment = RecognizedPayment(
+          direction: RecognizedPaymentDirection.expense,
+          amount: Money.parse('30'),
+          transferFromAccount: '日常付款',
+          transferToAccount: destination,
+        );
+        expect(
+          await service.resolveScreenshotScene(payment),
+          same(payment),
+          reason: destination,
+        );
+      }
+    },
+  );
+
+  test(
+    'uncertain clues and excluded scenes cannot be promoted to transfers',
+    () async {
+      targets.items.add(_account('destination', '我的银行卡'));
+      for (final scene in [
+        PaymentScreenshotScene.unknown,
+        PaymentScreenshotScene.refund,
+        PaymentScreenshotScene.repayment,
+        PaymentScreenshotScene.unpaid,
+      ]) {
+        final payment = RecognizedPayment(
+          scene: scene,
+          transferFromAccount: '日常付款',
+          transferFromAccountReliable: scene != PaymentScreenshotScene.unknown,
+          transferToAccount: '我的银行卡',
+        );
+        expect(await service.resolveScreenshotScene(payment), same(payment));
+      }
+    },
+  );
+
+  test(
     'builtin deletion survives reload and leaves other edits and order intact',
     () async {
       final original = (await service.loadCatalog()).rules.firstWhere(

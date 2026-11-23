@@ -10,7 +10,11 @@ class PaymentDuplicateQueryService {
 
   Future<bool> hasPossibleDuplicate(RecognizedPayment payment) async {
     final time = payment.occurredAt;
-    if (!payment.isOrdinary || !payment.canPrefill || time == null) {
+    if (!payment.isOrdinary ||
+        !payment.canPrefill ||
+        payment.amount == null ||
+        payment.amount!.minorUnits <= 0 ||
+        time == null) {
       return false;
     }
     final recorded = await _recordedPayments.findOrdinaryPayments(

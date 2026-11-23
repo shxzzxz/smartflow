@@ -40,6 +40,9 @@ final recognizePaymentScreenshotProvider = Provider<RecognizePaymentScreenshot>(
     return RecognizePaymentScreenshot(
       ocr: ref.watch(_platformPaymentScreenshotProvider),
       loadRules: ref.watch(recognitionRulesAppServiceProvider).loadCatalog,
+      resolveScene: ref
+          .watch(recognitionRulesAppServiceProvider)
+          .resolveScreenshotScene,
       parser: const PaymentScreenshotParser(),
     );
   },

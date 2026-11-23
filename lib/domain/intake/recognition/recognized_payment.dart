@@ -73,7 +73,7 @@ class RecognizedPayment {
   final String? paymentMethod;
   final bool paymentMethodReliable;
 
-  /// Account clues extracted only for movements of the user's own funds.
+  /// Separate account clues; ownership is resolved against existing accounts.
   final String? transferFromAccount;
   final bool transferFromAccountReliable;
   final String? transferToAccount;
@@ -90,19 +90,52 @@ class RecognizedPayment {
   bool get isOrdinary =>
       scene == PaymentScreenshotScene.expense ||
       scene == PaymentScreenshotScene.income;
-  bool get canPrefill {
-    if (amount == null || amount!.minorUnits <= 0) return false;
-    return switch (scene) {
-      PaymentScreenshotScene.expense =>
-        direction == RecognizedPaymentDirection.expense,
-      PaymentScreenshotScene.income =>
-        direction == RecognizedPaymentDirection.income,
-      PaymentScreenshotScene.transfer =>
-        transferFromAccount?.trim().isNotEmpty == true ||
-            transferToAccount?.trim().isNotEmpty == true,
-      _ => false,
-    };
-  }
+  bool get hasUsefulInformation =>
+      scene != PaymentScreenshotScene.unknown ||
+      direction != null ||
+      amount != null && amount!.minorUnits > 0 ||
+      occurredAt != null ||
+      [
+        counterparty,
+        product,
+        paymentMethod,
+        transferFromAccount,
+        transferToAccount,
+        categoryName,
+      ].any((value) => value?.trim().isNotEmpty == true);
+
+  /// Entry forms accept incomplete suggestions; unknown scenes use expense.
+  bool get canPrefill =>
+      hasUsefulInformation &&
+      switch (scene) {
+        PaymentScreenshotScene.expense =>
+          direction == RecognizedPaymentDirection.expense,
+        PaymentScreenshotScene.income =>
+          direction == RecognizedPaymentDirection.income,
+        PaymentScreenshotScene.transfer ||
+        PaymentScreenshotScene.unknown => true,
+        _ => false,
+      };
+
+  RecognizedPayment asTransfer() => RecognizedPayment(
+    scene: PaymentScreenshotScene.transfer,
+    direction: direction,
+    amount: amount,
+    occurredAt: occurredAt,
+    counterparty: counterparty,
+    product: product,
+    paymentMethod: paymentMethod,
+    paymentMethodReliable: paymentMethodReliable,
+    transferFromAccount: transferFromAccount,
+    transferFromAccountReliable: transferFromAccountReliable,
+    transferToAccount: transferToAccount,
+    transferToAccountReliable: transferToAccountReliable,
+    categoryName: categoryName,
+    categoryNameReliable: categoryNameReliable,
+    accountMatchingText: accountMatchingText,
+    categoryMatchingText: categoryMatchingText,
+    needsReview: needsReview,
+  );
 
   RecognizedPayment withRuleMatches({
     RecognitionRuleMatch? account,

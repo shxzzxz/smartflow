@@ -101,7 +101,7 @@ class TransactionFormState {
       initialValues: prefill == null
           ? const TransactionFormInitialValues()
           : TransactionFormInitialValues(
-              amount: prefill.amount.format(),
+              amount: prefill.amount?.format() ?? '',
               note: prefill.note,
             ),
       mode: mode,

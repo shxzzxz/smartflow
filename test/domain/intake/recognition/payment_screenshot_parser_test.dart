@@ -7,6 +7,186 @@ import 'package:smartflow/domain/intake/recognition/service/payment_screenshot_p
 void main() {
   const parser = PaymentScreenshotParser();
 
+  test('terminal status messages after detail fields block prefill', () {
+    for (final status in [
+      '支付失败，请重新付款',
+      '付款失败 请重试',
+      '已关闭，无法支付',
+      '交易状态 失败',
+      '交易状态 取消',
+    ]) {
+      final result = parser.parse([
+        _block('交易详情', 20),
+        _block('-12.35', 145, height: 60),
+        _block('付款账户 日常银行卡', 260),
+        _block(status, 320),
+      ]);
+      expect(result.scene, PaymentScreenshotScene.unpaid, reason: status);
+      expect(result.canPrefill, isFalse);
+    }
+  });
+
+  test('a cancel button does not make a waiting payment cancelled', () {
+    final result = parser.parse([
+      _block('交易详情', 20),
+      _block('-12.35', 145, height: 60),
+      _block('付款账户 日常银行卡', 260),
+      _block('待支付', 320),
+      _block('取消', 380),
+    ]);
+    expect(result.scene, PaymentScreenshotScene.expense);
+    expect(result.canPrefill, isTrue);
+  });
+
+  test(
+    'prefixed business type labels supply direction and excluded scenes',
+    () {
+      for (final label in ['银行交易类型', '资金业务类型', '商品交易类型']) {
+        for (final entry in [
+          ('工资', PaymentScreenshotScene.income, true),
+          ('消费', PaymentScreenshotScene.expense, true),
+          ('退款', PaymentScreenshotScene.refund, false),
+          ('还款', PaymentScreenshotScene.repayment, false),
+        ]) {
+          final result = parser.parse([
+            _block('交易详情', 20),
+            _block('￥42.50', 145, height: 60),
+            _block('交易时间 2026-04-05 13:20:11', 260),
+            _block(label, 320),
+            _block(entry.$1, 355),
+          ]);
+          expect(result.scene, entry.$2, reason: '$label ${entry.$1}');
+          expect(result.product, isNull);
+          expect(result.canPrefill, entry.$3);
+        }
+      }
+    },
+  );
+
+  test('waiting and processing payment states still prefill', () {
+    for (final entry in [
+      ('待支付', PaymentScreenshotScene.expense),
+      ('未支付', PaymentScreenshotScene.expense),
+      ('支付中', PaymentScreenshotScene.expense),
+      ('支付处理中', PaymentScreenshotScene.expense),
+      ('待收款', PaymentScreenshotScene.income),
+      ('收款处理中', PaymentScreenshotScene.income),
+    ]) {
+      final result = parser.parse([
+        _block('交易详情', 20),
+        _block('￥12.35', 145, height: 60),
+        _block('当前状态 ${entry.$1}', 260),
+      ]);
+      expect(result.scene, entry.$2, reason: entry.$1);
+      expect(result.amount, Money.parse('12.35'));
+      expect(result.canPrefill, isTrue);
+    }
+  });
+
+  test('generic transfer captions do not imply movements of own funds', () {
+    for (final entry in [
+      ('+12.35', PaymentScreenshotScene.income),
+      ('-12.35', PaymentScreenshotScene.expense),
+      ('￥12.35', PaymentScreenshotScene.unknown),
+    ]) {
+      final result = parser.parse([
+        _block('转账详情', 20),
+        _block(entry.$1, 145, height: 60),
+        _block('交易时间 2026-04-05 13:20:11', 260),
+      ]);
+      expect(result.scene, entry.$2, reason: entry.$1);
+      expect(result.canPrefill, isTrue);
+    }
+  });
+
+  test('no transaction information keeps screenshot review open', () {
+    for (final blocks in [
+      <RecognizedTextBlock>[],
+      [_block('今天的风景', 80)],
+      [_block('交易详情', 80)],
+    ]) {
+      final result = parser.parse(blocks);
+      expect(result.scene, PaymentScreenshotScene.unknown);
+      expect(result.amount, isNull);
+      expect(result.canPrefill, isFalse);
+    }
+  });
+
+  test('bank income details prefill without a success status', () {
+    final result = parser.parse([
+      _block('交易详情', 20),
+      _block('示例网络科技有限公司', 90),
+      _block('+￥42.50', 145, height: 60),
+      _block('查看余额,请登录', 240),
+      _block('交易卡号 6222********1111', 300),
+      _block('交易时间 2026-04-05 13:20:11', 360),
+      _block('银行交易类型 工资', 420),
+      _block('分类 薪酬>', 480),
+    ]);
+    expect(result.scene, PaymentScreenshotScene.income);
+    expect(result.direction, RecognizedPaymentDirection.income);
+    expect(result.amount, Money.parse('42.50'));
+    expect(result.occurredAt, DateTime(2026, 4, 5, 13, 20, 11));
+    expect(result.counterparty, '示例网络科技有限公司');
+    expect(result.categoryName, '薪酬');
+    expect(result.canPrefill, isTrue);
+  });
+
+  test('signed expenses and payment method clues need no success status', () {
+    for (final amount in ['-12.35', '￥12.35']) {
+      final result = parser.parse([
+        _block('交易详情', 20),
+        _block('示例书店', 90),
+        _block(amount, 145, height: 60),
+        _block('支付方式 日常银行卡', 260),
+        _block('商品说明 图书', 320),
+      ]);
+      expect(result.scene, PaymentScreenshotScene.expense, reason: amount);
+      expect(result.amount, Money.parse('12.35'));
+      expect(result.product, '图书');
+      expect(result.canPrefill, isTrue);
+    }
+  });
+
+  test(
+    'known scenes retain useful details when the actual amount is missing',
+    () {
+      for (final entry in [
+        ('收款成功', PaymentScreenshotScene.income),
+        ('支付成功', PaymentScreenshotScene.expense),
+        ('自有账户转账', PaymentScreenshotScene.transfer),
+      ]) {
+        final result = parser.parse([
+          _block(entry.$1, 80),
+          _block('交易时间 2026-04-05 13:20:11', 240),
+          _block('商品说明 示例说明', 300),
+        ]);
+        expect(result.scene, entry.$2);
+        expect(result.amount, isNull);
+        expect(result.occurredAt, DateTime(2026, 4, 5, 13, 20, 11));
+        expect(result.product, '示例说明');
+        expect(result.canPrefill, isTrue, reason: entry.$1);
+      }
+    },
+  );
+
+  test(
+    'unknown scenes can pass their extracted fields to the default form',
+    () {
+      final result = parser.parse([
+        _block('交易详情', 20),
+        _block('￥12.35', 145, height: 60),
+        _block('交易时间 2026-04-05 13:20:11', 260),
+        _block('商品说明 图书', 320),
+      ]);
+      expect(result.scene, PaymentScreenshotScene.unknown);
+      expect(result.direction, isNull);
+      expect(result.amount, Money.parse('12.35'));
+      expect(result.product, '图书');
+      expect(result.canPrefill, isTrue);
+    },
+  );
+
   test('receipt confirmation takes precedence over transfer metadata', () {
     final result = parser.parse([
       _block('你已收款，资金已存入零钱', 80),
@@ -45,28 +225,31 @@ void main() {
     expect(result.canPrefill, isTrue);
   });
 
-  test('unconfirmed transfers and contradictory receipts stay manual', () {
-    for (final entry in [
-      ('+23.40', '待收款'),
-      ('+23.40', '转账成功'),
-      ('-23.40', '已存入零钱'),
-    ]) {
-      final result = parser.parse([
-        _block('转账-来自示例亲友', 90),
-        _block(entry.$1, 145, height: 60),
-        _block('当前状态 ${entry.$2}', 260),
+  test(
+    'personal receipts prefill while conflicting directions stay unknown',
+    () {
+      for (final entry in [
+        ('+23.40', '待收款', PaymentScreenshotScene.income),
+        ('+23.40', '转账成功', PaymentScreenshotScene.income),
+        ('-23.40', '已存入零钱', PaymentScreenshotScene.unknown),
+      ]) {
+        final result = parser.parse([
+          _block('转账-来自示例亲友', 90),
+          _block(entry.$1, 145, height: 60),
+          _block('当前状态 ${entry.$2}', 260),
+        ]);
+        expect(result.scene, entry.$3);
+        expect(result.canPrefill, isTrue);
+      }
+      final refund = parser.parse([
+        _block('退款成功', 80),
+        _block('+23.40', 145, height: 60),
+        _block('当前状态 已存入零钱', 260),
       ]);
-      expect(result.scene, isNot(PaymentScreenshotScene.income));
-      expect(result.canPrefill, isFalse);
-    }
-    final refund = parser.parse([
-      _block('退款成功', 80),
-      _block('+23.40', 145, height: 60),
-      _block('当前状态 已存入零钱', 260),
-    ]);
-    expect(refund.scene, PaymentScreenshotScene.refund);
-    expect(refund.canPrefill, isFalse);
-  });
+      expect(refund.scene, PaymentScreenshotScene.refund);
+      expect(refund.canPrefill, isFalse);
+    },
+  );
 
   test('unsigned payment success amounts allow missing detail fields', () {
     final result = parser.parse([
@@ -82,14 +265,14 @@ void main() {
   });
 
   test('account transfers and withdrawals are not ordinary income', () {
-    for (final heading in ['账户转账', '转入余额', '提现到账']) {
+    for (final heading in ['自有账户转账', '转入余额', '提现到账']) {
       final result = parser.parse([
         _block(heading, 80),
         _block('+23.40', 145, height: 60),
         _block('当前状态 已到账', 260),
       ]);
       expect(result.scene, PaymentScreenshotScene.transfer, reason: heading);
-      expect(result.canPrefill, isFalse);
+      expect(result.canPrefill, isTrue);
     }
   });
 
@@ -140,17 +323,17 @@ void main() {
     expect(result.canPrefill, isTrue);
   });
 
-  test('a bank label on an unconfirmed personal transfer stays manual', () {
+  test('a receipt account alone does not imply a transfer of own funds', () {
     final result = parser.parse([
       _block('转账-来自示例亲友', 80),
       _block('+23.40', 145, height: 60),
       _block('当前状态 待收款', 240),
       _block('到账银行卡 示例银行(1234)', 300),
     ]);
-    expect(result.scene, PaymentScreenshotScene.transfer);
+    expect(result.scene, PaymentScreenshotScene.income);
     expect(result.transferFromAccount, isNull);
-    expect(result.transferToAccount, isNull);
-    expect(result.canPrefill, isFalse);
+    expect(result.transferToAccount, '示例银行(1234)');
+    expect(result.canPrefill, isTrue);
   });
 
   test('withdrawal balance cannot replace a missing transfer amount', () {
@@ -164,7 +347,7 @@ void main() {
     expect(result.scene, PaymentScreenshotScene.transfer);
     expect(result.amount, isNull);
     expect(result.counterparty, isNull);
-    expect(result.canPrefill, isFalse);
+    expect(result.canPrefill, isTrue);
   });
 
   test('success and amount in one row exclude fees and reward amounts', () {
@@ -190,7 +373,7 @@ void main() {
 
   test('recognizes scene keywords split into blocks in a labeled row', () {
     final scenes = {
-      ('转', '账'): PaymentScreenshotScene.transfer,
+      ('自有账户转', '账'): PaymentScreenshotScene.transfer,
       ('退', '款'): PaymentScreenshotScene.refund,
       ('还', '款'): PaymentScreenshotScene.repayment,
       ('已', '取消'): PaymentScreenshotScene.unpaid,
@@ -205,7 +388,7 @@ void main() {
         _block(entry.key.$2, 300, left: 370),
       ]);
       expect(result.scene, entry.value, reason: entry.key.toString());
-      expect(result.canPrefill, isFalse);
+      expect(result.canPrefill, entry.value == PaymentScreenshotScene.transfer);
     }
   });
 
@@ -213,7 +396,7 @@ void main() {
     final scenes = {
       ('支付', '成功'): PaymentScreenshotScene.expense,
       ('退款', '成功'): PaymentScreenshotScene.refund,
-      ('转账', '成功'): PaymentScreenshotScene.transfer,
+      ('转账', '成功'): PaymentScreenshotScene.expense,
       ('还款', '成功'): PaymentScreenshotScene.repayment,
     };
     for (final entry in scenes.entries) {
@@ -264,19 +447,22 @@ void main() {
     expect(result.canPrefill, isTrue);
   });
 
-  test('conflicting direction and status require manual review', () {
-    for (final entry in [('+20.00', '支付成功'), ('-20.00', '收款成功')]) {
-      final result = parser.parse([
-        _block('支付详情', 20),
-        _block('示例客户', 80),
-        _block(entry.$1, 145, height: 60),
-        _block(entry.$2, 260),
-      ]);
-      expect(result.scene, PaymentScreenshotScene.unknown);
-      expect(result.canPrefill, isFalse);
-      expect(result.needsReview, isTrue);
-    }
-  });
+  test(
+    'conflicting direction and status preserve values for the default form',
+    () {
+      for (final entry in [('+20.00', '支付成功'), ('-20.00', '收款成功')]) {
+        final result = parser.parse([
+          _block('支付详情', 20),
+          _block('示例客户', 80),
+          _block(entry.$1, 145, height: 60),
+          _block(entry.$2, 260),
+        ]);
+        expect(result.scene, PaymentScreenshotScene.unknown);
+        expect(result.canPrefill, isTrue);
+        expect(result.needsReview, isTrue);
+      }
+    },
+  );
 
   test(
     'extracts explicit category names separately from merchants and payment methods',
@@ -560,18 +746,17 @@ void main() {
       expect(unknown.amount, Money.parse('20'));
       expect(unknown.scene, PaymentScreenshotScene.unknown);
       expect(unknown.direction, isNull);
-      expect(unknown.canPrefill, isFalse);
+      expect(unknown.canPrefill, isTrue);
     },
   );
 
   test(
-    'failed, cancelled, refund, transfer and repayment scenes do not become ordinary',
+    'failed, cancelled, refund and repayment scenes do not become ordinary',
     () {
       final scenes = {
         '支付失败': PaymentScreenshotScene.unpaid,
         '已取消': PaymentScreenshotScene.unpaid,
         '退款成功': PaymentScreenshotScene.refund,
-        '转账成功': PaymentScreenshotScene.transfer,
         '还款成功': PaymentScreenshotScene.repayment,
       };
       for (final entry in scenes.entries) {
@@ -630,7 +815,7 @@ void main() {
     expect(result.scene, PaymentScreenshotScene.expense);
   });
 
-  test('similar prominent amounts are ambiguous and require manual entry', () {
+  test('ambiguous amounts stay empty while the expense scene can prefill', () {
     final result = parser.parse([
       _block('支付详情', 20),
       _block('-10.00', 90, height: 60),
@@ -638,7 +823,7 @@ void main() {
       _block('支付成功', 300),
     ]);
     expect(result.amount, isNull);
-    expect(result.canPrefill, isFalse);
+    expect(result.canPrefill, isTrue);
     expect(result.needsReview, isTrue);
   });
 

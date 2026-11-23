@@ -33,6 +33,43 @@ import '../../../helper/sequential_id_generator.dart';
 import '../../../helper/test_app_database.dart';
 
 void main() {
+  testWidgets(
+    'partial screenshot inputs stay intact when switching entry type',
+    (tester) async {
+      final service = _FakeTransactionPostingAppService();
+      await _pumpTransactionForm(
+        tester,
+        service,
+        formPage: TransactionFormPage(
+          prefill: TransactionFormPrefill(
+            occurredAt: DateTime(2026, 3, 4),
+            note: '保留的说明',
+            reviewMessage: '',
+          ),
+        ),
+      );
+      final fields = tester.widget<TransactionAmountInput>(
+        find.byType(TransactionAmountInput),
+      );
+      expect(fields.amountController.text, isEmpty);
+      expect(fields.noteController.text, '保留的说明');
+      fields.amountController.text = '28.50';
+      await tester.tap(
+        find.descendant(
+          of: find.byType(AppPageHeader),
+          matching: find.text('收入'),
+        ),
+      );
+      await tester.pumpAndSettle();
+      final incomeFields = tester.widget<TransactionAmountInput>(
+        find.byType(TransactionAmountInput),
+      );
+      expect(incomeFields.amountController.text, '28.50');
+      expect(incomeFields.noteController.text, '保留的说明');
+      expect(tester.takeException(), isNull);
+    },
+  );
+
   for (final reviewMessage in ['', '可能重复，请核对。']) {
     testWidgets(
       'screenshot prefill stays editable with review message "$reviewMessage"',

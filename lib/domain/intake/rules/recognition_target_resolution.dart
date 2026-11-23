@@ -32,6 +32,27 @@ class IntakeTargetResolver {
     return matchSettlementAccountAlias(accountName, _targets, source: source);
   }
 
+  /// Unique full names or user rules identify an account; aliases do not.
+  String? resolveUniqueAccount(String accountText) {
+    final value = normalizeRecognitionText(accountText);
+    if (value.isEmpty) return null;
+    final available = _targets
+        .where((target) => target.kind == RecognitionRuleKind.account)
+        .toList();
+    final exact = available
+        .where((target) => normalizeRecognitionText(target.name) == value)
+        .toList();
+    if (exact.isNotEmpty) return exact.length == 1 ? exact.single.id : null;
+    final matched = <String>{};
+    for (final target in available) {
+      final rule = _rules
+          .withTargets([target])
+          .match(text: accountText, kind: RecognitionRuleKind.account);
+      if (rule != null) matched.add(target.id);
+    }
+    return matched.length == 1 ? matched.single : null;
+  }
+
   RecognitionRuleMatch? resolveCategory({
     required String matchingText,
     required ImportCategoryKind direction,

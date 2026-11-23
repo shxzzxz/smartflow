@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:logging/logging.dart';
 import 'package:smartflow/application/intake/recognition/command/recognize_payment_screenshot.dart';
+import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/core/error/app_exception.dart';
 import 'package:smartflow/domain/intake/import/import_models.dart';
 import 'package:smartflow/domain/intake/recognition/port/payment_screenshot_ocr.dart';
@@ -13,6 +14,33 @@ import 'package:smartflow/domain/intake/rules/recognition_rule.dart';
 import 'package:smartflow/domain/intake/rules/recognition_rule_catalog.dart';
 
 void main() {
+  test('account ownership is resolved before ordinary rule matching', () async {
+    final command = RecognizePaymentScreenshot(
+      ocr: _Ocr(
+        () async => [
+          _block('转账详情', 20),
+          _block('-28.50', 145, height: 60),
+          _block('付款账户 日常付款', 260),
+          _block('收款账户 我的银行卡', 320),
+        ],
+      ),
+      parser: const PaymentScreenshotParser(),
+      loadRules: () async =>
+          throw StateError('Own transfers do not use ordinary rules'),
+      resolveScene: (payment) async {
+        expect(payment.scene, PaymentScreenshotScene.expense);
+        expect(payment.transferFromAccount, '日常付款');
+        expect(payment.transferToAccount, '我的银行卡');
+        return payment.asTransfer();
+      },
+    );
+    final result = await command('image');
+    expect(result.scene, PaymentScreenshotScene.transfer);
+    expect(result.amount, Money.parse('28.50'));
+    expect(result.canPrefill, isTrue);
+    expect(result.categoryRule, isNull);
+  });
+
   Future<RecognizedPayment> recognize(
     List<RecognizedTextBlock> blocks,
     List<RecognitionRule> rules,

@@ -41,9 +41,10 @@ class ScreenshotTextDocument {
           label.split('').join(r'\s*'),
         ).firstMatch(row.text)?.end;
         if (end == null) continue;
-        // A category label is more specific than a prefix such as 商品.
-        final categoryLabel = _categoryLabelMatch(row.text);
-        if (categoryLabel != null && categoryLabel.end > end) continue;
+        // A semantic label is more specific than a prefix such as 商品.
+        final semanticLabel =
+            _categoryLabelMatch(row.text) ?? _sceneTypeLabelMatch(row.text);
+        if (semanticLabel != null && semanticLabel.end > end) continue;
         final value = _fieldValue(
           i,
           end,
@@ -66,6 +67,21 @@ class ScreenshotTextDocument {
         match.end,
         label: match[0]!.replaceAll(' ', ''),
         allowBelow: true,
+      );
+      if (value != null) return value;
+    }
+    return null;
+  }
+
+  ScreenshotTextValue? sceneTypeField({bool allowBelow = false}) {
+    for (var i = 0; i < rows.length; i++) {
+      final match = _sceneTypeLabelMatch(rows[i].text);
+      if (match == null) continue;
+      final value = _fieldValue(
+        i,
+        match.end,
+        label: match[0]!.replaceAll(' ', ''),
+        allowBelow: allowBelow,
       );
       if (value != null) return value;
     }
@@ -187,19 +203,36 @@ class ScreenshotTextDocument {
     return ScreenshotTextValue(row.text, row.confidence);
   }
 
-  String sceneSignals({bool allowBelow = false}) => [
-    ...headerRows.map((row) => row.text),
-    field(const ['交易类型', '交易类别', '业务类型', '收支类型'], allowBelow: allowBelow)?.text,
-    field(const ['当前状态', '交易状态', '支付状态', '状态'], allowBelow: allowBelow)?.text,
-    if (hasLabel('转出金额')) '转出',
-    ...rows
-        .where(
-          (row) => RegExp(
-            r'^(支付失败|交易失败|付款失败|支付中|待支付|等待付款|已关闭|已取消|交易取消|支付成功|付款成功|支付完成|交易成功|收款成功|已收款|已到账|已存入零钱|退款成功|已全额退款|已退款|转账成功|转账到账|还款成功)$',
-          ).hasMatch(_sceneMatchingText(row.text)),
-        )
-        .map((row) => row.text),
-  ].whereType<String>().map(_sceneMatchingText).join('\n');
+  String sceneSignals({bool allowBelow = false}) {
+    final status = field(const [
+      '当前状态',
+      '交易状态',
+      '支付状态',
+      '状态',
+    ], allowBelow: allowBelow)?.text;
+    final terminalStatus = RegExp(
+      r'^(失败|取消|关闭)(?=$|[，,。.!！；;:：]|请|点击|重试)',
+    ).firstMatch(_sceneMatchingText(status ?? ''));
+    return [
+      ...headerRows.map((row) => row.text),
+      sceneTypeField(allowBelow: allowBelow)?.text,
+      status,
+      switch (terminalStatus?.group(1)) {
+        '失败' => '交易失败',
+        '取消' => '已取消',
+        '关闭' => '已关闭',
+        _ => null,
+      },
+      if (hasLabel('转出金额')) '转出',
+      ...rows
+          .where(
+            (row) => RegExp(
+              r'^(支付失败|交易失败|付款失败|收款失败|转账失败|提现失败|扣款失败|支付中|付款中|收款中|支付处理中|付款处理中|收款处理中|待支付|等待付款|未支付|待收款|等待收款|已关闭|已取消|交易取消|支付成功|付款成功|支付完成|扣款成功|交易成功|收款成功|已收款|已到账|已存入零钱|收款到账|退款成功|已全额退款|已退款|转账成功|转账到账|转账处理中|还款成功)(?=$|[，,。.!！；;:：]|请|点击|重试)',
+            ).hasMatch(_sceneMatchingText(row.text)),
+          )
+          .map((row) => row.text),
+    ].whereType<String>().map(_sceneMatchingText).join('\n');
+  }
 
   DateTime? uniqueTime() {
     final dates = <DateTime>{};
@@ -316,10 +349,16 @@ const _detailLabels = [
   '支付方式',
   '收款方式',
   '付款账户',
+  '付款账号',
   '支付账户',
+  '转出账户',
+  '转出账号',
+  '转入账户',
+  '转入账号',
   '收款账户',
   '收款账号',
   '到账银行卡',
+  '交易卡号',
   '支付渠道',
   '交易类型',
   '交易类别',
@@ -342,15 +381,26 @@ const _detailLabels = [
 bool _startsWithLabel(String text) {
   final compact = text.replaceAll(' ', '');
   return _detailLabels.any(compact.startsWith) ||
-      _categoryLabelMatch(text) != null;
+      _categoryLabelMatch(text) != null ||
+      _sceneTypeLabelMatch(text) != null;
 }
 
 final _categoryLabelPattern = RegExp(
   r'^(?:[\u3400-\u9fff]\s*)*?分\s*类(?=\s|[:：]|$)',
 );
 
-Match? _categoryLabelMatch(String text) {
-  final match = _categoryLabelPattern.matchAsPrefix(text);
+final _sceneTypeLabelPattern = RegExp(
+  r'^(?:[\u3400-\u9fff]\s*)*?(?:交\s*易\s*类\s*型|交\s*易\s*类\s*别|业\s*务\s*类\s*型|收\s*支\s*类\s*型)(?=\s|[:：]|$)',
+);
+
+Match? _categoryLabelMatch(String text) =>
+    _semanticLabelMatch(text, _categoryLabelPattern);
+
+Match? _sceneTypeLabelMatch(String text) =>
+    _semanticLabelMatch(text, _sceneTypeLabelPattern);
+
+Match? _semanticLabelMatch(String text, RegExp pattern) {
+  final match = pattern.matchAsPrefix(text);
   if (match == null) return null;
   // The marker must belong to the label, rather than another field's value.
   for (final label in _detailLabels) {

@@ -32,6 +32,45 @@ import '../../../helper/fake_advance_case_repository.dart';
 void main() {
   group('TransactionFormViewModel', () {
     test(
+      'missing screenshot amount stays empty until the user completes it',
+      () async {
+        final service = _FakeAdvanceOrchestrationAppService();
+        final container = _container(
+          advanceOrchestrationService: service,
+          settlementAccounts: [_account('cash')],
+          expenseTree: [
+            CategoryNode(account: _account('books', type: AccountType.expense)),
+          ],
+        );
+        final prefill = TransactionFormPrefill(
+          occurredAt: DateTime(2026, 3, 4),
+          note: '示例图书',
+          reviewMessage: '',
+          settlementAccountId: 'cash',
+          categoryId: 'books',
+        );
+        final provider = transactionFormViewModelProvider(prefill: prefill);
+        final subscription = container.listen(provider, (_, _) {});
+        addTearDown(subscription.close);
+        final state = container.read(provider).requireValue!;
+        expect(state.initialValues.amount, isEmpty);
+        expect(state.initialValues.note, '示例图书');
+        expect(state.occurredAt, prefill.occurredAt);
+        final model = container.read(provider.notifier);
+        expect(
+          await model.submit(amountText: '', noteText: '示例图书'),
+          isA<SubmitFailure>(),
+        );
+        expect(service.createSceneCommands, isEmpty);
+        expect(
+          await model.submit(amountText: '28.50', noteText: '示例图书'),
+          isA<SubmitSuccess>(),
+        );
+        expect(service.createSceneCommands.single.amount, Money.parse('28.50'));
+      },
+    );
+
+    test(
       'requires an account when screenshot prefill has no usable default and saves corrected input',
       () async {
         final service = _FakeAdvanceOrchestrationAppService();
