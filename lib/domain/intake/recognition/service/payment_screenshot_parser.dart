@@ -112,16 +112,11 @@ ScreenshotSceneInformation _extractSceneInformation(
       ], allowBelow: true);
   final occurredAt = parseScreenshotDate(time?.text) ?? document.uniqueTime();
   final counterparty =
-      document.field(const [
-        '商户全称',
-        '收款方全称',
-        '交易对方',
-        '商户名称',
-        '收款方',
-        '付款方',
-        '商家',
-        '商户',
-      ], allowBelow: true) ??
+      document.field(
+        const ['商户全称', '收款方全称', '交易对方', '商户名称', '收款方', '付款方', '商家', '商户'],
+        allowBelow: true,
+        allowWrapped: true,
+      ) ??
       document.headlineCounterparty(scene.headlineAmount);
   final product = document.field(const [
     '商品说明',
@@ -157,12 +152,7 @@ ScreenshotSceneInformation _extractSceneInformation(
       method = ScreenshotTextValue('零钱', status.confidence);
     }
   }
-  final categoryName = document.field(const [
-    '交易分类',
-    '收支分类',
-    '商品分类',
-    '分类',
-  ], allowBelow: true);
+  final categoryName = document.categoryField();
   final transferAccounts = _extractTransferAccounts(document, scene.scene);
   return ScreenshotSceneInformation(
     scene: scene.scene,

@@ -17,7 +17,11 @@ class ScreenshotTextDocument {
   bool hasLabel(String label) =>
       rows.any((row) => row.text.replaceAll(' ', '').startsWith(label));
 
-  ScreenshotTextValue? field(List<String> labels, {bool allowBelow = false}) {
+  ScreenshotTextValue? field(
+    List<String> labels, {
+    bool allowBelow = false,
+    bool allowWrapped = false,
+  }) {
     final orderedLabels = [...labels]
       ..sort((a, b) => b.length.compareTo(a.length));
     for (var i = 0; i < rows.length; i++) {
@@ -37,33 +41,98 @@ class ScreenshotTextDocument {
           label.split('').join(r'\s*'),
         ).firstMatch(row.text)?.end;
         if (end == null) continue;
-        var value = row.text
-            .substring(end)
-            .replaceFirst(RegExp(r'^\s*[:：]?\s*'), '')
-            .trim();
-        var confidence = row.confidence;
-        if (value.isEmpty && i + 1 < rows.length) {
-          final next = rows[i + 1];
-          final nearby =
-              next.top - row.bottom < row.height * 1.5 &&
-              next.top >= row.top &&
-              !_startsWithLabel(next.text);
-          if (nearby &&
-              (next.left > row.left + row.height ||
-                  allowBelow && next.left >= row.left - row.height)) {
-            value = next.text;
-            confidence = next.confidence < confidence
-                ? next.confidence
-                : confidence;
-          }
-        }
-        value = value.replaceFirst(RegExp(r'\s*[>›〉]\s*$'), '').trim();
-        if (value.isNotEmpty) {
-          return ScreenshotTextValue(value, confidence, label: label);
-        }
+        // A category label is more specific than a prefix such as 商品.
+        final categoryLabel = _categoryLabelMatch(row.text);
+        if (categoryLabel != null && categoryLabel.end > end) continue;
+        final value = _fieldValue(
+          i,
+          end,
+          label: label,
+          allowBelow: allowBelow,
+          allowWrapped: allowWrapped,
+        );
+        if (value != null) return value;
       }
     }
     return null;
+  }
+
+  ScreenshotTextValue? categoryField() {
+    for (var i = 0; i < rows.length; i++) {
+      final match = _categoryLabelMatch(rows[i].text);
+      if (match == null) continue;
+      final value = _fieldValue(
+        i,
+        match.end,
+        label: match[0]!.replaceAll(' ', ''),
+        allowBelow: true,
+      );
+      if (value != null) return value;
+    }
+    return null;
+  }
+
+  ScreenshotTextValue? _fieldValue(
+    int index,
+    int labelEnd, {
+    required String label,
+    required bool allowBelow,
+    bool allowWrapped = false,
+  }) {
+    final row = rows[index];
+    final separator = RegExp(
+      r'^\s*[:：]?\s*',
+    ).matchAsPrefix(row.text.substring(labelEnd))!;
+    final valueStart = labelEnd + separator.end;
+    var value = row.text.substring(valueStart).trim();
+    var confidence = row.confidence;
+    var valueRowIndex = index;
+    var valueLeft = _valueColumnLeft(row, valueStart);
+    if (value.isEmpty && index + 1 < rows.length) {
+      final next = rows[index + 1];
+      final nearby =
+          next.top - row.bottom < row.height * 1.5 &&
+          next.top >= row.top &&
+          !_startsWithLabel(next.text);
+      if (nearby &&
+          (next.left > row.left + row.height ||
+              allowBelow && next.left >= row.left - row.height)) {
+        value = next.text;
+        valueRowIndex++;
+        valueLeft = next.left;
+        confidence = next.confidence < confidence
+            ? next.confidence
+            : confidence;
+      }
+    }
+    if (allowWrapped && value.isNotEmpty) {
+      while (valueRowIndex + 1 < rows.length) {
+        final previous = rows[valueRowIndex];
+        final next = rows[valueRowIndex + 1];
+        final tolerance =
+            (previous.height < next.height ? previous.height : next.height) *
+            0.5;
+        final aligned = valueLeft == null
+            ? next.left > row.left + row.height
+            : (next.left - valueLeft).abs() < tolerance;
+        if (!aligned ||
+            next.top < previous.top ||
+            next.top - previous.bottom >= previous.height * 1.5 ||
+            next.left <= row.left + row.height && _startsWithLabel(next.text)) {
+          break;
+        }
+        value += next.text;
+        confidence = next.confidence < confidence
+            ? next.confidence
+            : confidence;
+        valueLeft ??= next.left;
+        valueRowIndex++;
+      }
+    }
+    value = value.replaceFirst(RegExp(r'\s*[>›〉]\s*$'), '').trim();
+    return value.isEmpty
+        ? null
+        : ScreenshotTextValue(value, confidence, label: label);
   }
 
   ScreenshotAmount? headlineAmount() {
@@ -159,6 +228,19 @@ class ScreenshotTextRow {
   double get centerY => (top + bottom) / 2;
   double get confidence =>
       blocks.map((block) => block.confidence).reduce((a, b) => a < b ? a : b);
+}
+
+double? _valueColumnLeft(ScreenshotTextRow row, int valueStart) {
+  var offset = 0;
+  for (final block in row.blocks) {
+    final length = normalizeScreenshotText(block.text).length;
+    if (valueStart >= offset && valueStart < offset + length) {
+      // A combined label/value block has no separate value-column coordinate.
+      return valueStart == offset ? block.left : null;
+    }
+    offset += length + 1;
+  }
+  return null;
 }
 
 List<ScreenshotTextRow> _rows(List<RecognizedTextBlock> input) {
@@ -259,7 +341,27 @@ const _detailLabels = [
 
 bool _startsWithLabel(String text) {
   final compact = text.replaceAll(' ', '');
-  return _detailLabels.any(compact.startsWith);
+  return _detailLabels.any(compact.startsWith) ||
+      _categoryLabelMatch(text) != null;
+}
+
+final _categoryLabelPattern = RegExp(
+  r'^(?:[\u3400-\u9fff]\s*)*?分\s*类(?=\s|[:：]|$)',
+);
+
+Match? _categoryLabelMatch(String text) {
+  final match = _categoryLabelPattern.matchAsPrefix(text);
+  if (match == null) return null;
+  // The marker must belong to the label, rather than another field's value.
+  for (final label in _detailLabels) {
+    final other = RegExp(label.split('').join(r'\s*')).matchAsPrefix(text);
+    if (other != null &&
+        other.end < match.end &&
+        RegExp(r'^[\s:：]').hasMatch(text.substring(other.end))) {
+      return null;
+    }
+  }
+  return match;
 }
 
 // Scene matching ignores word gaps while preserving row boundaries and raw fields.

@@ -281,21 +281,137 @@ void main() {
   test(
     'extracts explicit category names separately from merchants and payment methods',
     () {
+      for (final label in ['分类', '交易分类', '收支分类', '商品分类', '账单分类', '本笔消费分类']) {
+        final result = parser.parse([
+          _block('支付详情', 20),
+          _block('示例咖啡店', 90),
+          _block('-12.00', 145, height: 60),
+          _block('当前状态 支付成功', 240),
+          _block('支付时间 2026-04-05 13:20:11', 290),
+          _block('支付方式 零钱通', 340),
+          _block('商品说明 奶茶', 390),
+          _block('$label 茶饮', 440),
+        ]);
+        expect(result.categoryName, '茶饮', reason: label);
+        expect(result.categoryNameReliable, isTrue);
+        expect(result.categoryMatchingText, contains('茶饮'));
+        expect(result.categoryMatchingText, isNot(contains('零钱通')));
+        expect(result.canPrefill, isTrue);
+      }
+    },
+  );
+
+  test(
+    'category labels use their value column instead of recommendation text',
+    () {
+      final result = parser.parse([
+        _block('账单详情', 20),
+        _block('示例通讯商户', 90),
+        _block('-18.00', 145, height: 60),
+        _block('交易成功', 240),
+        _block('商品说明 服务充值', 300),
+        _block('本笔账务分类', 360),
+        _block('充值缴费>', 360, left: 300),
+        _block('为您推荐 话费+', 420),
+      ]);
+      expect(result.categoryName, '充值缴费');
+      expect(result.categoryMatchingText, '充值缴费\n示例通讯商户\n服务充值');
+    },
+  );
+
+  test(
+    'category words inside products and management headings are not labels',
+    () {
       final result = parser.parse([
         _block('支付详情', 20),
-        _block('示例咖啡店', 90),
-        _block('-12.00', 145, height: 60),
-        _block('当前状态 支付成功', 240),
-        _block('支付时间 2026-04-05 13:20:11', 290),
-        _block('支付方式 零钱通', 340),
-        _block('商品说明 奶茶', 390),
-        _block('交易分类 茶饮', 440),
+        _block('示例书店', 90),
+        _block('-18.00', 145, height: 60),
+        _block('交易成功', 240),
+        _block('商品说明 分类 使用手册', 300),
+        _block('分类管理', 360),
+        _block('设置', 360, left: 300),
       ]);
-      expect(result.categoryName, '茶饮');
-      expect(result.categoryNameReliable, isTrue);
-      expect(result.categoryMatchingText, contains('茶饮'));
-      expect(result.categoryMatchingText, isNot(contains('零钱通')));
-      expect(result.canPrefill, isTrue);
+      expect(result.categoryName, isNull);
+      expect(result.product, '分类 使用手册');
+    },
+  );
+
+  test(
+    'counterparty values continue in their column and stop at the next field',
+    () {
+      final result = parser.parse([
+        _block('支付详情', 20),
+        _block('显示名称', 90),
+        _block('-18.00', 145, height: 60),
+        _block('交易成功', 240),
+        _block('收款方全称', 300),
+        _block('示例交通集团有限责任公司票务246', 300, left: 300),
+        _block('80技术中心', 335, left: 302),
+        _block('订单号', 375),
+        _block('1234567890', 375, left: 300),
+        _block('商品说明 车票', 420),
+      ]);
+      expect(result.counterparty, '示例交通集团有限责任公司票务24680技术中心');
+      expect(result.categoryMatchingText, '示例交通集团有限责任公司票务24680技术中心\n车票');
+      expect(result.product, '车票');
+    },
+  );
+
+  test('wrapped counterparties preserve confidence from every line', () {
+    final result = parser.parse([
+      _block('支付详情', 20),
+      _block('显示名称', 90),
+      _block('-18.00', 145, height: 60),
+      _block('交易成功', 240),
+      _block('收款方全称', 300),
+      _block('示例集团有限责任公司', 300, left: 300),
+      _block('技术中心', 335, left: 300, confidence: .7),
+      _block('商品说明 车票', 390),
+    ]);
+    expect(result.counterparty, '示例集团有限责任公司技术中心');
+    expect(result.categoryMatchingText, '车票');
+    expect(result.needsReview, isTrue);
+  });
+
+  test('counterparties do not merge distant or differently aligned text', () {
+    for (final extra in [
+      _block('立即领取积分', 335),
+      _block('立即领取积分', 430, left: 300),
+    ]) {
+      final result = parser.parse([
+        _block('支付详情', 20),
+        _block('显示名称', 90),
+        _block('-18.00', 145, height: 60),
+        _block('交易成功', 240),
+        _block('收款方全称', 300),
+        _block('示例商户', 300, left: 300),
+        extra,
+      ]);
+      expect(result.counterparty, '示例商户');
+    }
+  });
+
+  test(
+    'wrapped counterparty values also work inline and below their label',
+    () {
+      for (final inline in [true, false]) {
+        final result = parser.parse([
+          _block('支付详情', 20),
+          _block('显示名称', 90),
+          _block('-18.00', 145, height: 60),
+          _block('交易成功', 240),
+          if (inline)
+            _block('商户全称 示例集团', 300)
+          else ...[
+            _block('商户全称', 300),
+            _block('示例集团', 335),
+          ],
+          _block('技术中心', inline ? 335 : 370, left: inline ? 150 : 20),
+          _block('商品说明 车票', 420),
+        ]);
+        expect(result.counterparty, '示例集团技术中心');
+        expect(result.product, '车票');
+      }
     },
   );
 

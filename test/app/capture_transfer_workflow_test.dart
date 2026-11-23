@@ -39,6 +39,150 @@ void main() {
 
   tearDown(() => messenger.setMockMethodCallHandler(channel, null));
 
+  testWidgets(
+    'native OCR category and wrapped counterparty prefill the real expense form and survive confirmation',
+    (tester) async {
+      messenger.setMockMethodCallHandler(channel, (call) async {
+        expect(call.method, 'recognizeShare');
+        expect(call.arguments, {'id': 'synthetic-image'});
+        return {
+          'blocks': [
+            _block('账单详情', 20),
+            _block('显示名称', 90),
+            _block('-18.00', 145, height: 60),
+            _block('交易成功', 240),
+            _block('收款方全称', 300),
+            _block('示例交通集团有限责任公司', 300, left: 300),
+            _block('服务技术中心', 335, left: 300),
+            _block('订单号', 375),
+            _block('1234567890', 375, left: 300),
+            _block('商品说明 服务充值', 420),
+            _block('账单分类', 480),
+            _block('充值缴费>', 480, left: 300),
+            _block('付款方式 日常付款', 540),
+          ],
+          'loadTimeMs': 10,
+          'totalTimeMs': 20,
+        };
+      });
+      final fund = _account('fund', '日常付款');
+      final category = Account(
+        id: 'telecom-category',
+        name: '充值缴费',
+        type: AccountType.expense,
+        balance: Money.zero(),
+      );
+      final accounts = _AccountQuery([fund]);
+      final categories = _CategoryQuery([CategoryNode(account: category)]);
+      final catalog = RecognitionRuleCatalog(
+        rules: [
+          RecognitionRule(
+            id: 'telecom-rule',
+            kind: RecognitionRuleKind.category,
+            keywords: const ['充值缴费'],
+            priority: 1,
+            targetAccountId: category.id,
+            targetPath: [category.name],
+            targetCategoryKind: ImportCategoryKind.expense,
+          ),
+        ],
+      );
+      final dependencies = _RuleDependencies();
+      final posting = _RecordingPostingService();
+      final container = ProviderContainer(
+        overrides: [
+          testAppDatabaseOverride(),
+          builtinRecognitionRuleCatalogProvider.overrideWithValue(catalog),
+          accountQueryServiceProvider.overrideWithValue(accounts),
+          categoryQueryServiceProvider.overrideWithValue(categories),
+          tagListProvider.overrideWith((ref) => Stream.value(const [])),
+          counterpartyListProvider.overrideWith(
+            (ref) => Stream.value(const []),
+          ),
+          transactionPostingAppServiceProvider.overrideWithValue(posting),
+          recognitionRulesAppServiceProvider.overrideWithValue(
+            RecognitionRulesAppService(
+              builtins: catalog,
+              repository: dependencies,
+              targets: LedgerRecognitionRuleTargetQuery(
+                accounts: accounts,
+                categories: categories,
+              ),
+              transactions: dependencies,
+              ids: dependencies,
+            ),
+          ),
+          captureReviewViewModelProvider.overrideWith2(
+            (sessionKey) =>
+                CaptureReviewViewModel(sessionKey, now: () => _captureTime),
+          ),
+        ],
+      );
+      addTearDown(container.dispose);
+      final router = GoRouter(
+        initialLocation: '/test-entry',
+        routes: [
+          GoRoute(
+            path: '/test-entry',
+            builder: (context, state) => Scaffold(
+              body: TextButton(
+                onPressed: () => context.push('/capture/synthetic-image'),
+                child: const Text('识别虚构截图'),
+              ),
+            ),
+          ),
+          ...appRouter.configuration.routes,
+        ],
+      );
+      addTearDown(router.dispose);
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: MaterialApp.router(
+            theme: AppTheme.light(),
+            routerConfig: router,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('识别虚构截图'));
+      await tester.pumpAndSettle();
+
+      final page = tester.widget<TransactionFormPage>(
+        find.byType(TransactionFormPage),
+      );
+      expect(page.initialMode, TransactionFormInitialMode.expense);
+      final state = container
+          .read(
+            transactionFormViewModelProvider(
+              prefill: page.prefill,
+              initialMode: TransactionFormMode.expense,
+            ),
+          )
+          .requireValue!;
+      expect(state.expenseCategoryId, category.id);
+      expect(state.fromAccountId, fund.id);
+      const note = '服务充值 · 示例交通集团有限责任公司服务技术中心';
+      final input = tester.widget<TransactionAmountInput>(
+        find.byType(TransactionAmountInput),
+      );
+      expect(input.noteController.text, note);
+      expect(input.amountController.text, '18.00');
+      expect(posting.expenseCommands, isEmpty);
+
+      await tester.tap(find.text('完成'));
+      await tester.pumpAndSettle();
+      expect(posting.expenseCommands, hasLength(1));
+      final saved = posting.expenseCommands.single;
+      expect(saved.categoryAllocations.single.accountId, category.id);
+      expect(saved.settlementAllocations.single.accountId, fund.id);
+      expect(saved.note, note);
+      expect(saved.amount, Money.parse('18.00'));
+      expect(find.text('识别虚构截图'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
   for (final completed in [true, false]) {
     testWidgets(
       'native OCR ${completed ? 'completed' : 'pending'} withdrawal opens the real transfer form and saves only on confirmation',
@@ -258,18 +402,31 @@ class _AccountQuery implements AccountQueryService {
 }
 
 class _CategoryQuery implements CategoryQueryService {
+  _CategoryQuery([this.expenseTree = const []]);
+  final List<CategoryNode> expenseTree;
+
   @override
   Future<List<CategoryNode>> findCategoryTree(AccountType type) async =>
-      const [];
+      type == AccountType.expense ? expenseTree : const [];
   @override
   Stream<List<CategoryNode>> watchCategoryTree(AccountType type) =>
-      Stream.value(const []);
+      Stream.value(type == AccountType.expense ? expenseTree : const []);
   @override
   dynamic noSuchMethod(Invocation invocation) => throw UnimplementedError();
 }
 
 class _RecordingPostingService implements TransactionPostingAppService {
   final commands = <CreateTransferCommand>[];
+  final expenseCommands = <CreateExpenseCommand>[];
+
+  @override
+  Future<PostedTransactionResult> createExpense(
+    CreateExpenseCommand command,
+  ) async {
+    expenseCommands.add(command);
+    return const PostedTransactionResult(transactionId: 'expense');
+  }
+
   @override
   Future<PostedTransactionResult> createTransfer(
     CreateTransferCommand command,
