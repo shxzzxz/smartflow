@@ -10,6 +10,8 @@ import 'package:smartflow/application/data_management/icons/port/user_business_i
 import 'package:smartflow/application/data_management/icons/query/port/user_business_icon_reference_query.dart';
 import 'package:smartflow/application/data_management/icons/user_business_icon_models.dart';
 import 'package:smartflow/design_system/theme/app_theme.dart';
+import 'package:smartflow/design_system/widget/app_sliding_segmented_control.dart';
+import 'package:smartflow/design_system/widget/app_tab_swipe_region.dart';
 import 'package:smartflow/feature/icon_management/page/icon_management_page.dart';
 
 void main() {
@@ -52,6 +54,24 @@ void main() {
       ),
     );
     expect(delete.onPressed, isNull);
+    final region = tester.getRect(find.byType(AppTabSwipeRegion<int>));
+    await tester.dragFrom(
+      Offset(region.right - 8, region.top + 20),
+      const Offset(-200, 0),
+    );
+    await tester.pumpAndSettle();
+    expect(
+      tester
+          .widget<AppSlidingSegmentedControl<int>>(
+            find.byType(AppSlidingSegmentedControl<int>),
+          )
+          .selected,
+      1,
+    );
+    expect(find.text('自定义账户'), findsNothing);
+    await tester.tap(find.text('账户图标'));
+    await tester.pumpAndSettle();
+    expect(find.text('自定义账户'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 }

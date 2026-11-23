@@ -11,6 +11,7 @@ import 'package:smartflow/application/credit/reference_rate/reference_rate_app_s
 import 'package:smartflow/design_system/theme/app_theme.dart';
 import 'package:smartflow/design_system/widget/app_page_header.dart';
 import 'package:smartflow/design_system/widget/app_sliding_segmented_control.dart';
+import 'package:smartflow/design_system/widget/app_tab_swipe_region.dart';
 import 'package:smartflow/feature/profile/page/reference_rates_page.dart';
 import 'package:smartflow/feature/profile/presentation/reference_rates_presentation.dart';
 import 'package:smartflow/feature/shared/presentation/reference_rate_presentation.dart';
@@ -49,7 +50,16 @@ void main() {
       await _selectYear(tester, '2025 年');
       expect(_table(tester).rows, hasLength(1));
       expect(_metric(InterestRateType.lprOneYear, '3.00%'), findsOneWidget);
-      await _switchGroup(tester, '贷款基准利率');
+      await tester.drag(find.text('今日参考利率'), const Offset(-200, 0));
+      await tester.pumpAndSettle();
+      expect(
+        tester
+            .widget<AppSlidingSegmentedControl<ReferenceRateGroup>>(
+              find.byType(AppSlidingSegmentedControl<ReferenceRateGroup>),
+            )
+            .selected,
+        ReferenceRateGroup.loanBenchmark,
+      );
       expect(_table(tester).rows, hasLength(2));
       expect(
         _metric(InterestRateType.loanBenchmarkShortTerm, '4.35%'),
@@ -175,7 +185,9 @@ void main() {
     },
   );
 
-  testWidgets('pinned tabs retain each group scroll position', (tester) async {
+  testWidgets('swiping pinned tabs retains each group scroll position', (
+    tester,
+  ) async {
     tester.view.physicalSize = const Size(390, 700);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
@@ -207,12 +219,24 @@ void main() {
         .offset;
     expect(offset, greaterThan(0));
     expect(tester.getTopLeft(find.byType(AppPageHeader)).dy, tabsY);
-    await _switchGroup(tester, '贷款基准利率');
+    var region = tester.getRect(
+      find.byType(AppTabSwipeRegion<ReferenceRateGroup>),
+    );
+    await tester.dragFrom(
+      Offset(region.right - 8, region.top + 4),
+      const Offset(-200, 0),
+    );
+    await tester.pumpAndSettle();
     expect(
       tester.widget<ListView>(find.byType(ListView)).controller!.offset,
       0,
     );
-    await _switchGroup(tester, 'LPR');
+    region = tester.getRect(find.byType(AppTabSwipeRegion<ReferenceRateGroup>));
+    await tester.dragFrom(
+      Offset(region.left + 8, region.top + 4),
+      const Offset(200, 0),
+    );
+    await tester.pumpAndSettle();
     expect(
       tester.widget<ListView>(find.byType(ListView)).controller!.offset,
       closeTo(offset, 1),

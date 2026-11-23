@@ -14,6 +14,7 @@ abstract final class AppHeaderTokens {
   static const double minimumCenterWidth = 80;
   static const double loadingIndicatorSize = 18;
   static const double monthSwipeDistance = 24;
+  static const double tabSwipeDistance = 48;
 
   /// 标题与操作区的最小间距，避免长标题贴住操作按钮。
   static const double titleActionGap = 8;

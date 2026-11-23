@@ -11,7 +11,10 @@ import 'package:smartflow/domain/intake/rules/recognition_rule_catalog.dart';
 import 'package:smartflow/domain/intake/rules/recognition_rule_configuration.dart';
 import 'package:smartflow/design_system/theme/app_theme.dart';
 import 'package:smartflow/design_system/widget/app_plain_text_area_form_row.dart';
+import 'package:smartflow/design_system/widget/app_page_header.dart';
+import 'package:smartflow/design_system/widget/app_sliding_segmented_control.dart';
 import 'package:smartflow/design_system/widget/app_switch.dart';
+import 'package:smartflow/design_system/widget/app_tab_swipe_region.dart';
 import 'package:smartflow/feature/recognition_rules/page/recognition_rules_page.dart';
 import 'package:smartflow/feature/recognition_rules/page/recognition_rule_editor_page.dart';
 
@@ -143,6 +146,16 @@ void main() {
     'two-line rows and four menu actions fit narrow screens with larger text',
     (tester) async {
       await open(tester, width: 320, textScaler: const TextScaler.linear(1.5));
+      final header = find.byType(AppPageHeader);
+      for (final label in ['账户规则', '分类规则']) {
+        final tab = find.descendant(of: header, matching: find.text(label));
+        expect(tab, findsOneWidget);
+        final headerBounds = tester.getRect(header);
+        final tabBounds = tester.getRect(tab);
+        expect(headerBounds.contains(tabBounds.topLeft), isTrue);
+        expect(headerBounds.contains(tabBounds.bottomRight), isTrue);
+      }
+      expect(find.byType(TabBar), findsNothing);
       final texts = tester
           .widgetList<Text>(
             find.descendant(
@@ -181,7 +194,7 @@ void main() {
     await open(tester);
     expect(
       tester.getTopLeft(find.byType(SearchBar)).dy,
-      greaterThanOrEqualTo(tester.getBottomLeft(find.byType(TabBar)).dy),
+      greaterThanOrEqualTo(tester.getBottomLeft(find.byType(AppPageHeader)).dy),
     );
     await search(tester, '关键词');
     expect(find.byKey(const ValueKey('account-a')), findsOneWidget);
@@ -196,8 +209,22 @@ void main() {
     await search(tester, '食品');
     expect(find.text('没有找到相关规则'), findsOneWidget);
     expect(find.text('暂无识别规则'), findsNothing);
-    await tester.tap(find.text('分类规则'));
+    final region = tester.getRect(
+      find.byType(AppTabSwipeRegion<RecognitionRuleKind>),
+    );
+    await tester.dragFrom(
+      Offset(region.right - 8, region.top + 100),
+      const Offset(-200, 0),
+    );
     await tester.pumpAndSettle();
+    expect(
+      tester
+          .widget<AppSlidingSegmentedControl<RecognitionRuleKind>>(
+            find.byType(AppSlidingSegmentedControl<RecognitionRuleKind>),
+          )
+          .selected,
+      RecognitionRuleKind.category,
+    );
     expect(find.byKey(const ValueKey('builtin-tea')), findsOneWidget);
     expect(
       tester.widget<SearchBar>(find.byType(SearchBar)).controller!.text,

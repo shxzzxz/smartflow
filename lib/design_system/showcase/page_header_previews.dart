@@ -13,6 +13,7 @@ import '../widget/app_page_header.dart';
 import '../widget/app_page_header_background_scope.dart';
 import '../widget/app_popup_menu_button.dart';
 import '../widget/app_sliding_segmented_control.dart';
+import '../widget/app_tab_swipe_region.dart';
 
 /// 使用真实页头组件展示返回、切换、月份、悬浮 Tab 与文字操作。
 class PageHeaderPreviews extends StatefulWidget {
@@ -150,24 +151,41 @@ class _PageHeaderPreviewsState extends State<PageHeaderPreviews> {
       ),
       _example(
         '中间悬浮 Tab',
-        AppPageHeader.custom(
-          onBack: () => _message('返回'),
-          titleContent: AppSlidingSegmentedControl<int>(
-            variant: AppSegmentedControlVariant.header,
-            segments: const [
-              AppSegment(value: 0, label: '支出'),
-              AppSegment(value: 1, label: '收入'),
-            ],
-            selected: _tab,
-            onChanged: (tab) => setState(() => _tab = tab),
-          ),
-          actions: [
-            AppHeaderIconButton(
-              icon: RemixIcons.add_line,
-              tooltip: '新建',
-              onPressed: () => _message('新建'),
+        Column(
+          children: [
+            AppPageHeader.custom(
+              onBack: () => _message('返回'),
+              titleContent: AppSlidingSegmentedControl<int>(
+                variant: AppSegmentedControlVariant.header,
+                segments: const [
+                  AppSegment(value: 0, label: '支出'),
+                  AppSegment(value: 1, label: '收入'),
+                ],
+                selected: _tab,
+                onChanged: (tab) => setState(() => _tab = tab),
+              ),
+              actions: [
+                AppHeaderIconButton(
+                  icon: RemixIcons.add_line,
+                  tooltip: '新建',
+                  onPressed: () => _message('新建'),
+                ),
+                _more(),
+              ],
             ),
-            _more(),
+            AppTabSwipeRegion<int>(
+              values: const [0, 1],
+              selected: _tab,
+              onChanged: (tab) => setState(() => _tab = tab),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  vertical: AppSpacing.space24,
+                ),
+                child: Center(
+                  child: Text('当前：${_tab == 0 ? '支出' : '收入'} · 左右滑动切换'),
+                ),
+              ),
+            ),
           ],
         ),
       ),

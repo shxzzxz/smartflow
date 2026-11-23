@@ -34,7 +34,7 @@ class _TopBar extends StatelessWidget {
   final bool editing;
   final VoidCallback onBack;
   final VoidCallback? onDelete;
-  final ValueChanged<_TransactionModeTab> onModeChanged;
+  final ValueChanged<_TransactionModeTab>? onModeChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -64,7 +64,7 @@ class _ModeTabs extends StatelessWidget {
   const _ModeTabs({required this.mode, required this.onChanged});
 
   final TransactionFormMode mode;
-  final ValueChanged<_TransactionModeTab> onChanged;
+  final ValueChanged<_TransactionModeTab>? onChanged;
 
   @override
   Widget build(BuildContext context) {

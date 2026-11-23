@@ -14,6 +14,7 @@ import 'package:smartflow/design_system/token/typography.dart';
 import 'package:smartflow/design_system/widget/app_date_picker_panel.dart';
 import 'package:smartflow/design_system/widget/app_page_header.dart';
 import 'package:smartflow/design_system/widget/app_sliding_segmented_control.dart';
+import 'package:smartflow/design_system/widget/app_tab_swipe_region.dart';
 import 'package:smartflow/feature/shared/provider/current_date_time_provider.dart';
 import 'package:smartflow/feature/statistics/page/statistics_page.dart';
 import 'package:smartflow/feature/statistics/presentation/statistics_period_presentation.dart';
@@ -411,7 +412,7 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('switches between period analysis and current state', (
+  testWidgets('switches statistics views by swiping and tapping', (
     tester,
   ) async {
     tester.view.physicalSize = const Size(360, 800);
@@ -421,10 +422,21 @@ void main() {
 
     await _pumpStatisticsPage(tester);
 
-    await tester.tap(find.text('当前状态'));
+    await tester.drag(
+      find.byKey(const ValueKey('statistics-overview-card')),
+      const Offset(-200, 0),
+    );
     await tester.pumpAndSettle();
 
     expect(find.byType(StatisticsStateView), findsOneWidget);
+    expect(
+      tester
+          .widget<AppSlidingSegmentedControl<StatisticsViewType>>(
+            find.byKey(const ValueKey('statistics-view-switcher')),
+          )
+          .selected,
+      StatisticsViewType.state,
+    );
     expect(find.byType(AppPageHeader), findsOneWidget);
     expect(find.textContaining('截至'), findsNothing);
     expect(find.text('净资产'), findsNothing);
@@ -605,6 +617,15 @@ void main() {
       find.byKey(const ValueKey('statistics-overview-card')),
       findsOneWidget,
     );
+    final region = tester.getRect(
+      find.byType(AppTabSwipeRegion<StatisticsViewType>),
+    );
+    await tester.dragFrom(
+      Offset(region.left + 8, region.top + 4),
+      const Offset(200, 0),
+    );
+    await tester.pumpAndSettle();
+    expect(find.byType(StatisticsPeriodView), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 

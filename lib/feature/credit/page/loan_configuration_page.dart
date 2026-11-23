@@ -8,6 +8,7 @@ import '../../../design_system/widget/app_form_section.dart';
 import '../../../design_system/widget/app_page_header.dart';
 import '../../../design_system/widget/app_plain_form_field.dart';
 import '../../../design_system/widget/app_submit_button.dart';
+import '../../../design_system/widget/app_tab_swipe_region.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
 import '../view_model/loan_configuration_view_model.dart';
 import '../widget/installment_terms_editor.dart';
@@ -103,10 +104,7 @@ class _LoanConfigurationPageState extends ConsumerState<LoanConfigurationPage>
                 controller: _tabs,
                 labelStyle: context.appTextStyles.formValueEmphasis,
                 unselectedLabelStyle: context.appTextStyles.formValue,
-                onTap: (index) {
-                  FocusScope.of(context).unfocus();
-                  notifier.setAdvanced(index == 1);
-                },
+                onTap: (index) => _selectAdvanced(index == 1),
                 tabs: const [
                   Tab(text: '基础配置'),
                   Tab(text: '高级配置'),
@@ -114,68 +112,74 @@ class _LoanConfigurationPageState extends ConsumerState<LoanConfigurationPage>
               ),
             ),
             Expanded(
-              child: Form(
-                key: _formKey,
-                child: ListView(
-                  padding: const EdgeInsets.fromLTRB(
-                    AppSpacing.space16,
-                    AppSpacing.space12,
-                    AppSpacing.space16,
-                    AppSpacing.space24,
-                  ),
-                  children: [
-                    if (state.canSelectProduct) ...[
-                      AppFormSection(
-                        children: [
-                          AppPlainSelectFormRow<String>(
-                            label: '产品模板',
-                            value: state.productName,
-                            placeholder: '请选择',
-                            onTap: (_) => _pickProduct(notifier),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: AppSpacing.space12),
-                    ],
-                    Padding(
-                      padding: const EdgeInsets.only(
-                        bottom: AppSpacing.space12,
-                      ),
-                      child: AppFormSection(
-                        title: '贷款',
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: AppSpacing.space16,
-                          vertical: AppSpacing.space8,
-                        ),
-                        children: [
-                          if (state.installment?.basicInfoReadOnly == true)
-                            LoanBasicInfoFields.readOnly(
-                              principal: state.installment!.principal!,
-                              borrowingDate: state.borrowingDate,
-                            )
-                          else
-                            LoanBasicInfoFields(
-                              principalController: _principalController,
-                              borrowingDate: state.borrowingDate,
-                              onBorrowingDateChanged: notifier.setBorrowingDate,
+              child: AppTabSwipeRegion<bool>(
+                values: const [false, true],
+                selected: state.advanced,
+                onChanged: _selectAdvanced,
+                child: Form(
+                  key: _formKey,
+                  child: ListView(
+                    padding: const EdgeInsets.fromLTRB(
+                      AppSpacing.space16,
+                      AppSpacing.space12,
+                      AppSpacing.space16,
+                      AppSpacing.space24,
+                    ),
+                    children: [
+                      if (state.canSelectProduct) ...[
+                        AppFormSection(
+                          children: [
+                            AppPlainSelectFormRow<String>(
+                              label: '产品模板',
+                              value: state.productName,
+                              placeholder: '请选择',
+                              onTap: (_) => _pickProduct(notifier),
                             ),
-                        ],
+                          ],
+                        ),
+                        const SizedBox(height: AppSpacing.space12),
+                      ],
+                      Padding(
+                        padding: const EdgeInsets.only(
+                          bottom: AppSpacing.space12,
+                        ),
+                        child: AppFormSection(
+                          title: '贷款',
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: AppSpacing.space16,
+                            vertical: AppSpacing.space8,
+                          ),
+                          children: [
+                            if (state.installment?.basicInfoReadOnly == true)
+                              LoanBasicInfoFields.readOnly(
+                                principal: state.installment!.principal!,
+                                borrowingDate: state.borrowingDate,
+                              )
+                            else
+                              LoanBasicInfoFields(
+                                principalController: _principalController,
+                                borrowingDate: state.borrowingDate,
+                                onBorrowingDateChanged:
+                                    notifier.setBorrowingDate,
+                              ),
+                          ],
+                        ),
                       ),
-                    ),
-                    InstallmentTermsEditor(
-                      mode: state.installment == null
-                          ? InstallmentTermsEditorMode.calculator
-                          : InstallmentTermsEditorMode.contract,
-                      value: state.terms,
-                      onChanged: notifier.setTerms,
-                      borrowingDate: state.borrowingDate,
-                      showAdvanced: state.advanced,
-                      planAction: AppSubmitButton(
-                        label: state.submitLabel,
-                        onPressed: () => _submit(notifier, state.selection),
+                      InstallmentTermsEditor(
+                        mode: state.installment == null
+                            ? InstallmentTermsEditorMode.calculator
+                            : InstallmentTermsEditorMode.contract,
+                        value: state.terms,
+                        onChanged: notifier.setTerms,
+                        borrowingDate: state.borrowingDate,
+                        showAdvanced: state.advanced,
+                        planAction: AppSubmitButton(
+                          label: state.submitLabel,
+                          onPressed: () => _submit(notifier, state.selection),
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -183,6 +187,11 @@ class _LoanConfigurationPageState extends ConsumerState<LoanConfigurationPage>
         ),
       ),
     );
+  }
+
+  void _selectAdvanced(bool advanced) {
+    FocusScope.of(context).unfocus();
+    ref.read(_provider.notifier).setAdvanced(advanced);
   }
 
   Future<void> _pickProduct(LoanConfigurationViewModel notifier) async {

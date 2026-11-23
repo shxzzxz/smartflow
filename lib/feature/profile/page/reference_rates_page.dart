@@ -11,6 +11,7 @@ import '../../../design_system/widget/app_page_header.dart';
 import '../../../design_system/widget/app_select.dart';
 import '../../../design_system/widget/app_sliding_segmented_control.dart';
 import '../../../design_system/widget/app_status_banner.dart';
+import '../../../design_system/widget/app_tab_swipe_region.dart';
 import '../../../design_system/widget/app_surface.dart';
 import '../../shared/presentation/reference_rate_presentation.dart';
 import '../presentation/reference_rates_presentation.dart';
@@ -65,112 +66,120 @@ class _ReferenceRatesPageState extends ConsumerState<ReferenceRatesPage> {
               ),
             ),
             Expanded(
-              child: Center(
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 960),
-                  child: RefreshIndicator(
-                    onRefresh: vm.refresh,
-                    child: ListView(
-                      key: PageStorageKey(state.group),
-                      controller: _scrollControllers[state.group],
-                      physics: const AlwaysScrollableScrollPhysics(),
-                      padding: const EdgeInsets.all(AppSpacing.space16),
-                      children: [
-                        _OverviewCard(group: state.group, state: current),
-                        if (current.loading) ...[
-                          const SizedBox(height: AppSpacing.space12),
-                          const LinearProgressIndicator(
-                            semanticsLabel: '正在更新参考利率',
-                          ),
-                        ],
-                        if (state.warning case final message?) ...[
-                          const SizedBox(height: AppSpacing.space12),
-                          AppStatusBanner(
-                            message: message,
-                            tone: AppStatusBannerTone.warning,
-                          ),
-                          Align(
-                            alignment: Alignment.centerRight,
-                            child: TextButton(
-                              onPressed: current.loading ? null : vm.refresh,
-                              child: const Text('重试'),
+              child: AppTabSwipeRegion<ReferenceRateGroup>(
+                values: ReferenceRateGroup.values,
+                selected: state.group,
+                onChanged: vm.selectGroup,
+                child: Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 960),
+                    child: RefreshIndicator(
+                      onRefresh: vm.refresh,
+                      child: ListView(
+                        key: PageStorageKey(state.group),
+                        controller: _scrollControllers[state.group],
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        padding: const EdgeInsets.all(AppSpacing.space16),
+                        children: [
+                          _OverviewCard(group: state.group, state: current),
+                          if (current.loading) ...[
+                            const SizedBox(height: AppSpacing.space12),
+                            const LinearProgressIndicator(
+                              semanticsLabel: '正在更新参考利率',
                             ),
-                          ),
-                        ],
-                        const SizedBox(height: AppSpacing.space24),
-                        LayoutBuilder(
-                          builder: (context, constraints) {
-                            final title = Text(
-                              '历史数据',
-                              style: styles.groupTitle,
-                            );
-                            final filter = AppDropdown<int?>(
-                              options: [
-                                const AppSelectOption(
-                                  value: null,
-                                  label: '全部年份',
-                                ),
-                                for (final year in state.years)
-                                  AppSelectOption(
-                                    value: year,
-                                    label: '$year 年',
+                          ],
+                          if (state.warning case final message?) ...[
+                            const SizedBox(height: AppSpacing.space12),
+                            AppStatusBanner(
+                              message: message,
+                              tone: AppStatusBannerTone.warning,
+                            ),
+                            Align(
+                              alignment: Alignment.centerRight,
+                              child: TextButton(
+                                onPressed: current.loading ? null : vm.refresh,
+                                child: const Text('重试'),
+                              ),
+                            ),
+                          ],
+                          const SizedBox(height: AppSpacing.space24),
+                          LayoutBuilder(
+                            builder: (context, constraints) {
+                              final title = Text(
+                                '历史数据',
+                                style: styles.groupTitle,
+                              );
+                              final filter = AppDropdown<int?>(
+                                options: [
+                                  const AppSelectOption(
+                                    value: null,
+                                    label: '全部年份',
                                   ),
-                              ],
-                              value: current.year,
-                              onChanged: vm.selectYear,
-                              tooltip: '筛选历史年份',
-                            );
-                            if (constraints.maxWidth <
-                                280 *
-                                    MediaQuery.textScalerOf(context).scale(1)) {
-                              return Wrap(
-                                spacing: AppSpacing.space16,
-                                runSpacing: AppSpacing.space12,
-                                crossAxisAlignment: WrapCrossAlignment.center,
+                                  for (final year in state.years)
+                                    AppSelectOption(
+                                      value: year,
+                                      label: '$year 年',
+                                    ),
+                                ],
+                                value: current.year,
+                                onChanged: vm.selectYear,
+                                tooltip: '筛选历史年份',
+                              );
+                              if (constraints.maxWidth <
+                                  280 *
+                                      MediaQuery.textScalerOf(
+                                        context,
+                                      ).scale(1)) {
+                                return Wrap(
+                                  spacing: AppSpacing.space16,
+                                  runSpacing: AppSpacing.space12,
+                                  crossAxisAlignment: WrapCrossAlignment.center,
+                                  children: [title, filter],
+                                );
+                              }
+                              return Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
                                 children: [title, filter],
                               );
-                            }
-                            return Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [title, filter],
-                            );
-                          },
-                        ),
-                        const SizedBox(height: AppSpacing.space12),
-                        AppSurface(
-                          border: true,
-                          child:
-                              current.loading &&
-                                  (current.history?.rates.isEmpty ?? true)
-                              ? const _HistorySkeleton()
-                              : state.rows.isEmpty
-                              ? Padding(
-                                  padding: const EdgeInsets.all(
-                                    AppSpacing.space32,
+                            },
+                          ),
+                          const SizedBox(height: AppSpacing.space12),
+                          AppSurface(
+                            border: true,
+                            child:
+                                current.loading &&
+                                    (current.history?.rates.isEmpty ?? true)
+                                ? const _HistorySkeleton()
+                                : state.rows.isEmpty
+                                ? Padding(
+                                    padding: const EdgeInsets.all(
+                                      AppSpacing.space32,
+                                    ),
+                                    child: Text(
+                                      state.warning != null
+                                          ? '暂时无法展示历史数据'
+                                          : current.year == null
+                                          ? '暂无参考利率记录'
+                                          : '该年份暂无记录',
+                                      style: styles.formSupporting,
+                                      textAlign: TextAlign.center,
+                                    ),
+                                  )
+                                : _HistoryTable(
+                                    group: state.group,
+                                    rows: state.rows,
                                   ),
-                                  child: Text(
-                                    state.warning != null
-                                        ? '暂时无法展示历史数据'
-                                        : current.year == null
-                                        ? '暂无参考利率记录'
-                                        : '该年份暂无记录',
-                                    style: styles.formSupporting,
-                                    textAlign: TextAlign.center,
-                                  ),
-                                )
-                              : _HistoryTable(
-                                  group: state.group,
-                                  rows: state.rows,
-                                ),
-                        ),
-                        const SizedBox(height: AppSpacing.space12),
-                        Text(
-                          state.group == ReferenceRateGroup.lpr
-                              ? '按公布日期展示，利率单位为年利率。'
-                              : '数据日期为来源记录日期，不等同于政策生效日期。',
-                          style: styles.formSupporting,
-                        ),
-                      ],
+                          ),
+                          const SizedBox(height: AppSpacing.space12),
+                          Text(
+                            state.group == ReferenceRateGroup.lpr
+                                ? '按公布日期展示，利率单位为年利率。'
+                                : '数据日期为来源记录日期，不等同于政策生效日期。',
+                            style: styles.formSupporting,
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),

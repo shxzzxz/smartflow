@@ -595,7 +595,7 @@ const _showcaseExamples = <_ShowcaseExample>[
     category: '布局与容器',
     title: '页面头部',
     componentNames:
-        'AppPageHeader / AppHeaderIconButton / AppHeaderTextButton / AppHeaderTabs',
+        'AppPageHeader / AppHeaderIconButton / AppHeaderTextButton / AppHeaderTabs / AppTabSwipeRegion',
     keywords: ['布局', '标题', '页头', '返回', '操作', '月份', '毛玻璃', '悬浮', 'Tab'],
   ),
   _ShowcaseExample(

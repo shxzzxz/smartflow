@@ -8,6 +8,7 @@ import '../../../design_system/token/spacing.dart';
 import '../../../design_system/widget/app_empty_state.dart';
 import '../../../design_system/widget/app_page_header.dart';
 import '../../../design_system/widget/app_header_tabs.dart';
+import '../../../design_system/widget/app_tab_swipe_region.dart';
 import '../../../design_system/widget/app_surface.dart';
 import '../../../widget/business/icon/business_icon.dart';
 import '../../../widget/business/icon/business_icon_bubble.dart';
@@ -82,25 +83,30 @@ class _IconManagementPageState extends ConsumerState<IconManagementPage>
             else
               const SizedBox(height: 2),
             Expanded(
-              child: switch ((state.loading, state.loadError)) {
-                (true, null) when state.icons.isEmpty => const Center(
-                  child: CircularProgressIndicator(),
-                ),
-                (_, final error?) => _LoadError(
-                  message: error.message,
-                  onRetry: () => ref
-                      .read(iconManagementViewModelProvider.notifier)
-                      .refresh(),
-                ),
-                _ =>
-                  icons.isEmpty
-                      ? _EmptyIcons(type: type, onUpload: () => _upload(type))
-                      : _IconList(
-                          entries: icons,
-                          busy: state.busy,
-                          onDelete: _delete,
-                        ),
-              },
+              child: AppTabSwipeRegion<int>(
+                values: const [0, 1],
+                selected: _tabController.index,
+                onChanged: _tabController.animateTo,
+                child: switch ((state.loading, state.loadError)) {
+                  (true, null) when state.icons.isEmpty => const Center(
+                    child: CircularProgressIndicator(),
+                  ),
+                  (_, final error?) => _LoadError(
+                    message: error.message,
+                    onRetry: () => ref
+                        .read(iconManagementViewModelProvider.notifier)
+                        .refresh(),
+                  ),
+                  _ =>
+                    icons.isEmpty
+                        ? _EmptyIcons(type: type, onUpload: () => _upload(type))
+                        : _IconList(
+                            entries: icons,
+                            busy: state.busy,
+                            onDelete: _delete,
+                          ),
+                },
+              ),
             ),
           ],
         ),

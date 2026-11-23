@@ -7,6 +7,7 @@ import '../view/statistics_state_view.dart';
 import '../view/statistics_view_switcher.dart';
 import '../../../design_system/widget/app_scaffold.dart';
 import '../../../design_system/widget/app_page_header.dart';
+import '../../../design_system/widget/app_tab_swipe_region.dart';
 
 class StatisticsPage extends ConsumerWidget {
   const StatisticsPage({super.key});
@@ -30,10 +31,15 @@ class StatisticsPage extends ConsumerWidget {
               ),
             ),
             Expanded(
-              child: switch (viewType) {
-                StatisticsViewType.period => const StatisticsPeriodView(),
-                StatisticsViewType.state => const StatisticsStateView(),
-              },
+              child: AppTabSwipeRegion<StatisticsViewType>(
+                values: StatisticsViewType.values,
+                selected: viewType,
+                onChanged: notifier.selectView,
+                child: switch (viewType) {
+                  StatisticsViewType.period => const StatisticsPeriodView(),
+                  StatisticsViewType.state => const StatisticsStateView(),
+                },
+              ),
             ),
           ],
         ),

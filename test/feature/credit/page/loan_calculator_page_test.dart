@@ -7,6 +7,7 @@ import 'package:smartflow/application/credit/credit_query_api.dart';
 import 'package:smartflow/application/credit/product/installment_product_app_service.dart';
 import 'package:smartflow/core/money/rounding_mode.dart';
 import 'package:smartflow/design_system/theme/app_theme.dart';
+import 'package:smartflow/design_system/widget/app_tab_swipe_region.dart';
 import 'package:smartflow/domain/credit/valobj/installment_stage_rule.dart';
 import 'package:smartflow/feature/credit/page/loan_calculator_page.dart';
 import 'package:smartflow/feature/credit/page/loan_configuration_page.dart';
@@ -152,7 +153,13 @@ void main() {
       await tap(tester, '指定固定额产品');
       expect(find.text('固定额算法'), findsNothing);
       expect(find.text('固定还款额'), findsOneWidget);
-      await tap(tester, '高级配置');
+      final region = tester.getRect(find.byType(AppTabSwipeRegion<bool>));
+      await tester.dragFrom(
+        Offset(region.right - 8, region.top + 4),
+        const Offset(-200, 0),
+      );
+      await tester.pumpAndSettle();
+      expect(tester.widget<TabBar>(find.byType(TabBar)).controller!.index, 1);
       expect(find.text('计算约定'), findsOneWidget);
       expect(find.text('固定额算法'), findsOneWidget);
       expect(find.text('本金'), findsOneWidget);

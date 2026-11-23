@@ -15,10 +15,12 @@ import 'package:smartflow/design_system/widget/app_page_header.dart';
 import 'package:smartflow/design_system/widget/app_sliding_segmented_control.dart';
 import 'package:smartflow/design_system/widget/app_plain_form_field.dart';
 import 'package:smartflow/design_system/widget/app_status_banner.dart';
+import 'package:smartflow/design_system/widget/app_tab_swipe_region.dart';
 import 'package:smartflow/feature/shared/provider/ledger_query_providers.dart';
 import 'package:smartflow/feature/shared/provider/counterparty_providers.dart';
 import 'package:smartflow/feature/shared/provider/tag_providers.dart';
 import 'package:smartflow/feature/transaction/page/transaction_form_page.dart';
+import 'package:smartflow/feature/transaction/presentation/transaction_form_presentation.dart';
 import 'package:smartflow/feature/transaction/presentation/transaction_form_prefill.dart';
 import 'package:smartflow/feature/transaction/view_model/transaction_form/transaction_account_options.dart';
 import 'package:smartflow/feature/transaction/view_model/transaction_form/transaction_form_view_model.dart';
@@ -105,6 +107,86 @@ void main() {
             .label,
         label,
       );
+    }
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('swipes modes in header order while retaining form inputs', (
+    tester,
+  ) async {
+    await _pumpTransactionForm(
+      tester,
+      _FakeTransactionPostingAppService(),
+      formPage: const TransactionFormPage(
+        initialMode: TransactionFormInitialMode.lending,
+      ),
+    );
+    final container = ProviderScope.containerOf(
+      tester.element(find.byType(TransactionFormPage)),
+    );
+    final provider = transactionFormViewModelProvider(
+      initialMode: TransactionFormMode.lending,
+    );
+    final initialInput = tester.widget<TransactionAmountInput>(
+      find.byType(TransactionAmountInput),
+    );
+    initialInput.amountController.text = '12.34';
+    initialInput.noteController.text = '保留备注';
+
+    Future<void> swipe(double dx, TransactionFormMode expected) async {
+      final region = tester.getRect(
+        find.byWidgetPredicate((widget) => widget is AppTabSwipeRegion),
+      );
+      final header = find.byType(AppPageHeader);
+      await tester.dragFrom(
+        Offset(
+          dx > 0 ? region.left + 32 : region.right - 32,
+          tester.getBottomLeft(header).dy + 4,
+        ),
+        Offset(dx, 0),
+      );
+      await tester.pumpAndSettle();
+      expect(container.read(provider).requireValue!.mode, expected);
+      final input = tester.widget<TransactionAmountInput>(
+        find.byType(TransactionAmountInput),
+      );
+      expect(input.amountController, same(initialInput.amountController));
+      expect(input.amountController.text, '12.34');
+      expect(input.noteController.text, '保留备注');
+      final tabs = tester.widget<AppSlidingSegmentedControl<dynamic>>(
+        find.descendant(
+          of: header,
+          matching: find.byWidgetPredicate(
+            (widget) => widget is AppSlidingSegmentedControl,
+          ),
+        ),
+      );
+      expect(
+        tabs.segments.firstWhere((tab) => tab.value == tabs.selected).label,
+        switch (expected) {
+          TransactionFormMode.expense => '支出',
+          TransactionFormMode.income => '收入',
+          TransactionFormMode.transfer => '转账',
+          TransactionFormMode.borrowing || TransactionFormMode.lending => '往来',
+        },
+      );
+    }
+
+    for (final mode in [
+      TransactionFormMode.transfer,
+      TransactionFormMode.income,
+      TransactionFormMode.expense,
+      TransactionFormMode.expense,
+    ]) {
+      await swipe(200, mode);
+    }
+    for (final mode in [
+      TransactionFormMode.income,
+      TransactionFormMode.transfer,
+      TransactionFormMode.lending,
+      TransactionFormMode.lending,
+    ]) {
+      await swipe(-200, mode);
     }
     expect(tester.takeException(), isNull);
   });
@@ -1397,6 +1479,17 @@ void main() {
       );
       expect(input.amountController.text, '99.99');
       expect(input.noteController.text, '用户正在编辑');
+      await tester.drag(find.byType(ListView).first, const Offset(-200, 0));
+      await tester.pumpAndSettle();
+      expect(
+        container
+            .read(transactionFormViewModelProvider(editTransactionId: 'tx-1'))
+            .requireValue!
+            .mode,
+        TransactionFormMode.expense,
+      );
+      expect(find.text('编辑支出'), findsOneWidget);
+      expect(input.amountController.text, '99.99');
     },
   );
 

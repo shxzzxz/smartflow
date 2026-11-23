@@ -20,6 +20,7 @@ import '../../../design_system/widget/app_sliding_segmented_control.dart';
 import '../../../design_system/widget/app_submit_button.dart';
 import '../../../design_system/widget/app_surface.dart';
 import '../../../design_system/widget/app_status_banner.dart';
+import '../../../design_system/widget/app_tab_swipe_region.dart';
 import 'package:smartflow/widget/business/icon/business_icon.dart';
 import 'package:smartflow/widget/business/account/account_picker_sheet.dart';
 import 'package:smartflow/widget/business/category/category_grid_picker.dart';
@@ -248,308 +249,318 @@ class _TransactionFormContentState
       body: SafeArea(
         child: Form(
           key: _formKey,
-          child: Column(
-            children: [
-              _TopBar(
-                mode: formState.mode,
-                editing: editTransactionId != null,
-                onBack: () => context.pop(),
-                onDelete: editTransactionId != null && !formState.submitting
-                    ? _confirmDelete
-                    : null,
-                onModeChanged: _changeModeTab,
-              ),
-              Expanded(
-                child: ListView(
+          child: AppTabSwipeRegion<_TransactionModeTab>(
+            values: _TransactionModeTab.values,
+            selected: _modeTabFor(formState.mode),
+            onChanged: editTransactionId == null && !formState.submitting
+                ? _changeModeTab
+                : null,
+            child: Column(
+              children: [
+                _TopBar(
+                  mode: formState.mode,
+                  editing: editTransactionId != null,
+                  onBack: () => context.pop(),
+                  onDelete: editTransactionId != null && !formState.submitting
+                      ? _confirmDelete
+                      : null,
+                  onModeChanged: formState.submitting ? null : _changeModeTab,
+                ),
+                Expanded(
+                  child: ListView(
+                    padding: const EdgeInsets.fromLTRB(
+                      AppSpacing.space16,
+                      AppSpacing.space8,
+                      AppSpacing.space16,
+                      AppSpacing.space12,
+                    ),
+                    children: [
+                      if (widget.prefill?.reviewMessage.isNotEmpty == true) ...[
+                        AppStatusBanner(
+                          message: widget.prefill!.reviewMessage,
+                          tone: AppStatusBannerTone.info,
+                        ),
+                        const SizedBox(height: AppSpacing.space12),
+                      ],
+                      if (formState.mode == TransactionFormMode.expense ||
+                          formState.mode == TransactionFormMode.income)
+                        _CategoryEntryArea(
+                          state: formState,
+                          categoryType:
+                              formState.mode == TransactionFormMode.expense
+                              ? AccountType.expense
+                              : AccountType.income,
+                          categoryTree:
+                              formState.mode == TransactionFormMode.expense
+                              ? formState.expenseTree
+                              : formState.incomeTree,
+                          categoryLabel:
+                              formState.mode == TransactionFormMode.expense
+                              ? '支出分类'
+                              : '收入分类',
+                          emptyLabel:
+                              formState.mode == TransactionFormMode.expense
+                              ? '尚未创建支出分类'
+                              : '尚未创建收入分类',
+                          settlementTitle:
+                              formState.mode == TransactionFormMode.expense
+                              ? '组合支付'
+                              : '组合收款',
+                          settlementAddLabel:
+                              formState.mode == TransactionFormMode.expense
+                              ? '添加账户'
+                              : '添加收款账户',
+                          onSelectCategory: (rootId, categoryId) =>
+                              _selectCategory(
+                                rootId: rootId,
+                                categoryId: categoryId,
+                              ),
+                          onAddRootCategory: () => _openCategoryForm(
+                            formState.mode == TransactionFormMode.expense
+                                ? AccountType.expense
+                                : AccountType.income,
+                          ),
+                          onAddChildCategory: (rootId) => _openCategoryForm(
+                            formState.mode == TransactionFormMode.expense
+                                ? AccountType.expense
+                                : AccountType.income,
+                            parentId: rootId,
+                          ),
+                          onCategoryAllocationsChanged: _setCategoryAllocations,
+                          onSettlementAllocationsChanged:
+                              _setSettlementAllocations,
+                        ),
+                      if (formState.mode == TransactionFormMode.transfer)
+                        _MainAccountPickerSection(
+                          key: const ValueKey('transfer-account-card'),
+                          children: [
+                            _MainAccountPickerTile(
+                              label: '转出账户',
+                              accounts: settlementAccounts,
+                              selectedId: formState.fromAccountId,
+                              fallbackToFirst: widget.prefill == null,
+                              validator: (value) =>
+                                  value == null ? '请选择转出账户' : null,
+                              onChanged: (value) => ref
+                                  .read(_formProvider.notifier)
+                                  .setFromAccountId(value),
+                            ),
+                            const SizedBox(height: AppSpacing.space8),
+                            _MainAccountPickerTile(
+                              key: const ValueKey('transfer-to-account-tile'),
+                              label: '转入账户',
+                              accounts: settlementAccounts,
+                              selectedId: formState.toAccountId,
+                              fallbackToFirst: widget.prefill == null,
+                              validator: (value) =>
+                                  value == null ? '请选择转入账户' : null,
+                              onChanged: (value) => ref
+                                  .read(_formProvider.notifier)
+                                  .setToAccountId(value),
+                            ),
+                            const SizedBox(height: AppSpacing.space8),
+                            _MainTransferAdjustmentTile(
+                              key: const ValueKey('transfer-fee-input'),
+                              label: '手续费',
+                              icon: RemixIcons.swap_box_line,
+                              controller: _feeController,
+                              validator: validateOptionalNonNegativeMoneyText,
+                            ),
+                            const SizedBox(height: AppSpacing.space8),
+                            _MainTransferAdjustmentTile(
+                              key: const ValueKey('transfer-discount-input'),
+                              label: '优惠',
+                              icon: RemixIcons.price_tag_3_line,
+                              controller: _discountController,
+                              validator: (value) =>
+                                  _validateTransferDiscountValue(
+                                    value,
+                                    amountText: _amountController.text,
+                                    feeText: _feeController.text,
+                                  ),
+                            ),
+                          ],
+                        ),
+                      if (formState.mode == TransactionFormMode.borrowing)
+                        _MainAccountPickerSection(
+                          children: [
+                            _MainAccountPickerTile(
+                              label: '负债账户',
+                              accounts: liabilityAccounts,
+                              selectedId: formState.liabilityAccountId,
+                              validator: (value) =>
+                                  value == null ? '请选择负债账户' : null,
+                              onChanged: (value) => ref
+                                  .read(_formProvider.notifier)
+                                  .setLiabilityAccountId(value),
+                            ),
+                            const SizedBox(height: AppSpacing.space8),
+                            _MainAccountPickerTile(
+                              label: formState.relationScene.cashAccountLabel,
+                              accounts: fundAccounts,
+                              selectedId: formState.toAccountId,
+                              validator: (value) => value == null
+                                  ? '请选择${formState.relationScene.cashAccountLabel}'
+                                  : null,
+                              onChanged: (value) => ref
+                                  .read(_formProvider.notifier)
+                                  .setToAccountId(value),
+                            ),
+                          ],
+                        ),
+                      if (formState.mode == TransactionFormMode.lending)
+                        _MainAccountPickerSection(
+                          children: [
+                            _MainAccountPickerTile(
+                              label: formState.relationScene.cashAccountLabel,
+                              accounts: fundAccounts,
+                              selectedId: formState.fromAccountId,
+                              validator: (value) => value == null
+                                  ? '请选择${formState.relationScene.cashAccountLabel}'
+                                  : null,
+                              onChanged: (value) => ref
+                                  .read(_formProvider.notifier)
+                                  .setFromAccountId(value),
+                            ),
+                            const SizedBox(height: AppSpacing.space8),
+                            _MainAccountPickerTile(
+                              label: formState
+                                  .relationScene
+                                  .receivableAccountLabel,
+                              accounts: ordinaryReceivableAccounts,
+                              selectedId: formState.ordinaryReceivableAccountId,
+                              validator: (value) => value == null
+                                  ? '请选择${formState.relationScene.receivableAccountLabel}'
+                                  : null,
+                              onChanged: (value) => ref
+                                  .read(_formProvider.notifier)
+                                  .setOrdinaryReceivableAccountId(value),
+                            ),
+                          ],
+                        ),
+                    ],
+                  ),
+                ),
+                Padding(
                   padding: const EdgeInsets.fromLTRB(
                     AppSpacing.space16,
-                    AppSpacing.space8,
+                    AppSpacing.space4,
                     AppSpacing.space16,
-                    AppSpacing.space12,
+                    AppSpacing.space8,
                   ),
-                  children: [
-                    if (widget.prefill?.reviewMessage.isNotEmpty == true) ...[
-                      AppStatusBanner(
-                        message: widget.prefill!.reviewMessage,
-                        tone: AppStatusBannerTone.info,
+                  child: Column(
+                    children: [
+                      _TransactionMetadataActionRow(
+                        allocated:
+                            formState.entryMode ==
+                            TransactionEntryMode.allocated,
+                        showEntryMode:
+                            (formState.mode == TransactionFormMode.expense ||
+                            formState.mode == TransactionFormMode.income),
+                        counterpartyName: _selectedCounterpartyName(formState),
+                        tagNames: _selectedTagNames(formState),
+                        onSelectCounterparty: _selectCounterparty,
+                        onSelectTags: _selectTags,
+                        onToggleMode: () => _toggleEntryMode(formState),
                       ),
-                      const SizedBox(height: AppSpacing.space12),
-                    ],
-                    if (formState.mode == TransactionFormMode.expense ||
-                        formState.mode == TransactionFormMode.income)
-                      _CategoryEntryArea(
-                        state: formState,
-                        categoryType:
-                            formState.mode == TransactionFormMode.expense
-                            ? AccountType.expense
-                            : AccountType.income,
-                        categoryTree:
-                            formState.mode == TransactionFormMode.expense
-                            ? formState.expenseTree
-                            : formState.incomeTree,
-                        categoryLabel:
-                            formState.mode == TransactionFormMode.expense
-                            ? '支出分类'
-                            : '收入分类',
-                        emptyLabel:
-                            formState.mode == TransactionFormMode.expense
-                            ? '尚未创建支出分类'
-                            : '尚未创建收入分类',
-                        settlementTitle:
-                            formState.mode == TransactionFormMode.expense
-                            ? '组合支付'
-                            : '组合收款',
-                        settlementAddLabel:
-                            formState.mode == TransactionFormMode.expense
-                            ? '添加账户'
-                            : '添加收款账户',
-                        onSelectCategory: (rootId, categoryId) =>
-                            _selectCategory(
-                              rootId: rootId,
-                              categoryId: categoryId,
-                            ),
-                        onAddRootCategory: () => _openCategoryForm(
-                          formState.mode == TransactionFormMode.expense
-                              ? AccountType.expense
-                              : AccountType.income,
-                        ),
-                        onAddChildCategory: (rootId) => _openCategoryForm(
-                          formState.mode == TransactionFormMode.expense
-                              ? AccountType.expense
-                              : AccountType.income,
-                          parentId: rootId,
-                        ),
-                        onCategoryAllocationsChanged: _setCategoryAllocations,
-                        onSettlementAllocationsChanged:
-                            _setSettlementAllocations,
-                      ),
-                    if (formState.mode == TransactionFormMode.transfer)
-                      _MainAccountPickerSection(
-                        key: const ValueKey('transfer-account-card'),
-                        children: [
-                          _MainAccountPickerTile(
-                            label: '转出账户',
-                            accounts: settlementAccounts,
-                            selectedId: formState.fromAccountId,
-                            fallbackToFirst: widget.prefill == null,
-                            validator: (value) =>
-                                value == null ? '请选择转出账户' : null,
-                            onChanged: (value) => ref
-                                .read(_formProvider.notifier)
-                                .setFromAccountId(value),
-                          ),
-                          const SizedBox(height: AppSpacing.space8),
-                          _MainAccountPickerTile(
-                            key: const ValueKey('transfer-to-account-tile'),
-                            label: '转入账户',
-                            accounts: settlementAccounts,
-                            selectedId: formState.toAccountId,
-                            fallbackToFirst: widget.prefill == null,
-                            validator: (value) =>
-                                value == null ? '请选择转入账户' : null,
-                            onChanged: (value) => ref
-                                .read(_formProvider.notifier)
-                                .setToAccountId(value),
-                          ),
-                          const SizedBox(height: AppSpacing.space8),
-                          _MainTransferAdjustmentTile(
-                            key: const ValueKey('transfer-fee-input'),
-                            label: '手续费',
-                            icon: RemixIcons.swap_box_line,
-                            controller: _feeController,
-                            validator: validateOptionalNonNegativeMoneyText,
-                          ),
-                          const SizedBox(height: AppSpacing.space8),
-                          _MainTransferAdjustmentTile(
-                            key: const ValueKey('transfer-discount-input'),
-                            label: '优惠',
-                            icon: RemixIcons.price_tag_3_line,
-                            controller: _discountController,
-                            validator: (value) =>
-                                _validateTransferDiscountValue(
-                                  value,
-                                  amountText: _amountController.text,
-                                  feeText: _feeController.text,
-                                ),
-                          ),
-                        ],
-                      ),
-                    if (formState.mode == TransactionFormMode.borrowing)
-                      _MainAccountPickerSection(
-                        children: [
-                          _MainAccountPickerTile(
-                            label: '负债账户',
-                            accounts: liabilityAccounts,
-                            selectedId: formState.liabilityAccountId,
-                            validator: (value) =>
-                                value == null ? '请选择负债账户' : null,
-                            onChanged: (value) => ref
-                                .read(_formProvider.notifier)
-                                .setLiabilityAccountId(value),
-                          ),
-                          const SizedBox(height: AppSpacing.space8),
-                          _MainAccountPickerTile(
-                            label: formState.relationScene.cashAccountLabel,
-                            accounts: fundAccounts,
-                            selectedId: formState.toAccountId,
-                            validator: (value) => value == null
-                                ? '请选择${formState.relationScene.cashAccountLabel}'
-                                : null,
-                            onChanged: (value) => ref
-                                .read(_formProvider.notifier)
-                                .setToAccountId(value),
-                          ),
-                        ],
-                      ),
-                    if (formState.mode == TransactionFormMode.lending)
-                      _MainAccountPickerSection(
-                        children: [
-                          _MainAccountPickerTile(
-                            label: formState.relationScene.cashAccountLabel,
-                            accounts: fundAccounts,
-                            selectedId: formState.fromAccountId,
-                            validator: (value) => value == null
-                                ? '请选择${formState.relationScene.cashAccountLabel}'
-                                : null,
-                            onChanged: (value) => ref
-                                .read(_formProvider.notifier)
-                                .setFromAccountId(value),
-                          ),
-                          const SizedBox(height: AppSpacing.space8),
-                          _MainAccountPickerTile(
-                            label:
-                                formState.relationScene.receivableAccountLabel,
-                            accounts: ordinaryReceivableAccounts,
-                            selectedId: formState.ordinaryReceivableAccountId,
-                            validator: (value) => value == null
-                                ? '请选择${formState.relationScene.receivableAccountLabel}'
-                                : null,
-                            onChanged: (value) => ref
-                                .read(_formProvider.notifier)
-                                .setOrdinaryReceivableAccountId(value),
-                          ),
-                        ],
-                      ),
-                  ],
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(
-                  AppSpacing.space16,
-                  AppSpacing.space4,
-                  AppSpacing.space16,
-                  AppSpacing.space8,
-                ),
-                child: Column(
-                  children: [
-                    _TransactionMetadataActionRow(
-                      allocated:
-                          formState.entryMode == TransactionEntryMode.allocated,
-                      showEntryMode:
-                          (formState.mode == TransactionFormMode.expense ||
-                          formState.mode == TransactionFormMode.income),
-                      counterpartyName: _selectedCounterpartyName(formState),
-                      tagNames: _selectedTagNames(formState),
-                      onSelectCounterparty: _selectCounterparty,
-                      onSelectTags: _selectTags,
-                      onToggleMode: () => _toggleEntryMode(formState),
-                    ),
-                    const SizedBox(height: AppSpacing.space4),
-                    TransactionAmountInput(
-                      amountController: _amountController,
-                      noteController: _noteController,
-                      semantic: _amountSemantic(formState.mode),
-                      amountValidator: (value) => validatePositiveMoneyText(
-                        value,
-                        nonPositiveMessage: '请输入有效金额',
-                      ),
-                    ),
-                    const SizedBox(height: AppSpacing.space4),
-                    _TransactionOptionsPanel(
-                      requireAccountSelection: widget.prefill != null,
-                      mode: formState.mode,
-                      occurredAt: formState.occurredAt,
-                      moneyAccounts: amortization
-                          ? formState.settlementAccounts
-                          : formState.mode == TransactionFormMode.expense
-                          ? expenseSettlementAccounts
-                          : settlementAccounts,
-                      installmentAccounts: installmentAccounts,
-                      amortization: amortization,
-                      amortizationConfiguration:
-                          amortization && widget.editTransactionId == null,
-                      amortizationDeferralAccounts:
-                          formState.amortizationDeferralAccounts,
-                      advanceAccounts: selectableAdvanceAccounts,
-                      fromAccountId: formState.fromAccountId,
-                      toAccountId: formState.toAccountId,
-                      advanceReceivableAccountId:
-                          formState.advanceReceivableAccountId,
-                      amortizationDeferralAccountId:
-                          formState.amortizationDeferralAccountId,
-                      expenseScene: formState.expenseScene,
-                      consumptionInstallment: consumptionInstallment,
-                      aaPeopleCount: formState.aaPeopleCount,
-                      allocatedEntry:
-                          formState.entryMode == TransactionEntryMode.allocated,
-                      excludeStats: formState.excludeStats,
-                      excludeBudget: formState.excludeBudget,
-                      onPickDate: _pickDate,
-                      onFromAccountChanged: (value) => ref
-                          .read(_formProvider.notifier)
-                          .setFromAccountId(value),
-                      onInstallmentConfiguration: () =>
-                          _openInstallmentConfiguration(formState),
-                      onAmortizationConfiguration: () =>
-                          _openAmortizationConfiguration(formState),
-                      onAmortizationDeferralAccountChanged: (value) => ref
-                          .read(_formProvider.notifier)
-                          .setAmortizationDeferralAccountId(value),
-                      onToAccountChanged: (value) => ref
-                          .read(_formProvider.notifier)
-                          .setToAccountId(value),
-                      onAdvanceAccountChanged: (value) => ref
-                          .read(_formProvider.notifier)
-                          .setAdvanceAccountId(value),
-                      onAaPeopleTap: _selectAaPeopleCount,
-                      onExcludeStatsChanged: (value) => ref
-                          .read(_formProvider.notifier)
-                          .setExcludeStats(value),
-                      onExcludeBudgetChanged: (value) => ref
-                          .read(_formProvider.notifier)
-                          .setExcludeBudget(value),
-                    ),
-                    if (formState.mode == TransactionFormMode.transfer)
-                      _TransferActualOutflowSummary(
+                      const SizedBox(height: AppSpacing.space4),
+                      TransactionAmountInput(
                         amountController: _amountController,
-                        feeController: _feeController,
-                        discountController: _discountController,
+                        noteController: _noteController,
+                        semantic: _amountSemantic(formState.mode),
+                        amountValidator: (value) => validatePositiveMoneyText(
+                          value,
+                          nonPositiveMessage: '请输入有效金额',
+                        ),
                       ),
-                    if (formState.mode == TransactionFormMode.expense &&
-                        formState.expenseScene.isAdvance &&
-                        formState.advanceReceivableAccountId != null)
-                      _AdvanceSplitSummary(
-                        scene: formState.expenseScene,
+                      const SizedBox(height: AppSpacing.space4),
+                      _TransactionOptionsPanel(
+                        requireAccountSelection: widget.prefill != null,
+                        mode: formState.mode,
+                        occurredAt: formState.occurredAt,
+                        moneyAccounts: amortization
+                            ? formState.settlementAccounts
+                            : formState.mode == TransactionFormMode.expense
+                            ? expenseSettlementAccounts
+                            : settlementAccounts,
+                        installmentAccounts: installmentAccounts,
+                        amortization: amortization,
+                        amortizationConfiguration:
+                            amortization && widget.editTransactionId == null,
+                        amortizationDeferralAccounts:
+                            formState.amortizationDeferralAccounts,
+                        advanceAccounts: selectableAdvanceAccounts,
+                        fromAccountId: formState.fromAccountId,
+                        toAccountId: formState.toAccountId,
+                        advanceReceivableAccountId:
+                            formState.advanceReceivableAccountId,
+                        amortizationDeferralAccountId:
+                            formState.amortizationDeferralAccountId,
+                        expenseScene: formState.expenseScene,
+                        consumptionInstallment: consumptionInstallment,
                         aaPeopleCount: formState.aaPeopleCount,
-                        amountController: _amountController,
+                        allocatedEntry:
+                            formState.entryMode ==
+                            TransactionEntryMode.allocated,
+                        excludeStats: formState.excludeStats,
+                        excludeBudget: formState.excludeBudget,
+                        onPickDate: _pickDate,
+                        onFromAccountChanged: (value) => ref
+                            .read(_formProvider.notifier)
+                            .setFromAccountId(value),
+                        onInstallmentConfiguration: () =>
+                            _openInstallmentConfiguration(formState),
+                        onAmortizationConfiguration: () =>
+                            _openAmortizationConfiguration(formState),
+                        onAmortizationDeferralAccountChanged: (value) => ref
+                            .read(_formProvider.notifier)
+                            .setAmortizationDeferralAccountId(value),
+                        onToAccountChanged: (value) => ref
+                            .read(_formProvider.notifier)
+                            .setToAccountId(value),
+                        onAdvanceAccountChanged: (value) => ref
+                            .read(_formProvider.notifier)
+                            .setAdvanceAccountId(value),
+                        onAaPeopleTap: _selectAaPeopleCount,
+                        onExcludeStatsChanged: (value) => ref
+                            .read(_formProvider.notifier)
+                            .setExcludeStats(value),
+                        onExcludeBudgetChanged: (value) => ref
+                            .read(_formProvider.notifier)
+                            .setExcludeBudget(value),
                       ),
-                    if (keyboardVisible)
-                      SizedBox(height: keyboardInset)
-                    else ...[
-                      const SizedBox(height: AppSpacing.space6),
-                      _NumberPad(
-                        submitting: formState.submitting,
-                        onInput: _handleNumberInput,
-                        onBackspace: _deleteAmountDigit,
-                        onSelectScene: _selectScene,
-                        onCancel: () => context.pop(),
-                        onSubmit: _submit,
-                      ),
+                      if (formState.mode == TransactionFormMode.transfer)
+                        _TransferActualOutflowSummary(
+                          amountController: _amountController,
+                          feeController: _feeController,
+                          discountController: _discountController,
+                        ),
+                      if (formState.mode == TransactionFormMode.expense &&
+                          formState.expenseScene.isAdvance &&
+                          formState.advanceReceivableAccountId != null)
+                        _AdvanceSplitSummary(
+                          scene: formState.expenseScene,
+                          aaPeopleCount: formState.aaPeopleCount,
+                          amountController: _amountController,
+                        ),
+                      if (keyboardVisible)
+                        SizedBox(height: keyboardInset)
+                      else ...[
+                        const SizedBox(height: AppSpacing.space6),
+                        _NumberPad(
+                          submitting: formState.submitting,
+                          onInput: _handleNumberInput,
+                          onBackspace: _deleteAmountDigit,
+                          onSelectScene: _selectScene,
+                          onCancel: () => context.pop(),
+                          onSubmit: _submit,
+                        ),
+                      ],
                     ],
-                  ],
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -645,6 +656,7 @@ class _TransactionFormContentState
   }
 
   void _changeModeTab(_TransactionModeTab tab) {
+    if (widget.editTransactionId != null || widget.formState.submitting) return;
     final notifier = ref.read(_formProvider.notifier);
     switch (tab) {
       case _TransactionModeTab.expense:
