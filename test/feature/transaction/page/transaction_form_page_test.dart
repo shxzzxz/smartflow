@@ -356,6 +356,7 @@ void main() {
     final fakeService = _FakeTransactionPostingAppService();
     await _pumpTransactionForm(tester, fakeService);
 
+    expect(find.byType(TransactionAmountInput), findsOneWidget);
     await tester.tap(find.text('food'));
     await tester.tap(find.text('1'));
     await tester.pump();
@@ -369,12 +370,6 @@ void main() {
     final command = fakeService.commands.single;
     expect(command.amount, const Money(minorUnits: 100));
     expect(command.note, '午餐');
-  });
-
-  testWidgets('uses the shared transaction amount input', (tester) async {
-    await _pumpTransactionForm(tester, _FakeTransactionPostingAppService());
-
-    expect(find.byType(TransactionAmountInput), findsOneWidget);
   });
 
   testWidgets('selects expense scenes and filters advance account profiles', (

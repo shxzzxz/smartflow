@@ -12,7 +12,6 @@ import 'package:smartflow/design_system/widget/app_list_divider.dart';
 import 'package:smartflow/design_system/widget/app_list_section.dart';
 import 'package:smartflow/design_system/widget/app_page_header.dart';
 import 'package:smartflow/design_system/widget/app_plain_form_field.dart';
-import 'package:smartflow/design_system/widget/app_section_header.dart';
 import 'package:smartflow/design_system/widget/app_sliding_segmented_control.dart';
 import 'package:smartflow/design_system/widget/app_status_badge.dart';
 import 'package:smartflow/design_system/widget/app_status_banner.dart';
@@ -45,6 +44,8 @@ const _showcaseCategoryLabels = [
   '交易与列表',
 ];
 
+// Component suites cover states and layout; this suite covers showcase
+// navigation, search, preview registration, and example callbacks.
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   late BusinessIconRegistry iconCatalog;
@@ -122,23 +123,18 @@ void main() {
     );
   });
 
-  testWidgets('shows the requested mobile component categories', (
+  testWidgets('shows mobile categories and switches the visible examples', (
     tester,
   ) async {
     await pumpShowcase(tester);
 
     expect(find.text('组件示例'), findsOneWidget);
     expect(find.text('搜索组件'), findsOneWidget);
+    expect(find.byType(TabBar), findsOneWidget);
+    expect(find.byType(ChoiceChip), findsNothing);
     for (final category in _showcaseCategoryLabels) {
       expect(find.text(category), findsOneWidget);
     }
-    expect(tester.takeException(), isNull);
-  });
-
-  testWidgets('switches the visible examples when a category is selected', (
-    tester,
-  ) async {
-    await pumpShowcase(tester);
 
     final financeCategory = find.text('财务表达');
     await tester.ensureVisible(financeCategory);
@@ -149,49 +145,70 @@ void main() {
     expect(find.text('色彩语义'), findsNothing);
   });
 
-  testWidgets('registers the newly covered component modules', (tester) async {
+  testWidgets('finds component families and replaces the previous search', (
+    tester,
+  ) async {
     await pumpShowcase(tester);
 
-    const examples = <String, String>{
-      'AppDetailSummaryCard': '详情概览卡片',
-      'FinanceActivityRow': '动态记录',
-      'InsuranceCoverageOverviewCard': '保障责任卡片',
-      'AppTextFormField': '表单字段',
-      'AppPlainFormRow': '基础表单行',
-      'AppSelectMenu': '选择菜单',
-      'CategoryProgressListItem': '分类进度项',
-      'TreeSelect': '树形选择',
-      'TransactionFeedScrollView': '交易 Feed',
+    const examples = <String, (String, Type?, Type?)>{
+      'AppDetailSummaryCard': ('详情概览卡片', null, null),
+      'FinanceActivityRow': ('动态记录', null, null),
+      'InsuranceCoverageOverviewCard': ('保障责任卡片', null, null),
+      'AppTextFormField': ('表单字段', null, null),
+      'AppPlainFormRow': ('基础表单行', null, null),
+      'AppSelectMenu': ('选择菜单', null, null),
+      'CategoryProgressListItem': ('分类进度项', null, null),
+      'TreeSelect': ('树形选择', null, null),
+      'TransactionFeedScrollView': ('交易 Feed', null, null),
+      'AppSpacing': ('间距', null, null),
+      'AppRadius': ('圆角', null, null),
+      'TransactionRow': ('交易行', TransactionRow, EmptyTransactionCard),
+      'EmptyTransactionCard': ('空状态', EmptyTransactionCard, TransactionRow),
+      'AppEmptyState': ('空状态面板', AppEmptyState, null),
+      'AppPlainTextFormRow': ('文本输入行', AppPlainTextFormRow, AppSubmitButton),
+      'MoneyPlainFormRow': ('金额输入行', MoneyPlainFormRow, null),
+      'TransactionAmountInput': ('交易金额面板', TransactionAmountInput, null),
+      'BusinessIconBubble': ('图标展示', BusinessIcon, IconChoiceGrid),
+      'IconChoiceGrid': ('图标选择网格', IconChoiceGrid, null),
+      'IconCatalogPicker': ('图标目录选择', IconCatalogPicker, null),
+      'SummaryMoneyText': ('自适应金额文本', SummaryMoneyText, MoneyText),
+      'ComparedMoneyText': ('自适应金额文本', ComparedMoneyText, MoneyText),
+      'CashflowSummaryCard': ('现金流汇总卡', CashflowSummaryCard, null),
+      'AppSlidingSegmentedControl': (
+        '分段控件',
+        AppSlidingSegmentedControl<int>,
+        null,
+      ),
+      'AppSurface': ('卡片', AppSurface, null),
+      'Chip': ('标签', Chip, LinearProgressIndicator),
+      'LinearProgressIndicator': ('进度条', LinearProgressIndicator, Chip),
+      'AppPageHeader': ('页面头部', AppPageHeader, AppFormSection),
+      'AppFormSection': ('表单分组', AppFormSection, null),
+      'AppListSection': ('分组列表', AppListSection, null),
+      'AppStatusBadge': ('状态标签', AppStatusBadge, null),
+      'AppSupportingItems': ('辅助信息', AppSupportingItems, null),
+      'AppListDivider': ('列表分隔线', AppListDivider, null),
     };
 
+    String? previousTitle;
     for (final entry in examples.entries) {
       await tester.enterText(find.byType(SearchBar), entry.key);
       await tester.pump();
-      expect(find.text(entry.value), findsOneWidget, reason: entry.key);
+
+      final (title, componentType, excludedType) = entry.value;
+      expect(find.text(title), findsOneWidget, reason: entry.key);
+      if (componentType != null) {
+        expect(find.byType(componentType), findsWidgets, reason: entry.key);
+      }
+      if (excludedType != null) {
+        expect(find.byType(excludedType), findsNothing, reason: entry.key);
+      }
+      if (previousTitle != null && previousTitle != title) {
+        expect(find.text(previousTitle), findsNothing, reason: entry.key);
+      }
+      expect(tester.takeException(), isNull, reason: entry.key);
+      previousTitle = title;
     }
-  });
-
-  testWidgets('keeps spacing and radius tokens separate', (tester) async {
-    await pumpShowcase(tester);
-
-    await tester.enterText(find.byType(SearchBar), 'AppSpacing');
-    await tester.pump();
-
-    expect(find.text('间距'), findsOneWidget);
-    expect(
-      find.byWidgetPredicate(
-        (widget) => widget is Text && widget.data == 'AppSpacing',
-      ),
-      findsOneWidget,
-    );
-    expect(find.byType(AppSurface), findsOneWidget);
-    expect(find.text('圆角'), findsNothing);
-
-    await tester.enterText(find.byType(SearchBar), 'AppRadius');
-    await tester.pump();
-
-    expect(find.text('圆角'), findsOneWidget);
-    expect(find.text('间距'), findsNothing);
   });
 
   testWidgets('clears a global component search from the search bar', (
@@ -211,18 +228,6 @@ void main() {
 
     expect(find.byTooltip('清除搜索'), findsNothing);
     expect(find.text('色彩语义'), findsOneWidget);
-  });
-
-  testWidgets('searches examples across component categories', (tester) async {
-    await pumpShowcase(tester);
-
-    await tester.enterText(find.byType(SearchBar), 'AppDatePicker');
-    await tester.pumpAndSettle();
-
-    expect(find.text('日期选择器'), findsOneWidget);
-    expect(find.widgetWithText(OutlinedButton, '选择日期'), findsOneWidget);
-    expect(find.widgetWithText(OutlinedButton, '选择时间'), findsNothing);
-    expect(find.text('色彩语义'), findsNothing);
   });
 
   testWidgets('opens the cascade multi-select example', (tester) async {
@@ -255,86 +260,15 @@ void main() {
 
     await tester.enterText(find.byType(SearchBar), 'AppDatePicker');
     await tester.pumpAndSettle();
+    expect(find.text('日期选择器'), findsOneWidget);
+    expect(find.widgetWithText(OutlinedButton, '选择日期'), findsOneWidget);
+    expect(find.widgetWithText(OutlinedButton, '选择时间'), findsNothing);
+    expect(find.text('色彩语义'), findsNothing);
+
     await tester.tap(find.widgetWithText(OutlinedButton, '选择日期'));
     await tester.pumpAndSettle();
 
     expect(find.byType(AppDatePickerDialog), findsOneWidget);
-  });
-
-  testWidgets('keeps transaction rows and empty states separate', (
-    tester,
-  ) async {
-    await pumpShowcase(tester);
-
-    await tester.enterText(find.byType(SearchBar), 'TransactionRow');
-    await tester.pump();
-
-    expect(find.text('交易行'), findsOneWidget);
-    expect(find.byType(TransactionRow), findsWidgets);
-    expect(find.byType(EmptyTransactionCard), findsNothing);
-
-    await tester.enterText(find.byType(SearchBar), 'EmptyTransactionCard');
-    await tester.pump();
-
-    expect(find.text('空状态'), findsOneWidget);
-    expect(find.byType(EmptyTransactionCard), findsOneWidget);
-    expect(find.byType(TransactionRow), findsNothing);
-    expect(tester.takeException(), isNull);
-  });
-
-  testWidgets('shows stacked and inline base empty states', (tester) async {
-    await pumpShowcase(tester);
-
-    await tester.enterText(find.byType(SearchBar), 'AppEmptyState');
-    await tester.pump();
-
-    expect(find.text('空状态面板'), findsOneWidget);
-    expect(find.byType(AppEmptyState), findsNWidgets(2));
-    expect(find.text('没有找到相关内容'), findsOneWidget);
-    expect(find.text('还没有账户，点击右上角"+"新建'), findsOneWidget);
-    expect(tester.takeException(), isNull);
-  });
-
-  testWidgets('keeps row-form and submit components separate', (tester) async {
-    await pumpShowcase(tester);
-
-    await tester.enterText(find.byType(SearchBar), 'AppPlainTextFormRow');
-    await tester.pump();
-
-    expect(find.text('文本输入行'), findsOneWidget);
-    expect(find.byType(AppPlainTextFormRow), findsWidgets);
-    expect(find.byType(AppSubmitButton), findsNothing);
-    expect(tester.takeException(), isNull);
-  });
-
-  testWidgets('covers required, read-only and error states for text rows', (
-    tester,
-  ) async {
-    await pumpShowcase(tester);
-
-    await tester.enterText(find.byType(SearchBar), 'AppPlainTextFormRow');
-    await tester.pump();
-
-    expect(find.text('必填状态'), findsOneWidget);
-    expect(find.text('*'), findsOneWidget);
-    expect(find.text('带必填标识与辅助说明'), findsOneWidget);
-    expect(find.text('只读状态'), findsOneWidget);
-    expect(find.text('输入错误'), findsOneWidget);
-    expect(find.text('禁用状态'), findsOneWidget);
-  });
-
-  testWidgets('keeps money form rows separate from text form rows', (
-    tester,
-  ) async {
-    await pumpShowcase(tester);
-
-    await tester.enterText(find.byType(SearchBar), 'MoneyPlainFormRow');
-    await tester.pump();
-
-    expect(find.text('金额输入行'), findsOneWidget);
-    expect(find.byType(MoneyPlainFormRow), findsNWidgets(2));
-    expect(find.text('仅允许数字与两位小数'), findsOneWidget);
-    expect(find.text('文本输入行'), findsNothing);
   });
 
   testWidgets('selects a sample account through the account picker sheet', (
@@ -364,46 +298,6 @@ void main() {
     expect(find.text('选择账户'), findsNothing);
     expect(find.text('工资卡'), findsOneWidget);
     expect(find.text('现金账户'), findsNothing);
-  });
-
-  testWidgets('shows the transaction amount panel with expense semantics', (
-    tester,
-  ) async {
-    await pumpShowcase(tester);
-
-    await tester.enterText(find.byType(SearchBar), 'TransactionAmountInput');
-    await tester.pump();
-
-    expect(find.text('交易金额面板'), findsOneWidget);
-    expect(find.byType(TransactionAmountInput), findsOneWidget);
-    expect(find.text('¥'), findsOneWidget);
-  });
-
-  testWidgets('keeps business icons separate from the icon choice grid', (
-    tester,
-  ) async {
-    await pumpShowcase(tester);
-
-    await tester.enterText(find.byType(SearchBar), 'BusinessIconBubble');
-    await tester.pumpAndSettle();
-
-    expect(find.text('图标展示'), findsOneWidget);
-    expect(find.byType(BusinessIcon), findsWidgets);
-    expect(find.byType(IconChoiceGrid), findsNothing);
-
-    await tester.enterText(find.byType(SearchBar), 'IconChoiceGrid');
-    await tester.pumpAndSettle();
-
-    expect(find.text('图标选择网格'), findsOneWidget);
-    expect(find.byType(IconChoiceGrid), findsOneWidget);
-    expect(find.text('图标展示'), findsNothing);
-
-    await tester.enterText(find.byType(SearchBar), 'IconCatalogPicker');
-    await tester.pumpAndSettle();
-
-    expect(find.text('图标目录选择'), findsOneWidget);
-    expect(find.byType(IconCatalogPicker), findsOneWidget);
-    expect(find.byType(IconChoiceGrid), findsOneWidget);
   });
 
   testWidgets('shows grouped choice grids and reports selection', (
@@ -471,34 +365,6 @@ void main() {
     expect(find.text('基本工资'), findsOneWidget);
   });
 
-  testWidgets('keeps adaptive money text separate from money text', (
-    tester,
-  ) async {
-    await pumpShowcase(tester);
-
-    await tester.enterText(find.byType(SearchBar), 'SummaryMoneyText');
-    await tester.pump();
-
-    expect(find.text('自适应金额文本'), findsOneWidget);
-    expect(find.byType(SummaryMoneyText), findsNWidgets(2));
-    expect(find.byType(ComparedMoneyText), findsOneWidget);
-    expect(find.byType(MoneyText), findsNothing);
-  });
-
-  testWidgets('keeps the cashflow summary card in its own example', (
-    tester,
-  ) async {
-    await pumpShowcase(tester);
-
-    await tester.enterText(find.byType(SearchBar), 'CashflowSummaryCard');
-    await tester.pump();
-
-    expect(find.text('现金流汇总卡'), findsOneWidget);
-    expect(find.byType(CashflowSummaryCard), findsNWidgets(2));
-    expect(find.text('本月收入'), findsNWidgets(2));
-    expect(find.text('+1.2千/18%/12%'), findsOneWidget);
-  });
-
   testWidgets('aggregates transaction badges when width is constrained', (
     tester,
   ) async {
@@ -531,24 +397,6 @@ void main() {
     expect(find.text('打开交易详情'), findsOneWidget);
   });
 
-  testWidgets('uses tabs and separates buttons from segmented controls', (
-    tester,
-  ) async {
-    await pumpShowcase(tester);
-
-    expect(find.byType(TabBar), findsOneWidget);
-    expect(find.byType(ChoiceChip), findsNothing);
-
-    await tester.tap(find.text('基础控件'));
-    await tester.pump();
-
-    expect(find.text('按钮'), findsOneWidget);
-    expect(find.text('分段控件'), findsOneWidget);
-    expect(find.text('按钮与分段控件'), findsNothing);
-    expect(find.byType(AppSlidingSegmentedControl<int>), findsNWidgets(2));
-    expect(find.widgetWithText(FilledButton, '主要按钮'), findsOneWidget);
-  });
-
   testWidgets(
     'shows the inline action button as a separate component example',
     (tester) async {
@@ -566,21 +414,6 @@ void main() {
       expect(find.text('行内操作已触发'), findsOneWidget);
     },
   );
-
-  testWidgets('uses generic content in the card component example', (
-    tester,
-  ) async {
-    await pumpShowcase(tester);
-
-    await tester.enterText(find.byType(SearchBar), 'AppSurface');
-    await tester.pumpAndSettle();
-
-    expect(find.text('卡片'), findsOneWidget);
-    expect(find.text('卡片标题'), findsOneWidget);
-    expect(find.text('这是卡片的描述文案'), findsOneWidget);
-    expect(find.text('微信钱包'), findsNothing);
-    expect(find.byType(AppSurface), findsNWidgets(2));
-  });
 
   testWidgets('shows settings rows with a full-row select trigger', (
     tester,
@@ -622,64 +455,6 @@ void main() {
     expect(find.text('已触发主要按钮'), findsOneWidget);
   });
 
-  testWidgets('keeps labels and progress indicators separate', (tester) async {
-    await pumpShowcase(tester);
-
-    await tester.enterText(find.byType(SearchBar), 'Chip');
-    await tester.pump();
-
-    expect(find.text('标签'), findsOneWidget);
-    expect(find.text('默认标签'), findsOneWidget);
-    expect(find.text('成功标签'), findsOneWidget);
-    expect(find.text('警告标签'), findsOneWidget);
-    expect(find.byType(Chip), findsWidgets);
-    expect(find.byType(LinearProgressIndicator), findsNothing);
-
-    await tester.enterText(find.byType(SearchBar), 'LinearProgressIndicator');
-    await tester.pump();
-
-    expect(find.text('进度条'), findsOneWidget);
-    expect(find.text('默认 60%'), findsOneWidget);
-    expect(find.text('成功 30%'), findsOneWidget);
-    expect(find.text('警告 80%'), findsOneWidget);
-    expect(find.text('危险 50%'), findsOneWidget);
-    expect(find.byType(LinearProgressIndicator), findsWidgets);
-    expect(find.byType(Chip), findsNothing);
-  });
-
-  testWidgets('keeps page headers and form sections separate', (tester) async {
-    await pumpShowcase(tester);
-
-    await tester.enterText(find.byType(SearchBar), 'AppPageHeader');
-    await tester.pump();
-
-    expect(find.text('页面头部'), findsOneWidget);
-    expect(find.byType(AppPageHeader), findsWidgets);
-    expect(find.byType(AppHeaderTextButton), findsOneWidget);
-    expect(find.byType(AppFormSection), findsNothing);
-
-    await tester.enterText(find.byType(SearchBar), 'AppFormSection');
-    await tester.pump();
-
-    expect(find.text('表单分组'), findsOneWidget);
-    expect(find.byType(AppFormSection), findsOneWidget);
-    expect(find.text('页面头部'), findsNothing);
-    expect(tester.takeException(), isNull);
-  });
-
-  testWidgets('shows section headers with divided list rows', (tester) async {
-    await pumpShowcase(tester);
-
-    await tester.enterText(find.byType(SearchBar), 'AppListSection');
-    await tester.pump();
-
-    expect(find.text('分组列表'), findsOneWidget);
-    expect(find.byType(AppListSection), findsOneWidget);
-    expect(find.byType(AppSectionHeader), findsOneWidget);
-    expect(find.byType(AppListDivider), findsOneWidget);
-    expect(tester.takeException(), isNull);
-  });
-
   testWidgets('keeps swipe actions and message feedback separate', (
     tester,
   ) async {
@@ -709,36 +484,5 @@ void main() {
     await tester.tap(find.widgetWithText(FilledButton, '显示成功提示'));
     await tester.pump();
     expect(find.text('操作成功'), findsOneWidget);
-  });
-
-  testWidgets('shows detail and compact status badges', (tester) async {
-    await pumpShowcase(tester);
-
-    await tester.enterText(find.byType(SearchBar), 'AppStatusBadge');
-    await tester.pumpAndSettle();
-
-    expect(find.text('状态标签'), findsOneWidget);
-    expect(find.byType(AppStatusBadge), findsNWidgets(4));
-    expect(find.text('已完成'), findsOneWidget);
-    expect(find.text('待处理'), findsOneWidget);
-    expect(find.text('已逾期'), findsOneWidget);
-    expect(find.text('紧凑状态'), findsOneWidget);
-  });
-
-  testWidgets('shows reusable supporting text and list dividers', (
-    tester,
-  ) async {
-    await pumpShowcase(tester);
-
-    await tester.enterText(find.byType(SearchBar), 'AppSupportingItems');
-    await tester.pumpAndSettle();
-    expect(find.text('辅助信息'), findsOneWidget);
-    expect(find.byType(AppSupportingItems), findsOneWidget);
-    expect(find.text('2 条逾期'), findsOneWidget);
-
-    await tester.enterText(find.byType(SearchBar), 'AppListDivider');
-    await tester.pumpAndSettle();
-    expect(find.text('列表分隔线'), findsOneWidget);
-    expect(find.byType(AppListDivider), findsOneWidget);
   });
 }
