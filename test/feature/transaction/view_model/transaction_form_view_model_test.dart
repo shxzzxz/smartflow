@@ -204,14 +204,13 @@ void main() {
             CategoryNode(account: _account('other', type: AccountType.expense)),
           ],
         );
-        final provider = transactionFormViewModelProvider(
-          prefill: TransactionFormPrefill(
-            amount: Money.parse('12.35'),
-            occurredAt: DateTime(2026, 3, 4),
-            note: '',
-            reviewMessage: '',
-          ),
+        final prefill = TransactionFormPrefill(
+          amount: Money.parse('12.35'),
+          occurredAt: DateTime(2026, 3, 4),
+          note: '',
+          reviewMessage: '',
         );
+        final provider = transactionFormViewModelProvider(prefill: prefill);
         final subscription = container.listen(provider, (_, _) {});
         addTearDown(subscription.close);
         final model = container.read(provider.notifier);
