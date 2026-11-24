@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:smartflow/application/shared/transaction_runner.dart';
 import 'package:smartflow/application/ledger/ledger_query_api.dart';
 import 'package:smartflow/application/transaction_view/transaction_view_query_api.dart';
 import 'package:smartflow/application/transaction_view/transaction_view_query_port_api.dart';
@@ -10,6 +11,107 @@ import 'package:smartflow/domain/credit/valobj/repayment_enums.dart';
 import 'package:smartflow/domain/orchestration/valobj/advance_enums.dart';
 
 void main() {
+  test('watchPage refreshes a transactionless activity', () async {
+    const key = BusinessActivityKey(
+      type: orchestrationAdvanceOwnerType,
+      id: 'activity',
+    );
+    final summaries = <BusinessActivityKey, BusinessActivitySummary>{
+      key: AdvanceBusinessActivitySummary(
+        scenario: AdvanceScenario.reimbursement,
+        trackingMode: AdvanceTrackingMode.itemized,
+        outstanding: const Money(minorUnits: 900),
+        isClosed: false,
+      ),
+    };
+    final source = _Source(
+      'advance',
+      {orchestrationAdvanceOwnerType},
+      candidates: [
+        BusinessActivityCandidate(
+          activityKey: key,
+          activityAt: DateTime(2026, 10, 2),
+        ),
+      ],
+      summaries: summaries,
+    );
+    final changes = _ManualChanges();
+    final service = BusinessActivityQueryServiceImpl(
+      sources: [source],
+      transactionQuery: const _ExplodingTransactionQuery(),
+      transactionRunner: const _Runner(),
+      changes: changes,
+    );
+    final pages = <BusinessActivityPage>[];
+    final subscription = service
+        .watchPage(
+          BusinessActivityPageQuery(
+            occurredFrom: DateTime(2026, 10),
+            occurredUntil: DateTime(2026, 11),
+          ),
+        )
+        .listen(pages.add);
+    addTearDown(changes.controller.close);
+    addTearDown(subscription.cancel);
+    await pumpEventQueue();
+    expect(pages.last.items.single.displayTransaction, isNull);
+    expect(
+      (pages.last.items.single.summary as AdvanceBusinessActivitySummary)
+          .outstanding,
+      const Money(minorUnits: 900),
+    );
+
+    summaries[key] = AdvanceBusinessActivitySummary(
+      scenario: AdvanceScenario.reimbursement,
+      trackingMode: AdvanceTrackingMode.itemized,
+      outstanding: const Money(minorUnits: 700),
+      isClosed: false,
+    );
+    changes.controller.add(null);
+    await pumpEventQueue();
+    expect(pages.last.items.single.activityKey, key);
+    expect(pages.last.items.single.displayTransaction, isNull);
+    expect(
+      (pages.last.items.single.summary as AdvanceBusinessActivitySummary)
+          .outstanding,
+      const Money(minorUnits: 700),
+    );
+  });
+
+  test('a fresh page rejects a missing required summary', () async {
+    final transaction = _transaction(
+      id: 'tx',
+      occurredAt: DateTime(2026, 10, 2),
+    );
+    final service = BusinessActivityQueryServiceImpl(
+      sources: [
+        _Source(
+          'ledger',
+          {ledgerTransactionGroupActivityType},
+          candidates: [
+            BusinessActivityCandidate(
+              activityKey: const BusinessActivityKey.transactionGroup('tx'),
+              displayTransactionId: 'tx',
+              activityAt: transaction.occurredAt,
+            ),
+          ],
+        ),
+      ],
+      transactionQuery: _StaticTransactionQuery([transaction]),
+      transactionRunner: const _Runner(),
+      changes: const _InitialChanges(),
+    );
+    await expectLater(
+      service.findPage(
+        BusinessActivityPageQuery(
+          occurredFrom: DateTime(2026, 10),
+          occurredUntil: DateTime(2026, 11),
+        ),
+      ),
+      throwsStateError,
+    );
+  });
+
   group('BusinessActivityPageQuery', () {
     test('freezes filter sets and carries the exclusive time window', () {
       final categories = {'food'};
@@ -58,6 +160,8 @@ void main() {
     final ledger = _Source('ledger', {ledgerTransactionGroupActivityType});
     final credit = _Source('credit', {installmentOwnerType});
     final service = BusinessActivityQueryServiceImpl(
+      transactionRunner: const _Runner(),
+      changes: const _InitialChanges(),
       sources: [ledger, credit],
       transactionQuery: const _EmptyTransactionQuery(),
     );
@@ -91,6 +195,8 @@ void main() {
       summaries: {key: const LedgerBusinessActivitySummary()},
     );
     final service = BusinessActivityQueryServiceImpl(
+      transactionRunner: const _Runner(),
+      changes: const _InitialChanges(),
       sources: [source],
       transactionQuery: _StaticTransactionQuery([transaction]),
     );
@@ -119,6 +225,8 @@ void main() {
         summaries: {key: const LedgerBusinessActivitySummary()},
       );
       final service = BusinessActivityQueryServiceImpl(
+        transactionRunner: const _Runner(),
+        changes: const _InitialChanges(),
         sources: [source],
         transactionQuery: const _EmptyTransactionQuery(),
       );
@@ -259,6 +367,8 @@ void main() {
         },
       );
       final service = BusinessActivityQueryServiceImpl(
+        transactionRunner: const _Runner(),
+        changes: const _InitialChanges(),
         sources: [ledger, repayment],
         transactionQuery: const _ExplodingTransactionQuery(),
       );
@@ -294,6 +404,8 @@ void main() {
       );
       final source = _WatchingSource();
       final service = BusinessActivityQueryServiceImpl(
+        transactionRunner: const _Runner(),
+        changes: const _InitialChanges(),
         sources: [source],
         transactionQuery: _StaticTransactionQuery([transaction]),
       );
@@ -349,6 +461,8 @@ void main() {
       );
       final source = _WatchingSource();
       final service = BusinessActivityQueryServiceImpl(
+        transactionRunner: const _Runner(),
+        changes: const _InitialChanges(),
         sources: [source],
         transactionQuery: const _ExplodingTransactionQuery(),
       );
@@ -455,11 +569,6 @@ final class _WatchingSource implements BusinessActivitySource {
   ) async => BusinessActivitySourcePage(candidates: const [], hasMore: false);
 
   @override
-  Stream<BusinessActivitySourcePage> watchCandidatePage(
-    BusinessActivityPageQuery query,
-  ) => const Stream.empty();
-
-  @override
   Future<Map<BusinessActivityKey, BusinessActivitySummary>> findSummaries(
     Iterable<BusinessActivityCandidate> anchors,
   ) async => {_key: _summary};
@@ -503,13 +612,6 @@ final class _Source implements BusinessActivitySource {
   ) async {
     findCalls += 1;
     return BusinessActivitySourcePage(candidates: candidates, hasMore: false);
-  }
-
-  @override
-  Stream<BusinessActivitySourcePage> watchCandidatePage(
-    BusinessActivityPageQuery query,
-  ) {
-    return const Stream.empty();
   }
 
   @override
@@ -595,4 +697,31 @@ TransactionReadModel _transaction({
     isExcludedFromStats: false,
     isExcludedFromBudget: false,
   );
+}
+
+final class _Runner implements TransactionRunner {
+  const _Runner();
+
+  @override
+  Future<T> run<T>(Future<T> Function() body) => body();
+}
+
+final class _InitialChanges implements BusinessActivityChangeSource {
+  const _InitialChanges();
+
+  @override
+  Stream<void> watchChanges(BusinessActivityPageQuery query) =>
+      Stream.value(null);
+}
+
+final class _ManualChanges implements BusinessActivityChangeSource {
+  final controller = StreamController<void>.broadcast();
+
+  @override
+  Stream<void> watchChanges(BusinessActivityPageQuery query) =>
+      Stream.multi((sink) {
+        final subscription = controller.stream.listen(sink.add);
+        sink.onCancel = subscription.cancel;
+        sink.add(null);
+      });
 }

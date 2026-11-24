@@ -5,3 +5,4 @@ export 'business_activity_item/source/business_activity_item_source.dart';
 export 'business_activity/query/business_activity_queries.dart';
 export 'business_activity/query/business_activity_read_models.dart';
 export 'business_activity/query/business_activity_source.dart';
+export 'business_activity/query/port/business_activity_change_source.dart';

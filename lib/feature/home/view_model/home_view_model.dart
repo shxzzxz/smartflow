@@ -103,10 +103,7 @@ Stream<BusinessActivityPage> homeBusinessActivities(
     homeViewModelProvider.select((state) => state.transactionFilter),
   );
   final service = ref.watch(businessActivityQueryServiceProvider);
-  return watchBusinessActivityContents(
-    service.watchPage(_homeBusinessActivityQuery(visibleMonth, filter)),
-    service,
-  );
+  return service.watchPage(_homeBusinessActivityQuery(visibleMonth, filter));
 }
 
 BusinessActivityPageQuery _homeBusinessActivityQuery(

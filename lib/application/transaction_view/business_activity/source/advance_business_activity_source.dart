@@ -36,13 +36,6 @@ final class AdvanceBusinessActivitySource implements BusinessActivitySource {
   }
 
   @override
-  Stream<BusinessActivitySourcePage> watchCandidatePage(
-    BusinessActivityPageQuery query,
-  ) {
-    return _anchors.watchAnchorPage(_queryFor(query)).map(_mapPage);
-  }
-
-  @override
   Future<Map<BusinessActivityKey, BusinessActivitySummary>> findSummaries(
     Iterable<BusinessActivityCandidate> candidates,
   ) async {

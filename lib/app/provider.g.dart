@@ -3703,7 +3703,7 @@ final class BusinessActivityQueryServiceProvider
 }
 
 String _$businessActivityQueryServiceHash() =>
-    r'dc4d01fb54fab3fbbb7308db7d94ca512745c450';
+    r'aa8625a01776c8c6abc1cfc06572a641de094cd7';
 
 @ProviderFor(advanceBusinessActivityQueryService)
 final advanceBusinessActivityQueryServiceProvider =

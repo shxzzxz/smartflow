@@ -6,7 +6,6 @@ export '../../shared/business_activity/business_activity_item_role.dart';
 export 'business_activity_item/query/business_activity_item_query.dart';
 export 'business_activity_item/query/business_activity_item_read_models.dart';
 export 'business_activity/query/business_activity_queries.dart';
-export 'business_activity/query/business_activity_page_content_stream.dart';
 export 'business_activity/query/business_activity_query_service.dart';
 export 'business_activity/query/business_activity_read_models.dart';
 export 'transaction_feed/query/transaction_feed_query.dart';

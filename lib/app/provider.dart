@@ -61,6 +61,7 @@ import '../infrastructure/orchestration/amortization/business_activity/drift_amo
 import '../infrastructure/orchestration/repository/drift_advance_case_repository.dart';
 import '../infrastructure/orchestration/repository/drift_amortization_repository.dart';
 import '../infrastructure/transaction_view/business_activity/drift_ledger_business_activity_source.dart';
+import '../infrastructure/transaction_view/business_activity/drift_business_activity_change_source.dart';
 import '../application/ledger/counterparty/port/counterparty_repository.dart';
 import '../application/ledger/tag/port/tag_repository.dart';
 import '../infrastructure/database/drift_app_settings_store.dart';
@@ -773,6 +774,8 @@ BusinessActivityQueryService businessActivityQueryService(Ref ref) {
       ),
     ],
     transactionQuery: ref.watch(transactionQueryServiceProvider),
+    transactionRunner: ref.watch(transactionRunnerProvider),
+    changes: DriftBusinessActivityChangeSource(database),
   );
 }
 

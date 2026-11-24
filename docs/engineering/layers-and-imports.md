@@ -94,6 +94,8 @@ application/credit + domain/credit + infrastructure/credit
 
 `application/transaction_view` 是跨域读侧能力而不是业务域。`BusinessActivitySource` 是其内部编排 seam；consumer-side source adapter 位于 `application/transaction_view/business_activity/source/`，调用各业务域通用 application query。需要账务摘要的来源再调用通用账务查询，并在 adapter 中把业务域 read model 与账务核心已有事实映射为统一摘要。各业务域 application query 拥有业务活动分页、业务筛选、活动项角色和 scoped change stream，由本域 infrastructure 实现，但不依赖 `transaction_view`，也不为 transaction view 另造摘要投影。公共查询层只选择来源、合并结果、批量加载展示交易和装配统一读模型。
 
+业务活动分页持续查询以完整页为刷新单位：变更来源监听启用来源的候选和完整投影依赖，application 在一次读取事务中完成候选、交易与摘要的一次性查询。Feature 直接消费页面流，不再追加分页成员内容订阅；交易详情仍可使用当前活动集合的有界内容监听。依赖集合随读取路径同步维护，不监听未参与查询的业务表。取舍和契约见 [ADR-0037](../adr/0037-业务活动分页按完整快照刷新.md)。
+
 薄域允许先保持轻量结构；当长出复杂不变量、状态机或跨用例规则，再拆完整分层。
 
 ## 目录结构模板

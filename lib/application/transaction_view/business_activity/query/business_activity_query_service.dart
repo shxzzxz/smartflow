@@ -1,16 +1,21 @@
 import '../../../ledger/ledger_query_api.dart';
+import '../../../shared/transaction_runner.dart';
 import '../../transaction_view_query_streams.dart';
 import 'business_activity_queries.dart';
 import 'business_activity_read_models.dart';
 import 'business_activity_source.dart';
+import 'port/business_activity_change_source.dart';
 
 /// 跨业务来源的业务活动查询用例。
 ///
 /// 实现负责合并各来源候选、确定全局 `hasMore`、批量加载摘要和可选的展示
 /// 交易。来源查询已经完成全部筛选和游标条件，本服务不得补做业务过滤。
 abstract interface class BusinessActivityQueryService {
+  /// Reads candidates and content in one shared database snapshot.
   Future<BusinessActivityPage> findPage(BusinessActivityPageQuery query);
 
+  /// Emits a complete page initially and after committed dependency changes.
+  /// A failed read is reported without ending the dependency subscription.
   Stream<BusinessActivityPage> watchPage(BusinessActivityPageQuery query);
 
   Future<BusinessActivityReadModel?> findForActivity({
@@ -31,14 +36,26 @@ final class BusinessActivityQueryServiceImpl
   BusinessActivityQueryServiceImpl({
     required Iterable<BusinessActivitySource> sources,
     required TransactionBatchQueryService transactionQuery,
+    required TransactionRunner transactionRunner,
+    required BusinessActivityChangeSource changes,
   }) : _sources = List.unmodifiable(sources),
-       _transactionQuery = transactionQuery;
+       _transactionQuery = transactionQuery,
+       _transactionRunner = transactionRunner,
+       _changes = changes;
 
   final List<BusinessActivitySource> _sources;
   final TransactionBatchQueryService _transactionQuery;
+  final TransactionRunner _transactionRunner;
+  final BusinessActivityChangeSource _changes;
 
   @override
-  Future<BusinessActivityPage> findPage(BusinessActivityPageQuery query) async {
+  Future<BusinessActivityPage> findPage(BusinessActivityPageQuery query) {
+    return _transactionRunner.run(() => _findPage(query));
+  }
+
+  Future<BusinessActivityPage> _findPage(
+    BusinessActivityPageQuery query,
+  ) async {
     final sources = _sourcesFor(query);
     if (sources.isEmpty) {
       return BusinessActivityPage(items: const [], hasMore: false);
@@ -51,16 +68,7 @@ final class BusinessActivityQueryServiceImpl
 
   @override
   Stream<BusinessActivityPage> watchPage(BusinessActivityPageQuery query) {
-    final sources = _sourcesFor(query);
-    if (sources.isEmpty) {
-      return Stream.value(
-        BusinessActivityPage(items: const [], hasMore: false),
-      );
-    }
-    final streams = sources.map((source) => source.watchCandidatePage(query));
-    return combineLatestStreams(
-      streams,
-    ).asyncMap((pages) => _assemblePage(query, sources, pages));
+    return _changes.watchChanges(query).asyncMap((_) => findPage(query));
   }
 
   @override
@@ -190,12 +198,15 @@ final class BusinessActivityQueryServiceImpl
         else
           Future.value(const <BusinessActivityKey, BusinessActivitySummary>{}),
     ];
-    final summariesFuture = Future.wait(summaryFutures);
-    final transactions = await transactionFuture;
+    // Finish every read before the snapshot commits or rolls back, even when
+    // one branch fails while another is still loading its summary.
+    final (transactions, summariesBySource) = await (
+      transactionFuture,
+      Future.wait(summaryFutures),
+    ).wait;
     final transactionsById = {
       for (final transaction in transactions) transaction.id: transaction,
     };
-    final summariesBySource = await summariesFuture;
 
     return BusinessActivityPage(
       hasMore: hasMore,

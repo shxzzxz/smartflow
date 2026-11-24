@@ -178,7 +178,7 @@ final class FilteredBusinessActivitiesProvider
 }
 
 String _$filteredBusinessActivitiesHash() =>
-    r'e700a47363bdf25ad05bf61b06ebd7d048ff1055';
+    r'6035f00cc648f49ee8a6d131c9b53856ea636b45';
 
 final class FilteredBusinessActivitiesFamily extends $Family
     with

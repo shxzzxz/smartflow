@@ -30,15 +30,6 @@ final class DriftLedgerBusinessActivitySource
   }
 
   @override
-  Stream<BusinessActivitySourcePage> watchCandidatePage(
-    BusinessActivityPageQuery query,
-  ) {
-    return _select(query).watch().map(
-      (rows) => businessActivitySourcePageFromRows(rows, limit: query.limit),
-    );
-  }
-
-  @override
   Future<Map<BusinessActivityKey, BusinessActivitySummary>> findSummaries(
     Iterable<BusinessActivityCandidate> candidates,
   ) async {

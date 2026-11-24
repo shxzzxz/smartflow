@@ -4,7 +4,7 @@ import 'business_activity_read_models.dart';
 /// 单个业务活动场景的读侧来源。
 ///
 /// 来源负责解释自己的活动身份、业务时间、筛选和联查，但不得返回未经筛选的
-/// 原始交易页。`watchCandidatePage` 必须响应该来源涉及的账务和业务表变化。
+/// 原始交易页。分页变化通过独立的变更来源触发完整快照读取。
 abstract interface class BusinessActivitySource {
   /// 稳定的来源标识，仅用于装配、诊断和测试。
   String get sourceKey;
@@ -13,10 +13,6 @@ abstract interface class BusinessActivitySource {
   Set<String> get supportedActivityTypes;
 
   Future<BusinessActivitySourcePage> findCandidatePage(
-    BusinessActivityPageQuery query,
-  );
-
-  Stream<BusinessActivitySourcePage> watchCandidatePage(
     BusinessActivityPageQuery query,
   );
 

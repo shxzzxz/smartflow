@@ -16,6 +16,8 @@ import 'package:smartflow/domain/ledger/entity/transaction_group.dart';
 import 'package:smartflow/domain/orchestration/valobj/advance_enums.dart';
 import 'package:smartflow/domain/orchestration/valobj/amortization_enums.dart';
 import 'package:smartflow/infrastructure/database/app_database.dart';
+import 'package:smartflow/infrastructure/database/drift_transaction_runner.dart';
+import 'package:smartflow/infrastructure/transaction_view/business_activity/drift_business_activity_change_source.dart';
 import 'package:smartflow/infrastructure/ledger/repository/drift_transaction_line_read_repository.dart';
 import 'package:smartflow/infrastructure/ledger/repository/drift_transaction_read_repository.dart';
 import 'package:smartflow/infrastructure/credit/repository/drift_installment_repository.dart';
@@ -1017,10 +1019,16 @@ void main() {
         _creditQuery(db),
         _installmentQuery(db),
       );
-      final iterator = StreamIterator(source.watchCandidatePage(_query()));
+      final service = BusinessActivityQueryServiceImpl(
+        sources: [source],
+        transactionQuery: _TransactionBatchQuery(db),
+        transactionRunner: DriftTransactionRunner(db),
+        changes: DriftBusinessActivityChangeSource(db),
+      );
+      final iterator = StreamIterator(service.watchPage(_query()));
 
       expect(await iterator.moveNext(), isTrue);
-      expect(iterator.current.candidates, isEmpty);
+      expect(iterator.current.items, isEmpty);
 
       await db
           .into(db.repayments)
@@ -1037,7 +1045,7 @@ void main() {
 
       expect(await iterator.moveNext(), isTrue);
       expect(
-        iterator.current.candidates.single.displayTransactionId,
+        iterator.current.items.single.displayTransactionId,
         'repayment-tx',
       );
       await iterator.cancel();
@@ -1161,6 +1169,8 @@ void main() {
         );
 
     final service = BusinessActivityQueryServiceImpl(
+      transactionRunner: DriftTransactionRunner(db),
+      changes: DriftBusinessActivityChangeSource(db),
       sources: [
         DriftLedgerBusinessActivitySource(db),
         AdvanceBusinessActivitySource(
@@ -1261,6 +1271,8 @@ void main() {
       _amortizationPlans(db),
     );
     final service = BusinessActivityQueryServiceImpl(
+      transactionRunner: DriftTransactionRunner(db),
+      changes: DriftBusinessActivityChangeSource(db),
       sources: [DriftLedgerBusinessActivitySource(db), amortizationSource],
       transactionQuery: _TransactionBatchQuery(db),
     );
@@ -1368,6 +1380,8 @@ LIMIT 21
       ]);
     });
     final service = BusinessActivityQueryServiceImpl(
+      transactionRunner: DriftTransactionRunner(db),
+      changes: DriftBusinessActivityChangeSource(db),
       sources: [
         DriftLedgerBusinessActivitySource(db),
         AdvanceBusinessActivitySource(
