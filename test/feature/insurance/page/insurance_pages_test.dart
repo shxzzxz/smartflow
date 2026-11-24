@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
-import 'package:remixicon/remixicon.dart';
 
 import 'package:smartflow/app/provider.dart';
 import 'package:smartflow/application/insurance/attachment/port/insurance_attachment_storage.dart';
@@ -13,6 +12,7 @@ import 'package:smartflow/design_system/token/spacing.dart';
 import 'package:smartflow/design_system/widget/app_choice_chip_group.dart';
 import 'package:smartflow/design_system/widget/app_region_picker.dart';
 import 'package:smartflow/design_system/widget/app_surface.dart';
+import 'package:smartflow/design_system/widget/app_tab_swipe_region.dart';
 import 'package:smartflow/domain/insurance/entity/commercial_insurance.dart';
 import 'package:smartflow/domain/insurance/entity/insured_person.dart';
 import 'package:smartflow/domain/insurance/entity/social_insurance.dart';
@@ -241,10 +241,13 @@ void main() {
     expect(people.single.avatarPreset, MemberAvatarPreset.brother);
   });
 
-  testWidgets('groups member coverage and opens the shared policy detail', (
+  testWidgets('switches and filters member coverage with matching add routes', (
     tester,
   ) async {
-    await _seedMembers(database);
+    await _seedMembers(
+      database,
+      commercialInsuredPersonIds: const ['person-1', 'person-2'],
+    );
     final router = GoRouter(
       routes: [
         GoRoute(
@@ -253,71 +256,200 @@ void main() {
               const MemberCoveragePage(insuredPersonId: 'person-1'),
         ),
         GoRoute(
+          path: '/insurance/commercial/new',
+          builder: (context, state) => Scaffold(
+            body: Text('新增商业保险:${state.uri.queryParameters['personId']}'),
+          ),
+        ),
+        GoRoute(
           path: '/insurance/commercial/:id',
           builder: (context, state) =>
               Scaffold(body: Text('保单:${state.pathParameters['id']}')),
         ),
         GoRoute(
           path: '/insurance/social/new',
-          builder: (context, state) => const Scaffold(body: Text('新增社保表单')),
+          builder: (context, state) => Scaffold(
+            body: Text('新增社保:${state.uri.queryParameters['personId']}'),
+          ),
+        ),
+        GoRoute(
+          path: '/insurance/social/:id',
+          builder: (context, state) =>
+              Scaffold(body: Text('社保记录:${state.pathParameters['id']}')),
         ),
       ],
     );
     addTearDown(router.dispose);
 
-    await _pumpRouter(tester, database, queryService, router);
+    await _pumpRouter(
+      tester,
+      database,
+      queryService,
+      router,
+      size: const Size(390, 844),
+    );
 
-    expect(find.text('关联保单'), findsOneWidget);
+    const commercialKey = ValueKey('coverage-commercial-commercial-1');
+    const medicalKey = ValueKey('coverage-social-medical-1');
+    const pensionKey = ValueKey('coverage-social-pension-1');
+    final commercialFilter = find.byType(
+      AppChoiceChipGroup<CommercialInsuranceCategory?>,
+    );
+    final socialFilter = find.byType(AppChoiceChipGroup<SocialInsuranceType?>);
+    expect(
+      tester
+          .widget<AppChoiceChipGroup<CommercialInsuranceCategory?>>(
+            commercialFilter,
+          )
+          .options
+          .map((option) => option.label),
+      ['全部', '医疗险', '意外险', '重疾险', '寿险', '其他'],
+    );
     expect(find.text('其他 · 1990-06-15'), findsOneWidget);
     expect(find.textContaining('出生：'), findsNothing);
-    expect(find.text('社保'), findsOneWidget);
-    expect(find.text('社保医保'), findsOneWidget);
-    expect(find.text('社保养老'), findsOneWidget);
     expect(find.text('10 万'), findsOneWidget);
     expect(find.textContaining('¥ 10 万'), findsNothing);
-    expect(
-      find.byKey(const ValueKey('coverage-commercial-commercial-1')),
-      findsOneWidget,
-    );
-    expect(
-      find.byKey(const ValueKey('coverage-social-medical-1')),
-      findsOneWidget,
-    );
-    expect(
-      find.byKey(const ValueKey('coverage-social-pension-1')),
-      findsOneWidget,
-    );
-    const commercialAddKey = ValueKey('coverage-add-commercial');
-    const socialAddKey = ValueKey('coverage-add-social');
-    final primary = Theme.of(
-      tester.element(find.byKey(commercialAddKey)),
-    ).colorScheme.primary;
-    for (final key in [commercialAddKey, socialAddKey]) {
-      expect(
-        find.descendant(of: find.byKey(key), matching: find.text('新增')),
-        findsOneWidget,
-      );
-      final iconFinder = find.descendant(
-        of: find.byKey(key),
-        matching: find.byIcon(RemixIcons.add_line),
-      );
-      expect(IconTheme.of(tester.element(iconFinder)).color, primary);
-    }
-    await tester.tap(find.byKey(socialAddKey));
+    expect(find.byKey(commercialKey), findsOneWidget);
+    expect(find.byKey(medicalKey), findsNothing);
+    expect(find.byKey(pensionKey), findsNothing);
+
+    await tester.tap(find.byTooltip('新增商业保险'));
     await tester.pumpAndSettle();
-    expect(find.text('新增社保表单'), findsOneWidget);
+    expect(find.text('新增商业保险:person-1'), findsOneWidget);
     router.pop();
     await tester.pumpAndSettle();
+
+    await tester.tap(find.text('意外险'));
+    await tester.pumpAndSettle();
+    expect(find.byKey(commercialKey), findsNothing);
+    expect(find.text('该分类下还没有商业保险记录'), findsOneWidget);
+    await tester.tap(find.text('医疗险'));
+    await tester.pumpAndSettle();
+    expect(find.byKey(commercialKey), findsOneWidget);
+
+    await tester.tap(find.text('社保'));
+    await tester.pumpAndSettle();
+    expect(commercialFilter, findsNothing);
+    expect(
+      tester
+          .widget<AppChoiceChipGroup<SocialInsuranceType?>>(socialFilter)
+          .options
+          .map((option) => option.label),
+      ['全部', '医保', '养老', '工伤', '生育', '失业'],
+    );
+    expect(find.byKey(commercialKey), findsNothing);
+    expect(find.byKey(medicalKey), findsOneWidget);
+    expect(find.byKey(pensionKey), findsOneWidget);
+
+    await tester.tap(find.text('医保'));
+    await tester.pumpAndSettle();
+    expect(find.byKey(medicalKey), findsOneWidget);
+    expect(find.byKey(pensionKey), findsNothing);
+    await tester.tap(find.text('失业'));
+    await tester.pumpAndSettle();
+    expect(find.text('该分类下还没有社保记录'), findsOneWidget);
+    await tester.tap(find.text('养老'));
+    await tester.pumpAndSettle();
+    expect(find.byKey(medicalKey), findsNothing);
+    expect(find.byKey(pensionKey), findsOneWidget);
+
+    await tester.tap(find.byTooltip('新增社保'));
+    await tester.pumpAndSettle();
+    expect(find.text('新增社保:person-1'), findsOneWidget);
+    router.pop();
+    await tester.pumpAndSettle();
+
+    await tester.drag(
+      find.byType(AppTabSwipeRegion<InsuranceSourceType>),
+      const Offset(300, 0),
+    );
+    await tester.pumpAndSettle();
+    expect(
+      tester
+          .widget<AppChoiceChipGroup<CommercialInsuranceCategory?>>(
+            commercialFilter,
+          )
+          .selected,
+      CommercialInsuranceCategory.medical,
+    );
+    expect(find.byKey(commercialKey), findsOneWidget);
+    expect(find.byKey(pensionKey), findsNothing);
+
+    await tester.drag(
+      find.byType(AppTabSwipeRegion<InsuranceSourceType>),
+      const Offset(-300, 0),
+    );
+    await tester.pumpAndSettle();
+    expect(
+      tester
+          .widget<AppChoiceChipGroup<SocialInsuranceType?>>(socialFilter)
+          .selected,
+      SocialInsuranceType.pension,
+    );
+    await tester.tap(find.byKey(pensionKey));
+    await tester.pumpAndSettle();
+    expect(find.text('社保记录:pension-1'), findsOneWidget);
+    router.pop();
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('商业保险'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('全部'));
+    await tester.pumpAndSettle();
+    expect(find.byKey(commercialKey), findsOneWidget);
     final titleRect = tester.getRect(find.text('家庭医疗险'));
     final badgeRect = tester.getRect(find.text('保障中'));
     expect(badgeRect.left - titleRect.right, lessThan(AppSpacing.space16));
 
-    await tester.tap(
-      find.byKey(const ValueKey('coverage-commercial-commercial-1')),
-    );
+    await tester.tap(find.byKey(commercialKey));
     await tester.pumpAndSettle();
     expect(find.text('保单:commercial-1'), findsOneWidget);
+    expect(tester.takeException(), isNull);
   });
+
+  testWidgets(
+    'empty member coverage keeps all filters on narrow large-text pages',
+    (tester) async {
+      await _seedMembers(database);
+      final router = GoRouter(
+        routes: [
+          GoRoute(
+            path: '/',
+            builder: (context, state) =>
+                const MemberCoveragePage(insuredPersonId: 'person-2'),
+          ),
+        ],
+      );
+      addTearDown(router.dispose);
+      await _pumpRouter(
+        tester,
+        database,
+        queryService,
+        router,
+        size: const Size(320, 844),
+        textScaler: const TextScaler.linear(1.8),
+      );
+
+      expect(find.text('医疗险'), findsOneWidget);
+      expect(find.text('意外险'), findsOneWidget);
+      expect(find.text('重疾险'), findsOneWidget);
+      expect(find.text('寿险'), findsOneWidget);
+      await tester.ensureVisible(find.text('还没有商业保险记录'));
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+
+      await tester.tap(find.text('社保'));
+      await tester.pumpAndSettle();
+      expect(find.text('医保'), findsOneWidget);
+      expect(find.text('养老'), findsOneWidget);
+      expect(find.text('工伤'), findsOneWidget);
+      expect(find.text('生育'), findsOneWidget);
+      expect(find.text('失业'), findsOneWidget);
+      await tester.ensureVisible(find.text('还没有社保记录'));
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+    },
+  );
 
   testWidgets('lists and filters commercial policies', (tester) async {
     await _seedMembers(database);
