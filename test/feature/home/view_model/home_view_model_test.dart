@@ -1,3 +1,4 @@
+import '../../../helper/book_selection_override.dart';
 import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -28,11 +29,16 @@ void main() {
         overrides: [
           homeBusinessActivitiesProvider(
             visibleMonth,
+            'builtin-daily-book',
           ).overrideWith((ref) => Stream.value(_page([_businessActivity()]))),
           homeCashflowComparisonProvider(
             visibleMonth,
+            'builtin-daily-book',
           ).overrideWith((ref) => Stream.value(_comparison())),
-          homeDailyCashflowSummariesProvider(visibleMonth).overrideWith(
+          homeDailyCashflowSummariesProvider(
+            visibleMonth,
+            'builtin-daily-book',
+          ).overrideWith(
             (ref) => Stream.value([
               DailyCashflowSummary(
                 date: DateTime(2026, 1, 1),
@@ -52,10 +58,23 @@ void main() {
         (_, _) {},
       );
       addTearDown(contentSub.close);
-      await container.read(homeBusinessActivitiesProvider(visibleMonth).future);
-      await container.read(homeCashflowComparisonProvider(visibleMonth).future);
       await container.read(
-        homeDailyCashflowSummariesProvider(visibleMonth).future,
+        homeBusinessActivitiesProvider(
+          visibleMonth,
+          'builtin-daily-book',
+        ).future,
+      );
+      await container.read(
+        homeCashflowComparisonProvider(
+          visibleMonth,
+          'builtin-daily-book',
+        ).future,
+      );
+      await container.read(
+        homeDailyCashflowSummariesProvider(
+          visibleMonth,
+          'builtin-daily-book',
+        ).future,
       );
       await container.pump();
       await _flush();
@@ -90,11 +109,16 @@ void main() {
         overrides: [
           homeBusinessActivitiesProvider(
             visibleMonth,
+            'builtin-daily-book',
           ).overrideWith((ref) => Stream.value(_page([_businessActivity()]))),
           homeCashflowComparisonProvider(
             visibleMonth,
+            'builtin-daily-book',
           ).overrideWith((ref) => Stream.value(_comparison())),
-          homeDailyCashflowSummariesProvider(visibleMonth).overrideWith(
+          homeDailyCashflowSummariesProvider(
+            visibleMonth,
+            'builtin-daily-book',
+          ).overrideWith(
             (ref) => Stream.value([
               DailyCashflowSummary(
                 date: DateTime(2026, 1, 1),
@@ -111,10 +135,23 @@ void main() {
         (_, _) {},
       );
       addTearDown(contentSub.close);
-      await container.read(homeBusinessActivitiesProvider(visibleMonth).future);
-      await container.read(homeCashflowComparisonProvider(visibleMonth).future);
       await container.read(
-        homeDailyCashflowSummariesProvider(visibleMonth).future,
+        homeBusinessActivitiesProvider(
+          visibleMonth,
+          'builtin-daily-book',
+        ).future,
+      );
+      await container.read(
+        homeCashflowComparisonProvider(
+          visibleMonth,
+          'builtin-daily-book',
+        ).future,
+      );
+      await container.read(
+        homeDailyCashflowSummariesProvider(
+          visibleMonth,
+          'builtin-daily-book',
+        ).future,
       );
       await container.pump();
       await _flush();
@@ -187,11 +224,16 @@ void main() {
         overrides: [
           homeBusinessActivitiesProvider(
             visibleMonth,
+            'builtin-daily-book',
           ).overrideWith((ref) => Stream.value(_page([item]))),
           homeCashflowComparisonProvider(
             visibleMonth,
+            'builtin-daily-book',
           ).overrideWith((ref) => Stream.value(_comparison())),
-          homeDailyCashflowSummariesProvider(visibleMonth).overrideWith(
+          homeDailyCashflowSummariesProvider(
+            visibleMonth,
+            'builtin-daily-book',
+          ).overrideWith(
             (ref) => Stream.value([
               DailyCashflowSummary(
                 date: DateTime(2026, 1, 1),
@@ -208,10 +250,23 @@ void main() {
         (_, _) {},
       );
       addTearDown(contentSub.close);
-      await container.read(homeBusinessActivitiesProvider(visibleMonth).future);
-      await container.read(homeCashflowComparisonProvider(visibleMonth).future);
       await container.read(
-        homeDailyCashflowSummariesProvider(visibleMonth).future,
+        homeBusinessActivitiesProvider(
+          visibleMonth,
+          'builtin-daily-book',
+        ).future,
+      );
+      await container.read(
+        homeCashflowComparisonProvider(
+          visibleMonth,
+          'builtin-daily-book',
+        ).future,
+      );
+      await container.read(
+        homeDailyCashflowSummariesProvider(
+          visibleMonth,
+          'builtin-daily-book',
+        ).future,
       );
       await container.pump();
       await _flush();
@@ -435,7 +490,9 @@ void main() {
         loaded =
             container.read(homeTransactionFeedViewModelProvider(visibleMonth))
                 as HomeTransactionFeedLoaded;
-        expect(loaded.items.map((item) => item.displayTransactionId), ['newer']);
+        expect(loaded.items.map((item) => item.displayTransactionId), [
+          'newer',
+        ]);
         expect(loaded.hasPendingRefresh, isFalse);
         expect(loaded.isRefreshing, isFalse);
       },
@@ -518,6 +575,8 @@ ProviderContainer _container(
 }) {
   final container = ProviderContainer(
     overrides: [
+      bookSelectionTestOverride,
+      bookListTestOverride,
       currentDateTimeProvider.overrideWith((ref) => DateTime(2026, 1, 15, 9)),
       businessActivityQueryServiceProvider.overrideWithValue(businessService),
       financialMetricsServiceProvider.overrideWithValue(metricsService),

@@ -8,7 +8,6 @@ import '../../../application/orchestration/orchestration_command_api.dart';
 import '../../../core/money/money.dart';
 import '../../../core/money/money_formatter.dart';
 import '../../../design_system/theme/app_text_styles.dart';
-import '../../../design_system/token/colors.dart';
 import '../../../design_system/token/component.dart';
 import '../../../design_system/token/radius.dart';
 import '../../../design_system/token/spacing.dart';
@@ -33,6 +32,8 @@ import 'package:smartflow/widget/business/tag/tag_badge.dart';
 import 'package:smartflow/widget/business/transaction/transaction_amount_input.dart';
 import 'package:smartflow/widget/business/tag/tag_multi_select_sheet.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
+import '../../book/widget/book_picker.dart';
+import '../../shared/provider/book_providers.dart';
 import '../../amortization/page/amortization_configuration_page.dart';
 import '../../amortization/presentation/amortization_configuration_draft.dart';
 import '../../credit/page/loan_configuration_page.dart';
@@ -475,6 +476,11 @@ class _TransactionFormContentState
                       ),
                       const SizedBox(height: AppSpacing.space4),
                       _TransactionOptionsPanel(
+                        bookId: widget.editTransactionId == null
+                            ? formState.bookId
+                            : null,
+                        onBookChanged: (id) =>
+                            ref.read(_formProvider.notifier).selectBook(id),
                         requireAccountSelection: widget.prefill != null,
                         mode: formState.mode,
                         occurredAt: formState.occurredAt,

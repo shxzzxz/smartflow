@@ -7,6 +7,8 @@ abstract final class AppHeaderTokens {
 
   static const double iconSize = 24;
   static const double iconButtonSize = 36;
+  static const double compactIconButtonWidth = 28;
+  static const double selectorMaxWidth = 68;
   static const double verticalInset = 8;
   static const double controlRadius = 14;
   static const double actionGroupInset = 2;

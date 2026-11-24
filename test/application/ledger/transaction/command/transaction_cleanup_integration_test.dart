@@ -1,3 +1,4 @@
+import '../../../../helper/fake_book_repository.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/application/ledger/ledger_command_api.dart';
 import 'package:smartflow/core/money/money.dart';
@@ -31,6 +32,7 @@ void main() {
       transactionGroupRepository: postingRepository,
       systemAccountResolver: DriftSystemAccountResolver(database),
       ledgerWriter: TransactionLedgerWriter(
+        bookRepository: FakeBookRepository(),
         transactionRunner: runner,
         transactionRepository: postingRepository,
         transactionGroupRepository: postingRepository,

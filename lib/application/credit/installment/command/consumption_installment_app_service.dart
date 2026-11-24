@@ -182,6 +182,7 @@ class ConsumptionInstallmentAppServiceImpl
       );
       final purchase = await _ledger.postExpense(
         CreditLedgerPostExpenseCommand(
+          bookId: command.bookId,
           amount: command.amount,
           categoryAllocations: _toLedger(command.categoryAllocations),
           settlementAllocations: _toLedger(command.settlementAllocations),
@@ -250,6 +251,7 @@ class ConsumptionInstallmentAppServiceImpl
       _validateRefundablePrincipal(principal, refundable);
       final refund = await _ledger.postRefund(
         CreditLedgerPostRefundCommand(
+          bookId: command.bookId,
           parentTransactionId: command.parentTransactionId,
           amount: command.amount,
           categoryAllocations: _toLedger(command.categoryAllocations),

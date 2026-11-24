@@ -1,3 +1,4 @@
+import '../../../helper/book_selection_override.dart';
 // ignore_for_file: riverpod_lint/scoped_providers_should_specify_dependencies
 
 import 'package:flutter/material.dart';
@@ -48,6 +49,8 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          bookSelectionTestOverride,
+          bookListTestOverride,
           unattributedRepaymentFormViewModelProvider(
             'credit',
           ).overrideWith(() => _FixedUnattributedRepaymentFormViewModel(state)),

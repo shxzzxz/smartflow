@@ -240,7 +240,7 @@ class FinancialMetricsServiceImpl implements FinancialMetricsService {
       until: query.month.nextMonthStart,
     );
     return _aggregate.watchChanges().asyncMap(
-      (_) => _loadDailyCashflowSummaries(window),
+      (_) => _loadDailyCashflowSummaries(window, bookId: query.bookId),
     );
   }
 
@@ -263,26 +263,33 @@ class FinancialMetricsServiceImpl implements FinancialMetricsService {
   Future<CashflowComparison> _loadCashflowComparison(
     CashflowComparisonQuery query,
   ) {
-    return _loadCashflowComparisonForPeriods(_cashflowPeriods(query));
+    return _loadCashflowComparisonForPeriods(
+      _cashflowPeriods(query),
+      bookId: query.bookId,
+    );
   }
 
   Future<CashflowComparison> _loadCashflowComparisonForPeriods(
-    _CashflowPeriods periods,
-  ) async {
+    _CashflowPeriods periods, {
+    String? bookId,
+  }) async {
     final currentFuture = _aggregate.aggregateByAccountType(
       accountTypes: _cashflowTypes,
       scope: TransactionScopeFilter.stats,
       window: periods.current,
+      bookId: bookId,
     );
     final previousSameFuture = _aggregate.aggregateByAccountType(
       accountTypes: _cashflowTypes,
       scope: TransactionScopeFilter.stats,
       window: periods.previousSame,
+      bookId: bookId,
     );
     final previousFullFuture = _aggregate.aggregateByAccountType(
       accountTypes: _cashflowTypes,
       scope: TransactionScopeFilter.stats,
       window: periods.previousFull,
+      bookId: bookId,
     );
     return CashflowComparison(
       current: _toCashflowSummary(await currentFuture),
@@ -292,9 +299,11 @@ class FinancialMetricsServiceImpl implements FinancialMetricsService {
   }
 
   Future<List<DailyCashflowSummary>> _loadDailyCashflowSummaries(
-    DateTimeWindow window,
-  ) async {
+    DateTimeWindow window, {
+    String? bookId,
+  }) async {
     final byDay = await _aggregate.aggregateByAccountTypeByDay(
+      bookId: bookId,
       accountTypes: _cashflowTypes,
       scope: TransactionScopeFilter.stats,
       window: window,

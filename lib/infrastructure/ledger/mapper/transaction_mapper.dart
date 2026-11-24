@@ -6,6 +6,7 @@ import '../../database/app_database.dart';
 Transaction mapTransaction(TransactionRow row) {
   return Transaction(
     id: row.id,
+    bookId: row.bookId,
     businessPurpose: row.businessPurpose,
     occurredAt: row.occurredAt,
     postedAt: row.postedAt,

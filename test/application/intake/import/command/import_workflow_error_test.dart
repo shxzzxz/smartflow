@@ -189,6 +189,7 @@ class _Ledger implements ImportLedgerPort {
 
   @override
   Future<String> createTransfer({
+    String? bookId,
     required Money amount,
     required String fromAccountId,
     required String toAccountId,

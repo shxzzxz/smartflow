@@ -6,7 +6,9 @@ import 'ledger_violation_reason.dart';
 import 'transaction_ownership.dart';
 
 sealed class PostingInstruction {
-  const PostingInstruction();
+  const PostingInstruction({this.bookId});
+
+  final String? bookId;
 
   BusinessPurpose get businessPurpose;
 
@@ -15,6 +17,7 @@ sealed class PostingInstruction {
 
 class ExpenseInstruction extends PostingInstruction {
   ExpenseInstruction({
+    super.bookId,
     required this.amount,
     required List<AccountAmountAllocation> categoryAllocations,
     required List<AccountAmountAllocation> settlementAllocations,
@@ -65,6 +68,7 @@ class ExpenseInstruction extends PostingInstruction {
   }) {
     final nextAmount = amount ?? this.amount;
     return ExpenseInstruction(
+      bookId: bookId,
       amount: nextAmount,
       categoryAllocations: patchAllocations(
         current: this.categoryAllocations,
@@ -90,6 +94,7 @@ class ExpenseInstruction extends PostingInstruction {
 
 class IncomeInstruction extends PostingInstruction {
   IncomeInstruction({
+    super.bookId,
     required this.amount,
     required List<AccountAmountAllocation> categoryAllocations,
     required List<AccountAmountAllocation> settlementAllocations,
@@ -140,6 +145,7 @@ class IncomeInstruction extends PostingInstruction {
   }) {
     final nextAmount = amount ?? this.amount;
     return IncomeInstruction(
+      bookId: bookId,
       amount: nextAmount,
       categoryAllocations: patchAllocations(
         current: this.categoryAllocations,
@@ -165,6 +171,7 @@ class IncomeInstruction extends PostingInstruction {
 
 class AdvanceInstruction extends PostingInstruction {
   AdvanceInstruction({
+    super.bookId,
     required this.amount,
     Money? advanceAmount,
     required this.receivableAccountId,
@@ -230,6 +237,7 @@ class AdvanceInstruction extends PostingInstruction {
     final nextAdvanceAmount = advanceAmount ?? this.advanceAmount;
     final selfBorneAmount = nextAmount - nextAdvanceAmount;
     return AdvanceInstruction(
+      bookId: bookId,
       amount: nextAmount,
       advanceAmount: nextAdvanceAmount,
       receivableAccountId: receivableAccountId ?? this.receivableAccountId,
@@ -262,6 +270,7 @@ class AdvanceInstruction extends PostingInstruction {
 
 class RefundInstruction {
   RefundInstruction({
+    this.bookId,
     required this.parentTransactionId,
     required this.amount,
     required List<AccountAmountAllocation> categoryAllocations,
@@ -275,6 +284,7 @@ class RefundInstruction {
        selfBorneAllocations = List.unmodifiable(selfBorneAllocations),
        settlementAllocations = List.unmodifiable(settlementAllocations);
 
+  final String? bookId;
   final String parentTransactionId;
   final Money amount;
   final List<AccountAmountAllocation> categoryAllocations;
@@ -288,6 +298,7 @@ class RefundInstruction {
 
 class AdvanceSettlementInstruction {
   AdvanceSettlementInstruction({
+    this.bookId,
     required this.advanceTransactionId,
     required this.actualReceivedAmount,
     required this.receivableAccountId,
@@ -304,6 +315,7 @@ class AdvanceSettlementInstruction {
        settlementAllocations = List.unmodifiable(settlementAllocations),
        gapExpenseAllocations = List.unmodifiable(gapExpenseAllocations);
 
+  final String? bookId;
   final String advanceTransactionId;
   final Money actualReceivedAmount;
   final String receivableAccountId;
@@ -321,6 +333,7 @@ class AdvanceSettlementInstruction {
 
 class TransferInstruction extends PostingInstruction {
   TransferInstruction({
+    super.bookId,
     required this.amount,
     required List<AccountAmountAllocation> outgoingAllocations,
     required List<AccountAmountAllocation> incomingAllocations,
@@ -338,6 +351,7 @@ class TransferInstruction extends PostingInstruction {
        incomingAllocations = List.unmodifiable(incomingAllocations);
 
   factory TransferInstruction.simple({
+    String? bookId,
     required Money amount,
     required String fromAccountId,
     required String toAccountId,
@@ -353,6 +367,7 @@ class TransferInstruction extends PostingInstruction {
     SourceKind sourceKind = SourceKind.manual,
   }) {
     return TransferInstruction(
+      bookId: bookId,
       amount: amount,
       outgoingAllocations: singleAllocation(
         accountId: fromAccountId,
@@ -413,6 +428,7 @@ class TransferInstruction extends PostingInstruction {
     SourceKind? sourceKind,
   }) {
     return TransferInstruction(
+      bookId: bookId,
       amount: amount ?? this.amount,
       outgoingAllocations: outgoingAllocations ?? this.outgoingAllocations,
       incomingAllocations: incomingAllocations ?? this.incomingAllocations,
@@ -431,6 +447,7 @@ class TransferInstruction extends PostingInstruction {
 
 class AdvanceCollectionInstruction {
   AdvanceCollectionInstruction({
+    this.bookId,
     required this.advanceTransactionId,
     required this.amount,
     required this.receivableAccountId,
@@ -444,6 +461,7 @@ class AdvanceCollectionInstruction {
        isExcludedFromBudget = false,
        settlementAllocations = List.unmodifiable(settlementAllocations);
 
+  final String? bookId;
   final String advanceTransactionId;
   final Money amount;
   final String receivableAccountId;
@@ -459,6 +477,7 @@ class AdvanceCollectionInstruction {
 
 class RepaymentInstruction extends PostingInstruction {
   const RepaymentInstruction({
+    super.bookId,
     required this.principal,
     required this.liabilityAccountId,
     required this.paidFromAccountId,
@@ -507,6 +526,7 @@ class RepaymentInstruction extends PostingInstruction {
     SourceKind? sourceKind,
   }) {
     return RepaymentInstruction(
+      bookId: bookId,
       principal: principal ?? this.principal,
       interest: interest ?? this.interest,
       fee: fee ?? this.fee,
@@ -525,6 +545,7 @@ class RepaymentInstruction extends PostingInstruction {
 
 class BorrowingInstruction extends PostingInstruction {
   const BorrowingInstruction({
+    super.bookId,
     required this.amount,
     required this.liabilityAccountId,
     required this.receiveAccountId,
@@ -564,6 +585,7 @@ class BorrowingInstruction extends PostingInstruction {
     SourceKind? sourceKind,
   }) {
     return BorrowingInstruction(
+      bookId: bookId,
       amount: amount ?? this.amount,
       liabilityAccountId: liabilityAccountId ?? this.liabilityAccountId,
       receiveAccountId: receiveAccountId ?? this.receiveAccountId,
@@ -579,6 +601,7 @@ class BorrowingInstruction extends PostingInstruction {
 
 class LendingInstruction extends PostingInstruction {
   const LendingInstruction({
+    super.bookId,
     required this.amount,
     required this.receivableAccountId,
     required this.paidFromAccountId,
@@ -607,6 +630,7 @@ class LendingInstruction extends PostingInstruction {
 
 class ReceivableCollectionInstruction extends PostingInstruction {
   const ReceivableCollectionInstruction({
+    super.bookId,
     required this.principal,
     required this.receivableAccountId,
     required this.receiveAccountId,
@@ -637,6 +661,7 @@ class ReceivableCollectionInstruction extends PostingInstruction {
 
 class BadDebtInstruction extends PostingInstruction {
   const BadDebtInstruction({
+    super.bookId,
     required this.amount,
     required this.receivableAccountId,
     required this.occurredAt,
@@ -667,6 +692,7 @@ class BadDebtInstruction extends PostingInstruction {
 
 class DebtReliefInstruction extends PostingInstruction {
   const DebtReliefInstruction({
+    super.bookId,
     required this.amount,
     required this.liabilityAccountId,
     required this.occurredAt,
@@ -695,6 +721,7 @@ class DebtReliefInstruction extends PostingInstruction {
 
 class OpeningBalanceInstruction {
   const OpeningBalanceInstruction({
+    this.bookId,
     required this.accountId,
     required this.amount,
     required this.occurredAt,
@@ -704,6 +731,7 @@ class OpeningBalanceInstruction {
     this.sourceKind = SourceKind.manual,
   });
 
+  final String? bookId;
   final String accountId;
   final Money amount;
   final DateTime occurredAt;
@@ -715,6 +743,7 @@ class OpeningBalanceInstruction {
 
 class BalanceAdjustmentInstruction {
   const BalanceAdjustmentInstruction({
+    this.bookId,
     required this.accountId,
     required this.targetBalance,
     required this.occurredAt,
@@ -722,6 +751,7 @@ class BalanceAdjustmentInstruction {
     this.note,
   });
 
+  final String? bookId;
   final String accountId;
   final Money targetBalance;
   final DateTime occurredAt;

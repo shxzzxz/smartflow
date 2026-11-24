@@ -49,6 +49,7 @@ final class BusinessActivityCursor {
 /// 表示条件已启用但没有可匹配项。
 final class BusinessActivityPageQuery {
   BusinessActivityPageQuery({
+    this.bookId,
     required this.occurredFrom,
     required this.occurredUntil,
     this.before,
@@ -67,6 +68,7 @@ final class BusinessActivityPageQuery {
        assert(limit > 0),
        assert(!untaggedOnly || tagIds == null);
 
+  final String? bookId;
   final DateTime occurredFrom;
   final DateTime occurredUntil;
   final BusinessActivityCursor? before;

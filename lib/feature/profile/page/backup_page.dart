@@ -25,7 +25,7 @@ class BackupPage extends ConsumerWidget {
       body: SafeArea(
         child: Column(
           children: [
-            const AppPageHeader(title: '数据备份', subtitle: '导出或恢复完整账本快照'),
+            const AppPageHeader(title: '数据备份', subtitle: '导出或恢复完整数据快照'),
             Expanded(
               child: ListView(
                 padding: const EdgeInsets.fromLTRB(

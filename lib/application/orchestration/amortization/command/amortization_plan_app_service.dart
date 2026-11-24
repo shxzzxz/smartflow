@@ -123,6 +123,7 @@ class AmortizationPlanAppServiceImpl implements AmortizationPlanAppService {
         deferralAccountId: command.deferralAccountId,
       );
       final initialTransactionId = await _ledger.postTransfer(
+        bookId: command.bookId,
         amount: command.total,
         outgoingAllocations: initialTransfer.outgoing,
         incomingAllocations: initialTransfer.incoming,
@@ -314,6 +315,7 @@ class AmortizationPlanAppServiceImpl implements AmortizationPlanAppService {
         ),
       );
       final transferTransactionId = await _postReturnTransfer(
+        bookId: command.bookId,
         plan: plan,
         amount: refundAmount,
         settlementAllocations: command.settlementAllocations,
@@ -475,6 +477,16 @@ class AmortizationPlanAppServiceImpl implements AmortizationPlanAppService {
           'Amortization termination not found.',
         );
       }
+      final recognitionBookId = termination.recognitionTransactionId == null
+          ? null
+          : await _ledger.findTransactionBookId(
+              termination.recognitionTransactionId!,
+            );
+      final returnBookId = termination.returnTransactionId == null
+          ? null
+          : await _ledger.findTransactionBookId(
+              termination.returnTransactionId!,
+            );
       for (final transactionId in {
         ?termination.recognitionTransactionId,
         ?termination.returnTransactionId,
@@ -488,11 +500,14 @@ class AmortizationPlanAppServiceImpl implements AmortizationPlanAppService {
       return _applyTermination(
         reopened,
         TerminateAmortizationPlanCommand(
+          bookId: command.bookId,
           planId: command.planId,
           terminatedAt: command.terminatedAt,
           categoryReturnAllocations: command.categoryReturnAllocations,
           settlementAllocations: command.settlementAllocations,
         ),
+        recognitionBookId: recognitionBookId,
+        returnBookId: returnBookId,
       );
     });
   }
@@ -531,8 +546,10 @@ class AmortizationPlanAppServiceImpl implements AmortizationPlanAppService {
 
   Future<AmortizationTerminationResult> _applyTermination(
     AmortizationPlan plan,
-    TerminateAmortizationPlanCommand command,
-  ) async {
+    TerminateAmortizationPlanCommand command, {
+    String? recognitionBookId,
+    String? returnBookId,
+  }) async {
     _validateDimension(
       command.categoryReturnAllocations,
       'termination category returns',
@@ -615,6 +632,7 @@ class AmortizationPlanAppServiceImpl implements AmortizationPlanAppService {
 
     final recognitionTransactionId = recognitionAmount.minorUnits > 0
         ? await _postRecognition(
+            bookId: recognitionBookId ?? command.bookId,
             plan: normalized,
             amount: recognitionAmount,
             categoryAllocations: recognitionAllocations,
@@ -623,6 +641,7 @@ class AmortizationPlanAppServiceImpl implements AmortizationPlanAppService {
         : null;
     final returnTransactionId = returnAmount.minorUnits > 0
         ? await _postReturnTransfer(
+            bookId: returnBookId ?? command.bookId,
             plan: normalized,
             amount: returnAmount,
             settlementAllocations: command.settlementAllocations,
@@ -687,10 +706,14 @@ class AmortizationPlanAppServiceImpl implements AmortizationPlanAppService {
     AmortizationPlan plan,
     Iterable<AmortizationPeriod> periods,
   ) async {
+    final bookId = await _ledger.findTransactionBookId(
+      plan.initialTransactionId,
+    );
     final generatedBySequence = <int, String>{};
     for (final period in periods) {
       if (period.amount.minorUnits <= 0) continue;
       generatedBySequence[period.sequenceNo] = await _postRecognition(
+        bookId: bookId,
         plan: plan,
         amount: period.amount,
         categoryAllocations: period.categoryAllocations,
@@ -710,6 +733,7 @@ class AmortizationPlanAppServiceImpl implements AmortizationPlanAppService {
   }
 
   Future<String> _postRecognition({
+    String? bookId,
     required AmortizationPlan plan,
     required Money amount,
     required List<AccountAmountAllocation> categoryAllocations,
@@ -725,6 +749,7 @@ class AmortizationPlanAppServiceImpl implements AmortizationPlanAppService {
     );
     return switch (plan.kind) {
       AmortizationKind.prepaidExpense => _ledger.postExpense(
+        bookId: bookId,
         amount: amount,
         categoryAllocations: categoryAllocations,
         settlementAllocations: settlement,
@@ -734,6 +759,7 @@ class AmortizationPlanAppServiceImpl implements AmortizationPlanAppService {
         isExcludedFromBudget: false,
       ),
       AmortizationKind.deferredIncome => _ledger.postIncome(
+        bookId: bookId,
         amount: amount,
         categoryAllocations: categoryAllocations,
         settlementAllocations: settlement,
@@ -746,6 +772,7 @@ class AmortizationPlanAppServiceImpl implements AmortizationPlanAppService {
   }
 
   Future<String> _postReturnTransfer({
+    String? bookId,
     required AmortizationPlan plan,
     required Money amount,
     required List<AccountAmountAllocation> settlementAllocations,
@@ -759,6 +786,7 @@ class AmortizationPlanAppServiceImpl implements AmortizationPlanAppService {
       settlementAllocations: settlementAllocations,
     );
     return _ledger.postTransfer(
+      bookId: bookId,
       amount: amount,
       outgoingAllocations: transfer.outgoing,
       incomingAllocations: transfer.incoming,

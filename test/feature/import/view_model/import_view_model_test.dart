@@ -1,3 +1,4 @@
+import '../../../helper/book_selection_override.dart';
 import 'dart:typed_data';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -1028,6 +1029,8 @@ ProviderContainer _container({
 }) {
   final container = ProviderContainer(
     overrides: [
+      bookSelectionTestOverride,
+      bookListTestOverride,
       importPlanAppServiceProvider.overrideWithValue(planService),
       importWorkflowAppServiceProvider.overrideWithValue(workflow),
       importFilePickerProvider.overrideWithValue(picker),

@@ -527,6 +527,7 @@ class _FakeLedgerPort implements AdvanceLedgerPort {
 
   @override
   Future<String> postExpense({
+    String? bookId,
     required Money amount,
     required List<AccountAmountAllocation> categoryAllocations,
     required List<AccountAmountAllocation> settlementAllocations,
@@ -545,6 +546,7 @@ class _FakeLedgerPort implements AdvanceLedgerPort {
 
   @override
   Future<String> postAdvance({
+    String? bookId,
     required Money amount,
     required Money advanceAmount,
     required String receivableAccountId,
@@ -576,6 +578,7 @@ class _FakeLedgerPort implements AdvanceLedgerPort {
 
   @override
   Future<String> postAdvanceCollection({
+    String? bookId,
     required Money amount,
     required String? advanceTransactionId,
     required String receivableAccountId,
@@ -592,6 +595,7 @@ class _FakeLedgerPort implements AdvanceLedgerPort {
 
   @override
   Future<String> postAdvanceSettlement({
+    String? bookId,
     required Money actualReceivedAmount,
     required String? advanceTransactionId,
     required String receivableAccountId,

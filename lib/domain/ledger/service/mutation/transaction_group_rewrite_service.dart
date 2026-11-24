@@ -495,6 +495,7 @@ class TransactionGroupRewriteService {
   }) {
     return candidate.copyWith(
       id: original.id,
+      bookId: original.bookId,
       postedAt: original.postedAt,
       parentTransactionId: original.parentTransactionId,
       sourceKind: original.sourceKind,

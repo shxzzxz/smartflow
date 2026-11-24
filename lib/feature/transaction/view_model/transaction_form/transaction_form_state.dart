@@ -28,6 +28,7 @@ class ConsumptionInstallmentConfiguration {
 
 class TransactionFormState {
   TransactionFormState({
+    this.bookId = Book.dailyId,
     required this.initialValues,
     required this.mode,
     required this.entryMode,
@@ -68,6 +69,7 @@ class TransactionFormState {
        settlementAllocations = List.unmodifiable(settlementAllocations);
 
   factory TransactionFormState.initial({
+    String bookId = Book.dailyId,
     TransactionFormPrefill? prefill,
     required TransactionFormMode mode,
     String? fromAccountId,
@@ -98,6 +100,7 @@ class TransactionFormState {
         ? accountOptions.deferredIncomeAccounts
         : const <Account>[];
     return TransactionFormState(
+      bookId: bookId,
       initialValues: prefill == null
           ? const TransactionFormInitialValues()
           : TransactionFormInitialValues(
@@ -170,6 +173,7 @@ class TransactionFormState {
   }
 
   factory TransactionFormState.fromEditSnapshot({
+    String bookId = Book.dailyId,
     required TransactionFormEditSnapshot snapshot,
     required TransactionAccountOptions accountOptions,
     required List<CategoryNode> expenseTree,
@@ -185,6 +189,7 @@ class TransactionFormState {
             snapshot.mode == TransactionFormMode.income) &&
         (categoryAllocations.length > 1 || settlementAllocations.length > 1);
     return TransactionFormState(
+      bookId: bookId,
       initialValues: TransactionFormInitialValues.fromSnapshot(snapshot),
       mode: snapshot.mode,
       relationScene: snapshot.relationScene,
@@ -257,6 +262,7 @@ class TransactionFormState {
       recognitionCount: plan.recognitionCount,
     );
     return TransactionFormState(
+      bookId: initialTransaction.bookId,
       initialValues: TransactionFormInitialValues(
         amount: formatMoney(plan.originalAmount, style: MoneyFormatStyle.plain),
         fee: fee.minorUnits == 0
@@ -307,6 +313,7 @@ class TransactionFormState {
     );
   }
 
+  final String bookId;
   final TransactionFormInitialValues initialValues;
   final TransactionFormMode mode;
   final TransactionEntryMode entryMode;
@@ -381,6 +388,7 @@ class TransactionFormState {
       : prepaidExpenseAccounts;
 
   TransactionFormState copyWith({
+    String? bookId,
     TransactionFormInitialValues? initialValues,
     TransactionFormMode? mode,
     TransactionEntryMode? entryMode,
@@ -414,6 +422,7 @@ class TransactionFormState {
     Object? counterpartyId = _sentinel,
   }) {
     return TransactionFormState(
+      bookId: bookId ?? this.bookId,
       initialValues: initialValues ?? this.initialValues,
       mode: mode ?? this.mode,
       entryMode: entryMode ?? this.entryMode,

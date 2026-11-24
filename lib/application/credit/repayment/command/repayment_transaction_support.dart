@@ -142,6 +142,7 @@ class RepaymentTransactionSupport {
   }) {
     return _ledger.postRepayment(
       CreditLedgerPostRepaymentCommand(
+        bookId: transactionInfo.bookId,
         amount: total,
         liabilityAccountId: liabilityAccountId,
         paidFromAccountId: transactionInfo.paidFromAccountId,

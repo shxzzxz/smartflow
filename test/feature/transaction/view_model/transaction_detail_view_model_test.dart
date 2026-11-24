@@ -1,3 +1,4 @@
+import '../../../helper/book_selection_override.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/app/provider.dart';
@@ -889,6 +890,8 @@ ProviderContainer _container({
   };
   final container = ProviderContainer(
     overrides: [
+      bookSelectionTestOverride,
+      bookListTestOverride,
       transactionDetailReadModelProvider('tx-1').overrideWith(
         (ref) => Stream.value(
           TransactionDetailReadModel(context: _contextForDetail(detail)),

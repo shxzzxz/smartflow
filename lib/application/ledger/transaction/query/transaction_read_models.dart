@@ -1,3 +1,5 @@
+import '../../../../domain/ledger/entity/book.dart';
+
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/domain/ledger/entity/transaction_group.dart'
     show RefundSummary, AdvanceSummary;
@@ -58,6 +60,7 @@ class TransactionAccountImpact {
 class TransactionReadModel {
   TransactionReadModel({
     required this.id,
+    this.bookId = Book.dailyId,
     this.parentTransactionId,
     required this.businessPurpose,
     required this.occurredAt,
@@ -95,6 +98,7 @@ class TransactionReadModel {
   }) {
     return TransactionReadModel(
       id: transaction.id,
+      bookId: transaction.bookId,
       parentTransactionId: transaction.parentTransactionId,
       businessPurpose: transaction.businessPurpose,
       occurredAt: transaction.occurredAt,
@@ -117,6 +121,7 @@ class TransactionReadModel {
   }
 
   final String id;
+  final String bookId;
   final String? parentTransactionId;
   final BusinessPurpose businessPurpose;
   final DateTime occurredAt;
@@ -145,6 +150,7 @@ class TransactionReadModel {
   }) {
     return TransactionReadModel(
       id: id,
+      bookId: bookId,
       parentTransactionId: parentTransactionId,
       businessPurpose: businessPurpose,
       occurredAt: occurredAt,

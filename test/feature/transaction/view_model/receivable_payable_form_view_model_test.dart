@@ -1,3 +1,4 @@
+import '../../../helper/book_selection_override.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/app/provider.dart';
@@ -239,6 +240,8 @@ ProviderContainer _container({
   );
   final container = ProviderContainer(
     overrides: [
+      bookSelectionTestOverride,
+      bookListTestOverride,
       accountsByIdProvider.overrideWithValue(
         AsyncData({
           receivable.id: receivable,
@@ -299,32 +302,33 @@ TransactionReadModel _badDebtDetail() => TransactionReadModel.fromTransaction(
   ],
 );
 
-TransactionReadModel _debtReliefDetail() => TransactionReadModel.fromTransaction(
-  transaction: Transaction(
-    id: 'collection',
-    businessPurpose: BusinessPurpose.debtRelief,
-    occurredAt: DateTime(2026, 8, 20),
-    primaryAmount: const Money(minorUnits: 1000),
-    isExcludedFromStats: true,
-    isExcludedFromBudget: false,
-    sourceKind: SourceKind.manual,
-    entries: [
-      _entry('payable', EntryDirection.debit, 1000),
-      _entry('interest', EntryDirection.credit, 1000),
-    ],
-  ),
-  createdAt: DateTime(2026, 8, 20),
-  lines: const [
-    TransactionLine(
-      id: 'debt-relief-detail',
-      transactionId: 'collection',
-      lineNo: 1,
-      role: TransactionRole.liability,
-      accountId: 'payable',
-      amount: Money(minorUnits: 1000),
-    ),
-  ],
-);
+TransactionReadModel _debtReliefDetail() =>
+    TransactionReadModel.fromTransaction(
+      transaction: Transaction(
+        id: 'collection',
+        businessPurpose: BusinessPurpose.debtRelief,
+        occurredAt: DateTime(2026, 8, 20),
+        primaryAmount: const Money(minorUnits: 1000),
+        isExcludedFromStats: true,
+        isExcludedFromBudget: false,
+        sourceKind: SourceKind.manual,
+        entries: [
+          _entry('payable', EntryDirection.debit, 1000),
+          _entry('interest', EntryDirection.credit, 1000),
+        ],
+      ),
+      createdAt: DateTime(2026, 8, 20),
+      lines: const [
+        TransactionLine(
+          id: 'debt-relief-detail',
+          transactionId: 'collection',
+          lineNo: 1,
+          role: TransactionRole.liability,
+          accountId: 'payable',
+          amount: Money(minorUnits: 1000),
+        ),
+      ],
+    );
 
 TransactionReadModel _collectionDetail() {
   return TransactionReadModel.fromTransaction(
@@ -354,7 +358,14 @@ TransactionReadModel _collectionDetail() {
         role: TransactionRole.interest,
         amount: Money(minorUnits: 10000),
       ),
-      TransactionLine(id: 'settlement', transactionId: 'collection', lineNo: 3, role: TransactionRole.settlementIn, accountId: 'fund', amount: Money(minorUnits: 20000)),
+      TransactionLine(
+        id: 'settlement',
+        transactionId: 'collection',
+        lineNo: 3,
+        role: TransactionRole.settlementIn,
+        accountId: 'fund',
+        amount: Money(minorUnits: 20000),
+      ),
     ],
   );
 }

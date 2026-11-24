@@ -49,6 +49,7 @@ class LedgerCreditLedgerPort implements CreditLedgerPort {
   ) async {
     final result = await _postingService.createExpense(
       ledger_command.CreateExpenseCommand(
+        bookId: command.bookId,
         amount: command.amount,
         categoryAllocations: [
           for (final allocation in command.categoryAllocations)
@@ -83,6 +84,7 @@ class LedgerCreditLedgerPort implements CreditLedgerPort {
   ) async {
     final result = await _postingService.createRefund(
       ledger_command.CreateRefundCommand(
+        bookId: command.bookId,
         parentTransactionId: command.parentTransactionId,
         amount: command.amount,
         categoryAllocations: [
@@ -156,6 +158,7 @@ class LedgerCreditLedgerPort implements CreditLedgerPort {
   ) async {
     final result = await _postingService.createRepayment(
       ledger_command.CreateRepaymentCommand(
+        bookId: command.bookId,
         principal: command.amount.principal,
         interest: _positiveOrNull(command.amount.interest),
         fee: _positiveOrNull(command.amount.fee),
@@ -178,6 +181,7 @@ class LedgerCreditLedgerPort implements CreditLedgerPort {
   ) async {
     final result = await _postingService.createBorrowing(
       ledger_command.CreateBorrowingCommand(
+        bookId: command.bookId,
         amount: command.amount,
         liabilityAccountId: command.liabilityAccountId,
         receiveAccountId: command.receiveAccountId,

@@ -1,3 +1,4 @@
+import '../../../helper/backup_snapshot.dart';
 import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
@@ -74,7 +75,7 @@ void main() {
   test(
     'snapshot validation before picker keeps its category and diagnostic log',
     () async {
-      gateway.snapshot = BackupSnapshot(
+      gateway.snapshot = createBackupSnapshot(
         tables: {
           'tags': [
             {'id': 'duplicate'},
@@ -204,7 +205,7 @@ void main() {
 
 class _Gateway implements BackupSnapshotGateway {
   Object? failure;
-  BackupSnapshot snapshot = BackupSnapshot();
+  BackupSnapshot snapshot = createBackupSnapshot();
   @override
   int get schemaVersion => 1;
   @override

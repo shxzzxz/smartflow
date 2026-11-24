@@ -22,6 +22,7 @@ class LedgerAdvancePort implements AdvanceLedgerPort {
 
   @override
   Future<String> postExpense({
+    String? bookId,
     required amount,
     required categoryAllocations,
     required settlementAllocations,
@@ -36,6 +37,7 @@ class LedgerAdvancePort implements AdvanceLedgerPort {
   }) async {
     final result = await _posting.createExpense(
       CreateExpenseCommand(
+        bookId: bookId,
         amount: amount,
         categoryAllocations: categoryAllocations,
         settlementAllocations: settlementAllocations,
@@ -54,6 +56,7 @@ class LedgerAdvancePort implements AdvanceLedgerPort {
 
   @override
   Future<String> postAdvance({
+    String? bookId,
     required amount,
     required advanceAmount,
     required receivableAccountId,
@@ -72,6 +75,7 @@ class LedgerAdvancePort implements AdvanceLedgerPort {
   }) async {
     final result = await _posting.createAdvance(
       CreateAdvanceCommand(
+        bookId: bookId,
         amount: amount,
         advanceAmount: advanceAmount,
         receivableAccountId: receivableAccountId,
@@ -94,6 +98,7 @@ class LedgerAdvancePort implements AdvanceLedgerPort {
 
   @override
   Future<String> postAdvanceCollection({
+    String? bookId,
     required amount,
     required advanceTransactionId,
     required receivableAccountId,
@@ -105,6 +110,7 @@ class LedgerAdvancePort implements AdvanceLedgerPort {
     note,
   }) async {
     final command = CreateAdvanceCollectionCommand(
+      bookId: bookId,
       amount: amount,
       advanceTransactionId: advanceTransactionId,
       receivableAccountId: receivableAccountId,
@@ -120,6 +126,7 @@ class LedgerAdvancePort implements AdvanceLedgerPort {
 
   @override
   Future<String> postAdvanceSettlement({
+    String? bookId,
     required actualReceivedAmount,
     required advanceTransactionId,
     required receivableAccountId,
@@ -133,6 +140,7 @@ class LedgerAdvancePort implements AdvanceLedgerPort {
     note,
   }) async {
     final command = CreateAdvanceSettlementCommand(
+      bookId: bookId,
       actualReceivedAmount: actualReceivedAmount,
       advanceTransactionId: advanceTransactionId,
       receivableAccountId: receivableAccountId,
@@ -222,6 +230,7 @@ class LedgerAdvancePort implements AdvanceLedgerPort {
 
   @override
   Future<String> postRefund({
+    String? bookId,
     required parentTransactionId,
     required amount,
     required categoryAllocations,
@@ -234,6 +243,7 @@ class LedgerAdvancePort implements AdvanceLedgerPort {
   }) async {
     final result = await _posting.createRefund(
       CreateRefundCommand(
+        bookId: bookId,
         amount: amount,
         parentTransactionId: parentTransactionId,
         categoryAllocations: categoryAllocations,

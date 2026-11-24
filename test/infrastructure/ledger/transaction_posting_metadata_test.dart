@@ -1,3 +1,4 @@
+import '../../helper/fake_book_repository.dart';
 import 'package:drift/drift.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/application/ledger/transaction/command/transaction_command.dart';
@@ -32,6 +33,7 @@ void main() {
     final accounts = DriftAccountRepository(database);
     final postings = DriftPostingRepository(database);
     final writer = TransactionLedgerWriter(
+      bookRepository: FakeBookRepository(),
       transactionRunner: DriftTransactionRunner(database),
       transactionRepository: postings,
       transactionGroupRepository: postings,

@@ -3,6 +3,7 @@ import 'package:drift_flutter/drift_flutter.dart';
 import 'package:path_provider/path_provider.dart';
 
 import '../../domain/ledger/valobj/ledger_enum.dart';
+import '../../domain/ledger/entity/book.dart';
 import '../../domain/intake/import/import_models.dart';
 import '../../domain/intake/import/import_persistence_models.dart';
 import '../../domain/credit/valobj/bill_enums.dart';
@@ -17,6 +18,7 @@ import 'table/ledger/account_groups.dart';
 import 'table/ledger/account_reconciliation_snapshots.dart';
 import 'table/app_metadata.dart';
 import 'table/ledger/budgets.dart';
+import 'table/ledger/books.dart';
 import 'table/ledger/counterparties.dart';
 import 'table/ledger/entries.dart';
 import 'table/credit/credit_liability_accounts.dart';
@@ -62,6 +64,7 @@ part 'app_database.g.dart';
 @DriftDatabase(
   tables: [
     Accounts,
+    Books,
     AccountGroups,
     AccountReconciliationSnapshots,
     AppMetadata,
@@ -112,7 +115,7 @@ class AppDatabase extends _$AppDatabase {
 
   /// The first supported schema is defined by `PersistenceBaseline`.
   @override
-  int get schemaVersion => 67;
+  int get schemaVersion => 68;
 
   @override
   MigrationStrategy get migration => buildMigrationStrategy(this);

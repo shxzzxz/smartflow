@@ -5,12 +5,14 @@ import 'repayment_amount_dto.dart';
 
 class RepaymentTransactionInfo {
   const RepaymentTransactionInfo({
+    this.bookId,
     required this.paidFromAccountId,
     required this.occurredAt,
     this.counterpartyId,
     this.note,
   });
 
+  final String? bookId;
   final String paidFromAccountId;
   final DateTime occurredAt;
   final String? counterpartyId;

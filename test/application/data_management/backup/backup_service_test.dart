@@ -1,3 +1,4 @@
+import '../../../helper/backup_snapshot.dart';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
@@ -73,7 +74,7 @@ void main() {
         );
         await v60Service.createBackup(oldDirectory);
         final v61Gateway = FakeBackupGateway(
-          BackupSnapshot(),
+          createBackupSnapshot(),
           schemaVersion: 61,
         );
         final v61Service = BackupService(
@@ -352,7 +353,7 @@ void main() {
           'life',
         );
 
-        gateway.snapshot = BackupSnapshot();
+        gateway.snapshot = createBackupSnapshot();
         await service.restore(tempDirectory);
         expect(
           gateway.snapshot.rows('coverage_responsibilities'),
@@ -444,7 +445,7 @@ void main() {
           inspection.snapshot.rows('responsibility_points').single['value'],
           '特别约定15天',
         );
-        gateway.snapshot = BackupSnapshot();
+        gateway.snapshot = createBackupSnapshot();
         await service.restore(tempDirectory);
         expect(gateway.snapshot.rows('commercial_insurances').single, policy);
         expect(
@@ -908,8 +909,12 @@ void main() {
       throwsA(isA<BackupValidationException>()),
     );
 
-    final current = BackupSnapshot(preferences: const {'a': '1', 'b': '2'});
-    final incoming = BackupSnapshot(preferences: const {'a': '3', 'c': '4'});
+    final current = createBackupSnapshot(
+      preferences: const {'a': '1', 'b': '2'},
+    );
+    final incoming = createBackupSnapshot(
+      preferences: const {'a': '3', 'c': '4'},
+    );
     final diff = BackupDiff.compare(current, incoming);
     final preferences = diff.itemFor('preferences');
     expect(preferences.added, 1);
@@ -1010,7 +1015,7 @@ BackupSnapshot _emptySnapshot({
   Iterable<BackupJson> entries = const [],
   Map<String, List<BackupJson>>? tables,
 }) {
-  return BackupSnapshot(
+  return createBackupSnapshot(
     tables: {
       'accounts': accounts,
       'transactions': transactions,

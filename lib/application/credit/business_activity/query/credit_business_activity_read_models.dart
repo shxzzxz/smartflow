@@ -15,6 +15,7 @@ enum CreditBusinessActivityType {
 
 final class CreditBusinessActivityQuery {
   CreditBusinessActivityQuery({
+    this.bookId,
     required this.occurredFrom,
     required this.occurredUntil,
     this.before,
@@ -33,6 +34,7 @@ final class CreditBusinessActivityQuery {
        assert(limit > 0),
        assert(!untaggedOnly || tagIds == null);
 
+  final String? bookId;
   final DateTime occurredFrom;
   final DateTime occurredUntil;
   final CreditBusinessActivityCursor? before;

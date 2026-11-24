@@ -1,3 +1,4 @@
+import '../../../helper/book_selection_override.dart';
 // ignore_for_file: riverpod_lint/scoped_providers_should_specify_dependencies
 
 import 'dart:typed_data';
@@ -956,6 +957,8 @@ Widget _app({
 }) {
   return ProviderScope(
     overrides: [
+      bookSelectionTestOverride,
+      bookListTestOverride,
       importPlanAppServiceProvider.overrideWithValue(
         planService ?? _FakePlanService(_plan()),
       ),
@@ -975,6 +978,8 @@ Widget _pushedApp({
 }) {
   return ProviderScope(
     overrides: [
+      bookSelectionTestOverride,
+      bookListTestOverride,
       importPlanAppServiceProvider.overrideWithValue(planService),
       importWorkflowAppServiceProvider.overrideWithValue(workflow),
       importFilePickerProvider.overrideWithValue(picker),

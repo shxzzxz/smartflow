@@ -55,6 +55,7 @@ abstract interface class ImportLedgerPort {
   Future<String> resolveGhostAccountId();
 
   Future<String> createExpense({
+    String? bookId,
     required Money amount,
     required String paidFromAccountId,
     required String expenseCategoryId,
@@ -66,6 +67,7 @@ abstract interface class ImportLedgerPort {
   });
 
   Future<String> createIncome({
+    String? bookId,
     required Money amount,
     required String receiveAccountId,
     required String incomeCategoryId,
@@ -77,6 +79,7 @@ abstract interface class ImportLedgerPort {
   });
 
   Future<String> createTransfer({
+    String? bookId,
     required Money amount,
     required String fromAccountId,
     required String toAccountId,
@@ -87,6 +90,7 @@ abstract interface class ImportLedgerPort {
   });
 
   Future<String> createRefund({
+    String? bookId,
     required String topLevelTransactionId,
     required Money amount,
     required String refundToAccountId,
@@ -96,6 +100,7 @@ abstract interface class ImportLedgerPort {
   });
 
   Future<String> createAdvance({
+    String? bookId,
     required Money amount,
     required String receivableAccountId,
     required String paidFromAccountId,
@@ -108,6 +113,7 @@ abstract interface class ImportLedgerPort {
   });
 
   Future<String> createAdvanceCollection({
+    String? bookId,
     required String topLevelTransactionId,
     required Money amount,
     required String receivableAccountId,
@@ -118,6 +124,7 @@ abstract interface class ImportLedgerPort {
   });
 
   Future<String> settleAdvance({
+    String? bookId,
     required String topLevelTransactionId,
     required Money actualReceivedAmount,
     required String receivableAccountId,
@@ -133,6 +140,7 @@ abstract interface class ImportLedgerPort {
   });
 
   Future<String> createRepayment({
+    String? bookId,
     required Money principal,
     required String liabilityAccountId,
     required String paidFromAccountId,
@@ -145,6 +153,7 @@ abstract interface class ImportLedgerPort {
   });
 
   Future<String> createInterestExpense({
+    String? bookId,
     required Money amount,
     required String paidFromAccountId,
     required DateTime occurredAt,
@@ -153,6 +162,7 @@ abstract interface class ImportLedgerPort {
   });
 
   Future<String> createBorrowing({
+    String? bookId,
     required Money amount,
     required String liabilityAccountId,
     required String receiveAccountId,
@@ -162,6 +172,7 @@ abstract interface class ImportLedgerPort {
   });
 
   Future<String> createLending({
+    String? bookId,
     required Money amount,
     required String receivableAccountId,
     required String paidFromAccountId,
@@ -171,6 +182,7 @@ abstract interface class ImportLedgerPort {
   });
 
   Future<String> createReceivableCollection({
+    String? bookId,
     required Money principal,
     required String receivableAccountId,
     required String receiveAccountId,
@@ -181,6 +193,7 @@ abstract interface class ImportLedgerPort {
   });
 
   Future<String> createOpeningBalance({
+    String? bookId,
     required Money amount,
     required String accountId,
     required DateTime occurredAt,

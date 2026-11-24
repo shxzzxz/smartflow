@@ -1,3 +1,4 @@
+import '../../shared/provider/book_providers.dart';
 import 'package:logging/logging.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -766,6 +767,12 @@ class ImportViewModel extends Notifier<ImportPageState> {
       final service = ref.read(importWorkflowAppServiceProvider);
       final result = await service.commit(
         ImportCommitCommand(
+          bookId:
+              (await ref
+                      .read(bookSelectionViewModelProvider.notifier)
+                      .snapshot())
+                  .currentBook
+                  .id,
           plan: review.plan,
           mappings: review.effectiveMappings,
           plannedCreations: state.plannedCreations,

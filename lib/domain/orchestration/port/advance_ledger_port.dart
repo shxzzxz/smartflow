@@ -7,6 +7,7 @@ import 'package:smartflow/domain/ledger/valobj/transaction_ownership.dart';
 
 abstract interface class AdvanceLedgerPort {
   Future<String> postExpense({
+    String? bookId,
     required Money amount,
     required List<AccountAmountAllocation> categoryAllocations,
     required List<AccountAmountAllocation> settlementAllocations,
@@ -21,6 +22,7 @@ abstract interface class AdvanceLedgerPort {
   });
 
   Future<String> postAdvance({
+    String? bookId,
     required Money amount,
     required Money advanceAmount,
     required String receivableAccountId,
@@ -39,6 +41,7 @@ abstract interface class AdvanceLedgerPort {
   });
 
   Future<String> postAdvanceCollection({
+    String? bookId,
     required Money amount,
     required String advanceTransactionId,
     required String receivableAccountId,
@@ -51,6 +54,7 @@ abstract interface class AdvanceLedgerPort {
   });
 
   Future<String> postAdvanceSettlement({
+    String? bookId,
     required Money actualReceivedAmount,
     required String advanceTransactionId,
     required String receivableAccountId,
@@ -99,6 +103,7 @@ abstract interface class AdvanceLedgerPort {
   });
 
   Future<String> postRefund({
+    String? bookId,
     required String parentTransactionId,
     required Money amount,
     required List<AccountAmountAllocation> categoryAllocations,

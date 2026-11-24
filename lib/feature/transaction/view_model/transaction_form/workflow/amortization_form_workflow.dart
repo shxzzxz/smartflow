@@ -22,6 +22,7 @@ final class _AmortizationFormWorkflow {
     final resolved = _resolveAllocations(state: state, amount: amount);
     await _service.createPlan(
       CreateAmortizationPlanCommand(
+        bookId: state.bookId,
         kind: kind,
         total: amount,
         fundingAllocations: resolved.funding,

@@ -1,6 +1,7 @@
 import 'package:drift/drift.dart';
 
 import '../../../../domain/ledger/valobj/ledger_enum.dart';
+import '../../../../domain/ledger/entity/book.dart';
 
 @DataClassName('TransactionRow')
 class Transactions extends Table {
@@ -8,6 +9,8 @@ class Transactions extends Table {
   String get tableName => 'transactions';
 
   TextColumn get id => text()();
+  TextColumn get bookId =>
+      text().named('book_id').withDefault(const Constant(Book.dailyId))();
   TextColumn get businessPurpose =>
       textEnum<BusinessPurpose>().named('business_purpose')();
   DateTimeColumn get occurredAt => dateTime().named('occurred_at')();

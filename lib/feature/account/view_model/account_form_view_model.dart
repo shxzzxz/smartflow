@@ -1,3 +1,4 @@
+import '../../shared/provider/book_providers.dart';
 import 'package:logging/logging.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
@@ -183,6 +184,12 @@ class AccountFormViewModel extends _$AccountFormViewModel {
           .read(accountAppServiceProvider)
           .createAccount(
             CreateAccountCommand(
+              transactionBookId:
+                  (await ref
+                          .read(bookSelectionViewModelProvider.notifier)
+                          .snapshot())
+                      .currentBook
+                      .id,
               name: name,
               type: formState.kind.accountType,
               subtype: formState.kind.accountSubtype,
@@ -199,6 +206,12 @@ class AccountFormViewModel extends _$AccountFormViewModel {
         .read(creditAccountAppServiceProvider)
         .createAccount(
           CreateCreditLiabilityAccountCommand(
+            transactionBookId:
+                (await ref
+                        .read(bookSelectionViewModelProvider.notifier)
+                        .snapshot())
+                    .currentBook
+                    .id,
             name: name,
             kind: creditLiabilityKindForProfile(formState.kind),
             iconKey: iconRef,
@@ -231,6 +244,12 @@ class AccountFormViewModel extends _$AccountFormViewModel {
           .read(accountAppServiceProvider)
           .editAccount(
             EditAccountCommand(
+              transactionBookId:
+                  (await ref
+                          .read(bookSelectionViewModelProvider.notifier)
+                          .snapshot())
+                      .currentBook
+                      .id,
               id: id,
               name: name,
               groupId: formState.groupId == null
@@ -251,6 +270,12 @@ class AccountFormViewModel extends _$AccountFormViewModel {
         .read(creditAccountAppServiceProvider)
         .editAccount(
           EditCreditLiabilityAccountCommand(
+            transactionBookId:
+                (await ref
+                        .read(bookSelectionViewModelProvider.notifier)
+                        .snapshot())
+                    .currentBook
+                    .id,
             accountId: id,
             name: name,
             iconKey: Patch.set(iconRef),

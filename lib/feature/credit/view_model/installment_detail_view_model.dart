@@ -1,3 +1,4 @@
+import '../../shared/provider/book_providers.dart';
 import 'package:logging/logging.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
@@ -103,6 +104,12 @@ class InstallmentDetailViewModel extends _$InstallmentDetailViewModel {
           .read(disbursementInstallmentAppServiceProvider)
           .createBorrowingTransaction(
             CreateDisbursementTransactionCommand(
+              bookId:
+                  (await ref
+                          .read(bookSelectionViewModelProvider.notifier)
+                          .snapshot())
+                      .currentBook
+                      .id,
               contractId: loaded.installment.id,
               receiveAccountId: receiveAccountId,
               occurredAt: occurredAt,

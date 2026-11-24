@@ -18,6 +18,7 @@ import '../../../../shared/account_profile/account_selection_purpose.dart';
 import 'package:smartflow/feature/shared/presentation/account_lookup.dart';
 import 'package:smartflow/feature/amortization/provider/amortization_providers.dart';
 import '../../../shared/provider/ledger_query_providers.dart';
+import '../../../shared/provider/book_providers.dart';
 import '../../../shared/view_model/action_guard.dart';
 import '../../../shared/view_model/ui_action_outcome.dart';
 import '../../../credit/provider/installment_query_providers.dart';
@@ -75,9 +76,13 @@ class TransactionDetailViewModel extends _$TransactionDetailViewModel {
     }
 
     final accountLookup = await ref.watch(accountLookupProvider.future);
+    final books = await ref.watch(bookListProvider.future);
     return buildTransactionDetailLoadedState(
       detail: detail,
       accountLookup: accountLookup,
+      bookName: books
+          .firstWhere((book) => book.id == detail.context.transaction.bookId)
+          .name,
     );
   }
 
@@ -96,6 +101,19 @@ class TransactionDetailViewModel extends _$TransactionDetailViewModel {
       return _actionDispatcherFor(loaded.context).delete();
     });
   }
+
+  Future<UiActionOutcome<void>> changeBook(String bookId) => _runAction(
+    (loaded) => detailVoidOutcomeFromAction(
+      () => ref
+          .read(bookAppServiceProvider)
+          .changeTransactionBook(
+            ChangeTransactionBookCommand(
+              transactionId: loaded.detail.id,
+              bookId: bookId,
+            ),
+          ),
+    ),
+  );
 
   Future<UiActionOutcome<void>> changeNote(String? value) {
     final normalized = value == null ? null : trimToNull(value);
@@ -234,6 +252,12 @@ class TransactionDetailViewModel extends _$TransactionDetailViewModel {
             _defaultGapExpenseAllocations(loaded.detail, input.amount);
         await service.createSettlement(
           CreateAdvanceSettlementWorkflowCommand(
+            bookId:
+                (await ref
+                        .read(bookSelectionViewModelProvider.notifier)
+                        .snapshot())
+                    .currentBook
+                    .id,
             actualReceivedAmount: input.amount,
             advanceTransactionId: loaded.detail.id,
             receivableAccountId: receivableAccountId,
@@ -249,6 +273,12 @@ class TransactionDetailViewModel extends _$TransactionDetailViewModel {
       } else {
         await service.createCollection(
           CreateAdvanceCollectionWorkflowCommand(
+            bookId:
+                (await ref
+                        .read(bookSelectionViewModelProvider.notifier)
+                        .snapshot())
+                    .currentBook
+                    .id,
             amount: input.amount,
             advanceTransactionId: loaded.detail.id,
             receivableAccountId: receivableAccountId,

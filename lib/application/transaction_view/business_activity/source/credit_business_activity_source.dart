@@ -102,6 +102,7 @@ final class CreditBusinessActivitySource implements BusinessActivitySource {
   CreditBusinessActivityQuery _queryFor(BusinessActivityPageQuery query) {
     final activityTypes = query.activityTypes;
     return CreditBusinessActivityQuery(
+      bookId: query.bookId,
       occurredFrom: query.occurredFrom,
       occurredUntil: query.occurredUntil,
       before: switch (query.before) {

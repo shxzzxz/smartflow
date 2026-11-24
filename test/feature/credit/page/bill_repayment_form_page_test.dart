@@ -1,3 +1,4 @@
+import '../../../helper/book_selection_override.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -51,6 +52,8 @@ void main() {
       await tester.pumpWidget(
         ProviderScope(
           overrides: [
+            bookSelectionTestOverride,
+            bookListTestOverride,
             billDetailProvider.overrideWith(
               (ref, id) async => _billDetailWithTwoConsumptionItems(),
             ),
@@ -112,6 +115,8 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          bookSelectionTestOverride,
+          bookListTestOverride,
           billDetailProvider.overrideWith(
             (ref, id) async => _billDetailWithTwoConsumptionItems(),
           ),
@@ -166,6 +171,8 @@ void main() {
     final service = _FailingRepaymentAppService();
     final container = ProviderContainer(
       overrides: [
+        bookSelectionTestOverride,
+        bookListTestOverride,
         billDetailProvider.overrideWith(
           (ref, id) async => _billDetailWithTwoConsumptionItems(),
         ),
@@ -236,6 +243,8 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          bookSelectionTestOverride,
+          bookListTestOverride,
           billDetailProvider.overrideWith(
             (ref, id) async => _billDetailWithTwoInstallments(),
           ),

@@ -1,3 +1,4 @@
+import '../../../../helper/fake_book_repository.dart';
 import 'package:drift/drift.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/application/ledger/ledger_command_api.dart';
@@ -65,6 +66,7 @@ void main() {
     tags = DriftTransactionTagRepository(db);
     await tags.insertTag(id: 'travel', name: '旅行');
     final writer = TransactionLedgerWriter(
+      bookRepository: FakeBookRepository(),
       transactionRunner: DriftTransactionRunner(db),
       transactionRepository: transactions,
       transactionGroupRepository: transactions,

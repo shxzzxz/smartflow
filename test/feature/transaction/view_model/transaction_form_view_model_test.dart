@@ -1,3 +1,4 @@
+import '../../../helper/book_selection_override.dart';
 import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -349,6 +350,8 @@ void main() {
 
       final loading = ProviderContainer(
         overrides: [
+          bookSelectionTestOverride,
+          bookListTestOverride,
           ...commonOverrides,
           transactionDetailProvider(
             'tx-1',
@@ -368,6 +371,8 @@ void main() {
 
       final loaded = ProviderContainer(
         overrides: [
+          bookSelectionTestOverride,
+          bookListTestOverride,
           ...commonOverrides,
           transactionDetailProvider(
             'tx-1',
@@ -393,6 +398,8 @@ void main() {
 
       final missing = ProviderContainer(
         overrides: [
+          bookSelectionTestOverride,
+          bookListTestOverride,
           ...commonOverrides,
           transactionAccountOptionsProvider.overrideWithValue(
             AsyncData(
@@ -2200,6 +2207,8 @@ ProviderContainer _container({
 }) {
   final container = ProviderContainer(
     overrides: [
+      bookSelectionTestOverride,
+      bookListTestOverride,
       transactionPostingAppServiceProvider.overrideWith(
         (ref) => postingService ?? _FakeTransactionPostingAppService(),
       ),

@@ -1,5 +1,6 @@
 final class AdvanceBusinessActivityQuery {
   AdvanceBusinessActivityQuery({
+    this.bookId,
     required this.occurredFrom,
     required this.occurredUntil,
     this.before,
@@ -16,6 +17,7 @@ final class AdvanceBusinessActivityQuery {
        assert(limit > 0),
        assert(!untaggedOnly || tagIds == null);
 
+  final String? bookId;
   final DateTime occurredFrom;
   final DateTime occurredUntil;
   final AdvanceBusinessActivityCursor? before;

@@ -50,6 +50,7 @@ class TransactionGroupRewritePlanner {
 
     final rewrittenParent = candidateParent.copyWith(
       id: currentParent.id,
+      bookId: currentParent.bookId,
       postedAt: currentParent.postedAt,
       sourceKind: currentParent.sourceKind,
       clearOwnership:
@@ -333,6 +334,7 @@ class TransactionGroupRewritePlanner {
   }) {
     return candidate.copyWith(
       id: original.id,
+      bookId: original.bookId,
       postedAt: original.postedAt,
       sourceKind: original.sourceKind,
     );

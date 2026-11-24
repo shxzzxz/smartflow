@@ -131,6 +131,7 @@ class PostingEngine {
     var lineNo = 1;
     return _posted(
       Transaction(
+        bookId: instruction.bookId,
         id: transactionId,
         businessPurpose: BusinessPurpose.dailyExpense,
         occurredAt: instruction.occurredAt,
@@ -182,6 +183,7 @@ class PostingEngine {
     var lineNo = 1;
     return _posted(
       Transaction(
+        bookId: instruction.bookId,
         id: transactionId,
         businessPurpose: BusinessPurpose.dailyIncome,
         occurredAt: instruction.occurredAt,
@@ -250,6 +252,7 @@ class PostingEngine {
     var lineNo = 1;
     return _posted(
       Transaction(
+        bookId: instruction.bookId,
         id: transactionId,
         businessPurpose: BusinessPurpose.advance,
         occurredAt: instruction.occurredAt,
@@ -357,6 +360,7 @@ class PostingEngine {
     var lineNo = 1;
     return _posted(
       Transaction(
+        bookId: instruction.bookId,
         id: transactionId,
         parentTransactionId: parent.id,
         businessPurpose: BusinessPurpose.refund,
@@ -488,6 +492,7 @@ class PostingEngine {
     var lineNo = 1;
     return _posted(
       Transaction(
+        bookId: instruction.bookId,
         id: transactionId,
         businessPurpose: BusinessPurpose.transfer,
         occurredAt: instruction.occurredAt,
@@ -554,6 +559,7 @@ class PostingEngine {
     var lineNo = 1;
     return _posted(
       Transaction(
+        bookId: instruction.bookId,
         id: transactionId,
         parentTransactionId: advance.id,
         businessPurpose: BusinessPurpose.advanceCollection,
@@ -634,6 +640,7 @@ class PostingEngine {
     final transactionId = _idGenerator.newId();
     return _posted(
       Transaction(
+        bookId: instruction.bookId,
         id: transactionId,
         businessPurpose: BusinessPurpose.debtRepayment,
         occurredAt: instruction.occurredAt,
@@ -696,6 +703,7 @@ class PostingEngine {
     final transactionId = _idGenerator.newId();
     return _posted(
       Transaction(
+        bookId: instruction.bookId,
         id: transactionId,
         businessPurpose: BusinessPurpose.borrowing,
         occurredAt: instruction.occurredAt,
@@ -734,6 +742,7 @@ class PostingEngine {
     final transactionId = _idGenerator.newId();
     return _posted(
       Transaction(
+        bookId: instruction.bookId,
         id: transactionId,
         businessPurpose: BusinessPurpose.lending,
         occurredAt: instruction.occurredAt,
@@ -782,6 +791,7 @@ class PostingEngine {
     final transactionId = _idGenerator.newId();
     return _posted(
       Transaction(
+        bookId: instruction.bookId,
         id: transactionId,
         businessPurpose: BusinessPurpose.receivableCollection,
         occurredAt: instruction.occurredAt,
@@ -830,6 +840,7 @@ class PostingEngine {
     final transactionId = _idGenerator.newId();
     return _posted(
       Transaction(
+        bookId: instruction.bookId,
         id: transactionId,
         businessPurpose: BusinessPurpose.badDebt,
         occurredAt: instruction.occurredAt,
@@ -864,6 +875,7 @@ class PostingEngine {
     final transactionId = _idGenerator.newId();
     return _posted(
       Transaction(
+        bookId: instruction.bookId,
         id: transactionId,
         businessPurpose: BusinessPurpose.debtRelief,
         occurredAt: instruction.occurredAt,
@@ -906,6 +918,7 @@ class PostingEngine {
     final transactionId = _idGenerator.newId();
     return _posted(
       Transaction(
+        bookId: instruction.bookId,
         id: transactionId,
         businessPurpose: BusinessPurpose.openingBalance,
         occurredAt: instruction.occurredAt,
@@ -941,6 +954,7 @@ class PostingEngine {
     final transactionId = _idGenerator.newId();
     return _posted(
       Transaction(
+        bookId: instruction.bookId,
         id: transactionId,
         businessPurpose: BusinessPurpose.balanceAdjustment,
         occurredAt: instruction.occurredAt,
@@ -1017,6 +1031,7 @@ class PostingEngine {
     var lineNo = 1;
     return _posted(
       Transaction(
+        bookId: instruction.bookId,
         id: transactionId,
         parentTransactionId: advance.id,
         businessPurpose: BusinessPurpose.advanceSettlement,

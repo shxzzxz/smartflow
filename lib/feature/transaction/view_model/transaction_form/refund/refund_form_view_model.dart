@@ -1,3 +1,4 @@
+import '../../../../shared/provider/book_providers.dart';
 import 'package:logging/logging.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
@@ -501,6 +502,12 @@ class RefundFormViewModel extends _$RefundFormViewModel {
           } else {
             await service.createRefund(
               CreateConsumptionInstallmentRefundCommand(
+                bookId:
+                    (await ref
+                            .read(bookSelectionViewModelProvider.notifier)
+                            .snapshot())
+                        .currentBook
+                        .id,
                 contractId: installmentContractId,
                 parentTransactionId: current.parentTransactionId,
                 amount: amount,
@@ -530,6 +537,12 @@ class RefundFormViewModel extends _$RefundFormViewModel {
           } else {
             await orchestration.createRefund(
               CreateAdvanceRefundWorkflowCommand(
+                bookId:
+                    (await ref
+                            .read(bookSelectionViewModelProvider.notifier)
+                            .snapshot())
+                        .currentBook
+                        .id,
                 parentTransactionId: current.parentTransactionId,
                 amount: amount,
                 categoryAllocations: categoryAllocations,
@@ -557,6 +570,12 @@ class RefundFormViewModel extends _$RefundFormViewModel {
               .read(transactionPostingAppServiceProvider)
               .createRefund(
                 CreateRefundCommand(
+                  bookId:
+                      (await ref
+                              .read(bookSelectionViewModelProvider.notifier)
+                              .snapshot())
+                          .currentBook
+                          .id,
                   amount: amount,
                   parentTransactionId: current.parentTransactionId,
                   categoryAllocations: categoryAllocations,
@@ -651,6 +670,12 @@ class RefundFormViewModel extends _$RefundFormViewModel {
             if (current.editing) {
               await service.editTermination(
                 EditAmortizationTerminationCommand(
+                  bookId:
+                      (await ref
+                              .read(bookSelectionViewModelProvider.notifier)
+                              .snapshot())
+                          .currentBook
+                          .id,
                   planId: planId,
                   terminationId: current.amortizationTerminationId!,
                   terminatedAt: current.occurredAt,
@@ -661,6 +686,12 @@ class RefundFormViewModel extends _$RefundFormViewModel {
             } else {
               await service.terminate(
                 TerminateAmortizationPlanCommand(
+                  bookId:
+                      (await ref
+                              .read(bookSelectionViewModelProvider.notifier)
+                              .snapshot())
+                          .currentBook
+                          .id,
                   planId: planId,
                   terminatedAt: current.occurredAt,
                   categoryReturnAllocations: categoryAllocations,
@@ -683,6 +714,12 @@ class RefundFormViewModel extends _$RefundFormViewModel {
           } else {
             await service.refund(
               CreateAmortizationRefundCommand(
+                bookId:
+                    (await ref
+                            .read(bookSelectionViewModelProvider.notifier)
+                            .snapshot())
+                        .currentBook
+                        .id,
                 planId: planId,
                 categoryAllocations: categoryAllocations,
                 settlementAllocations: settlementAllocations,

@@ -8,6 +8,7 @@ class BackupTables {
   BackupTables._();
 
   static const all = <String>[
+    'books',
     'accounts',
     'account_groups',
     'account_reconciliation_snapshots',
@@ -85,6 +86,7 @@ class BackupTables {
 
   static String sectionFor(String table) {
     if (const {
+      'books',
       'accounts',
       'account_groups',
       'account_reconciliation_snapshots',
@@ -316,7 +318,7 @@ class BackupManifest {
   ///
   /// This is independent from the database schema version and only changes
   /// when exported tables, fields or wire codes change.
-  static const currentBackupSchemaVersion = 17;
+  static const currentBackupSchemaVersion = 18;
   static const minimumSupportedBackupSchemaVersion =
       PersistenceBaseline.backupSchemaVersion;
 
@@ -486,7 +488,8 @@ class BackupDiff {
           table == 'transaction_lines' ||
           table == 'entries' ||
           table == 'transaction_tags' ||
-          table == 'counterparties') {
+          table == 'counterparties' ||
+          table == 'books') {
         return '交易组';
       }
       if (table == 'budgets') return '预算';

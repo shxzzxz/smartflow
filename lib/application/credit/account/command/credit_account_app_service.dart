@@ -75,6 +75,7 @@ class CreditAccountAppServiceImpl implements CreditAccountAppService {
     return _runner.run<CreditLedgerAccountSnapshot>(() async {
       final account = await _ledger.createLiabilityAccount(
         CreditLedgerCreateLiabilityAccountCommand(
+          transactionBookId: command.transactionBookId,
           name: command.name,
           kind: command.kind,
           openingBalance: command.openingBalance,
@@ -135,6 +136,7 @@ class CreditAccountAppServiceImpl implements CreditAccountAppService {
     await _runner.run<void>(() async {
       await _ledger.editLiabilityAccount(
         CreditLedgerEditLiabilityAccountCommand(
+          transactionBookId: command.transactionBookId,
           accountId: command.accountId,
           name: command.name,
           iconKey: command.iconKey,

@@ -78,6 +78,7 @@ class DisbursementInstallmentAppServiceImpl
           ? null
           : await _ledger.postBorrowing(
               CreditLedgerPostBorrowingCommand(
+                bookId: command.bookId,
                 amount: command.principal,
                 liabilityAccountId: command.liabilityAccountId,
                 occurredAt: command.borrowingAt,
@@ -145,6 +146,7 @@ class DisbursementInstallmentAppServiceImpl
       }
       final borrowing = await _ledger.postBorrowing(
         CreditLedgerPostBorrowingCommand(
+          bookId: command.bookId,
           amount: contract.principal,
           liabilityAccountId: contract.liabilityAccountId,
           occurredAt: command.occurredAt,

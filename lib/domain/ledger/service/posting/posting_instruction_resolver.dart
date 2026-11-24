@@ -70,6 +70,7 @@ class DefaultPostingInstructionResolver implements PostingInstructionResolver {
       );
     }
     return RefundInstruction(
+      bookId: transaction.bookId,
       parentTransactionId: transaction.parentTransactionId!,
       amount: transaction.primaryAmount,
       categoryAllocations: categories,
@@ -94,6 +95,7 @@ class DefaultPostingInstructionResolver implements PostingInstructionResolver {
           .throwException(message: 'Expense accounts cannot be resolved.');
     }
     return ExpenseInstruction(
+      bookId: transaction.bookId,
       amount: transaction.primaryAmount,
       categoryAllocations: categories,
       settlementAllocations: settlements,
@@ -121,6 +123,7 @@ class DefaultPostingInstructionResolver implements PostingInstructionResolver {
       );
     }
     return IncomeInstruction(
+      bookId: transaction.bookId,
       amount: transaction.primaryAmount,
       categoryAllocations: categories,
       settlementAllocations: settlements,
@@ -156,6 +159,7 @@ class DefaultPostingInstructionResolver implements PostingInstructionResolver {
           .throwException(message: 'Advance accounts cannot be resolved.');
     }
     return AdvanceInstruction(
+      bookId: transaction.bookId,
       amount: transaction.primaryAmount,
       advanceAmount: advanceAmount,
       receivableAccountId: receivableAccountId,
@@ -185,6 +189,7 @@ class DefaultPostingInstructionResolver implements PostingInstructionResolver {
           .throwException(message: 'Transfer accounts cannot be resolved.');
     }
     return TransferInstruction(
+      bookId: transaction.bookId,
       amount: transaction.primaryAmount,
       outgoingAllocations: outgoingAllocations,
       incomingAllocations: incomingAllocations,
@@ -211,6 +216,7 @@ class DefaultPostingInstructionResolver implements PostingInstructionResolver {
           .throwException(message: 'Borrowing accounts cannot be resolved.');
     }
     return BorrowingInstruction(
+      bookId: transaction.bookId,
       amount: transaction.primaryAmount,
       liabilityAccountId: liabilityAccountId,
       receiveAccountId: receiveAccountId,
@@ -236,6 +242,7 @@ class DefaultPostingInstructionResolver implements PostingInstructionResolver {
           .throwException(message: 'Repayment accounts cannot be resolved.');
     }
     return RepaymentInstruction(
+      bookId: transaction.bookId,
       principal: principal,
       interest: transaction.amountOf(TransactionRole.interest),
       fee: transaction.amountOf(TransactionRole.fee),
@@ -263,6 +270,7 @@ class DefaultPostingInstructionResolver implements PostingInstructionResolver {
           .throwException(message: 'Lending accounts cannot be resolved.');
     }
     return LendingInstruction(
+      bookId: transaction.bookId,
       amount: transaction.primaryAmount,
       receivableAccountId: receivableAccountId,
       paidFromAccountId: paidFromAccountId,
@@ -291,6 +299,7 @@ class DefaultPostingInstructionResolver implements PostingInstructionResolver {
           );
     }
     return ReceivableCollectionInstruction(
+      bookId: transaction.bookId,
       principal: principal,
       interest: transaction.amountOf(TransactionRole.interest) ?? Money.zero(),
       receivableAccountId: receivableAccountId,
@@ -312,6 +321,7 @@ class DefaultPostingInstructionResolver implements PostingInstructionResolver {
           .throwException(message: 'Bad debt accounts cannot be resolved.');
     }
     return BadDebtInstruction(
+      bookId: transaction.bookId,
       amount: transaction.primaryAmount,
       receivableAccountId: receivableAccountId,
       occurredAt: transaction.occurredAt,
@@ -331,6 +341,7 @@ class DefaultPostingInstructionResolver implements PostingInstructionResolver {
           .throwException(message: 'Debt relief accounts cannot be resolved.');
     }
     return DebtReliefInstruction(
+      bookId: transaction.bookId,
       amount: transaction.primaryAmount,
       liabilityAccountId: liabilityAccountId,
       occurredAt: transaction.occurredAt,

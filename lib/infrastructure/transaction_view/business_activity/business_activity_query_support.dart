@@ -32,6 +32,10 @@ final class BusinessActivityCandidateSql {
   }
 
   void apply(BusinessActivityPageQuery query) {
+    if (query.bookId != null) {
+      addCondition('$displayTransactionAlias.book_id = ?');
+      _variables.add(Variable<String>(query.bookId!));
+    }
     addCondition(
       '$activityAtExpression >= ? AND '
       '$activityAtExpression < ?',

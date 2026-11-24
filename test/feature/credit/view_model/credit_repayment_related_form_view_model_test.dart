@@ -1,3 +1,4 @@
+import '../../../helper/book_selection_override.dart';
 import 'package:smartflow/domain/credit/valobj/installment_contract_terms.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -954,6 +955,8 @@ ProviderContainer _container({
   final repaymentServices = repaymentAppService ?? _FakeRepaymentAppService();
   final container = ProviderContainer(
     overrides: [
+      bookSelectionTestOverride,
+      bookListTestOverride,
       accountsForSelectionPurposeProvider.overrideWith(
         (ref, purpose) => Stream.value(switch (purpose) {
           AccountSelectionPurpose.repaymentTarget => [

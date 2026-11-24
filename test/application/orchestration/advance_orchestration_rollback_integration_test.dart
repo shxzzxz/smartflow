@@ -63,6 +63,7 @@ void main() {
 class _FailingLedgerPort implements AdvanceLedgerPort {
   @override
   Future<String> postAdvance({
+    String? bookId,
     required Money amount,
     required Money advanceAmount,
     required String receivableAccountId,

@@ -1,3 +1,4 @@
+import '../../../helper/fake_book_repository.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/application/ledger/ledger_command_api.dart';
 import 'package:smartflow/application/ledger/reconciliation/port/account_reconciliation_repository.dart';
@@ -229,6 +230,7 @@ AccountAppServiceImpl _service(
 }) {
   return AccountAppServiceImpl(
     repository,
+    bookRepository: FakeBookRepository(),
     transactionRunner: transactionRunner,
     ledgerPostingService: _UnusedLedgerPostingService(),
     transactionRepository: _FakeTransactionRepository(entryCounts),

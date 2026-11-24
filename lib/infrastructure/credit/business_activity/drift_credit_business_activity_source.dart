@@ -182,6 +182,10 @@ final class _AnchorSql {
   List<Variable> get variables => List.unmodifiable(_variables);
 
   void apply(CreditBusinessActivityQuery query) {
+    if (query.bookId != null) {
+      _conditions.add('$transactionAlias.book_id = ?');
+      _variables.add(Variable<String>(query.bookId!));
+    }
     _conditions.add(
       '($transactionAlias.occurred_at >= ? AND '
       '$transactionAlias.occurred_at < ?)',

@@ -1,3 +1,4 @@
+import '../../../helper/backup_snapshot.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/application/credit/product/installment_product_app_service.dart';
 import 'package:smartflow/application/data_management/backup/backup_models.dart';
@@ -293,7 +294,7 @@ void main() {
     'backup rejects product values and a schedule pointing to a product stage',
     () async {
       final base = await DriftBackupGateway(db).readSnapshot();
-      final snapshot = BackupSnapshot(
+      final snapshot = createBackupSnapshot(
         tables: {
           ...base.tables,
           'installment_products': [

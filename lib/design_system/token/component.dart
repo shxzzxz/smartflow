@@ -44,6 +44,7 @@ abstract final class AppComponentTokens {
   static const double focusedOutlineWidth = 1.5;
   static const double adaptiveLayoutTextScaleThreshold = 1.3;
   static const double selectionSheetMaxHeightFactor = 0.60;
+  static const double selectionMenuMaxWidth = 280;
   static const double pageBackgroundPreviewHeight = 160;
   static const double chromeAppearancePreviewHeight = 240;
   static const double settingsColorSwatchSize = 24;

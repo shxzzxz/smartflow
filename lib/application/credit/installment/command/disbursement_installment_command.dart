@@ -3,6 +3,7 @@ import 'package:smartflow/domain/credit/valobj/installment_contract_terms.dart';
 
 class CreateDisbursementInstallmentCommand {
   const CreateDisbursementInstallmentCommand({
+    this.bookId,
     this.name,
     required this.liabilityAccountId,
     required this.principal,
@@ -13,6 +14,7 @@ class CreateDisbursementInstallmentCommand {
     required this.stageTerms,
   });
 
+  final String? bookId;
   final String liabilityAccountId;
   final String? name;
 
@@ -41,11 +43,13 @@ class DisbursementInstallmentResult {
 
 class CreateDisbursementTransactionCommand {
   const CreateDisbursementTransactionCommand({
+    this.bookId,
     required this.contractId,
     required this.receiveAccountId,
     required this.occurredAt,
   });
 
+  final String? bookId;
   final String contractId;
   final String receiveAccountId;
 

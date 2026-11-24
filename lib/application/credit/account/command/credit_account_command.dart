@@ -4,6 +4,7 @@ import 'package:smartflow/domain/credit/valobj/credit_account_enums.dart';
 
 class CreateCreditLiabilityAccountCommand {
   const CreateCreditLiabilityAccountCommand({
+    this.transactionBookId,
     required this.name,
     required this.kind,
     this.openingBalance = const Money(minorUnits: 0),
@@ -18,6 +19,7 @@ class CreateCreditLiabilityAccountCommand {
     this.isHidden = false,
   });
 
+  final String? transactionBookId;
   final String name;
   final CreditLiabilityAccountKind kind;
   final Money openingBalance;
@@ -34,6 +36,7 @@ class CreateCreditLiabilityAccountCommand {
 
 class EditCreditLiabilityAccountCommand {
   const EditCreditLiabilityAccountCommand({
+    this.transactionBookId,
     required this.accountId,
     this.name,
     this.iconKey,
@@ -46,6 +49,7 @@ class EditCreditLiabilityAccountCommand {
     this.targetBalance,
   });
 
+  final String? transactionBookId;
   final String accountId;
   final String? name;
   final Patch<String>? iconKey;

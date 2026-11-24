@@ -535,6 +535,60 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  for (final direction in TextDirection.values) {
+    testWidgets('single row keeps the core between controls in $direction', (
+      tester,
+    ) async {
+      await tester.binding.setSurfaceSize(const Size(320, 800));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      const leadingKey = ValueKey('single-row-leading');
+      const coreKey = ValueKey('single-row-core');
+      await tester.pumpWidget(
+        wrap(
+          Directionality(
+            textDirection: direction,
+            child: AppPageHeader.custom(
+              singleRow: true,
+              leading: const SizedBox(key: leadingKey, width: 100, height: 36),
+              titleContent: const SizedBox(
+                key: coreKey,
+                width: 240,
+                height: 36,
+              ),
+              actions: [
+                AppHeaderIconButton(
+                  icon: RemixIcons.filter_line,
+                  tooltip: '筛选',
+                  onPressed: () {},
+                ),
+                AppHeaderIconButton(
+                  icon: RemixIcons.settings_3_line,
+                  tooltip: '设置',
+                  onPressed: () {},
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+
+      final leading = tester.getRect(find.byKey(leadingKey));
+      final core = tester.getRect(find.byKey(coreKey));
+      final action = tester.getRect(find.byTooltip('筛选'));
+      expect(core.center.dy, moreOrLessEquals(leading.center.dy));
+      expect(core.center.dy, moreOrLessEquals(action.center.dy));
+      expect(core.width, inExclusiveRange(0, 240));
+      if (direction == TextDirection.ltr) {
+        expect(core.left, greaterThan(leading.right));
+        expect(core.right, lessThan(action.left));
+      } else {
+        expect(core.left, greaterThan(action.right));
+        expect(core.right, lessThan(leading.left));
+      }
+      expect(tester.takeException(), isNull);
+    });
+  }
+
   testWidgets('RTL mirrors the sides and preserves the centered title', (
     tester,
   ) async {

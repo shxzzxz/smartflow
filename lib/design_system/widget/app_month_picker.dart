@@ -58,6 +58,7 @@ class _AppMonthSelectorState extends State<AppMonthSelector> {
           children: [
             AppHeaderIconButton(
               icon: RemixIcons.arrow_left_s_line,
+              compact: true,
               tooltip: '上个月',
               onPressed: widget.onPreviousMonth,
             ),
@@ -69,7 +70,7 @@ class _AppMonthSelectorState extends State<AppMonthSelector> {
                   borderRadius: BorderRadius.circular(AppRadius.radiusLg),
                   child: Padding(
                     padding: const EdgeInsets.symmetric(
-                      horizontal: AppSpacing.space4,
+                      horizontal: AppSpacing.space0,
                       vertical: AppSpacing.space8,
                     ),
                     child: Text(
@@ -84,6 +85,7 @@ class _AppMonthSelectorState extends State<AppMonthSelector> {
             ),
             AppHeaderIconButton(
               icon: RemixIcons.arrow_right_s_line,
+              compact: true,
               tooltip: '下个月',
               onPressed: widget.onNextMonth,
             ),

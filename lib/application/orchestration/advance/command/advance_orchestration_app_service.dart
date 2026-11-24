@@ -78,6 +78,7 @@ class AdvanceOrchestrationAppServiceImpl
       switch (command.target) {
         case OrdinaryExpenseSceneTarget():
           return _ledger.postExpense(
+            bookId: command.bookId,
             amount: command.amount,
             categoryAllocations: command.categoryAllocations,
             settlementAllocations: command.settlementAllocations,
@@ -97,6 +98,7 @@ class AdvanceOrchestrationAppServiceImpl
         ):
           return _createAdvance(
             CreateAdvanceWorkflowCommand(
+              bookId: command.bookId,
               amount: command.amount,
               scenario: scenario,
               trackingMode: AdvanceTrackingMode.itemized,
@@ -121,6 +123,7 @@ class AdvanceOrchestrationAppServiceImpl
         ):
           return _createAdvance(
             CreateAdvanceWorkflowCommand(
+              bookId: command.bookId,
               amount: command.amount,
               scenario: scenario,
               trackingMode: AdvanceTrackingMode.account,
@@ -156,6 +159,7 @@ class AdvanceOrchestrationAppServiceImpl
       categoryAllocations: command.categoryAllocations,
     );
     return _ledger.postAdvance(
+      bookId: command.bookId,
       amount: command.amount,
       advanceAmount: split.advanceAmount,
       receivableAccountId: command.receivableAccountId,
@@ -436,6 +440,7 @@ class AdvanceOrchestrationAppServiceImpl
         command.advanceTransactionId,
       );
       return _ledger.postAdvanceCollection(
+        bookId: command.bookId,
         amount: command.amount,
         advanceTransactionId: command.advanceTransactionId,
         receivableAccountId: command.receivableAccountId,
@@ -458,6 +463,7 @@ class AdvanceOrchestrationAppServiceImpl
         command.advanceTransactionId,
       );
       return _ledger.postAdvanceSettlement(
+        bookId: command.bookId,
         actualReceivedAmount: command.actualReceivedAmount,
         advanceTransactionId: command.advanceTransactionId,
         receivableAccountId: command.receivableAccountId,
@@ -558,6 +564,7 @@ class AdvanceOrchestrationAppServiceImpl
         aaPeopleCount: advanceCase.aaPeopleCount,
       );
       return _ledger.postRefund(
+        bookId: command.bookId,
         parentTransactionId: command.parentTransactionId,
         amount: command.amount,
         categoryAllocations: command.categoryAllocations,

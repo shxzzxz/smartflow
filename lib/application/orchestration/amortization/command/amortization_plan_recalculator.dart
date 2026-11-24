@@ -52,9 +52,13 @@ final class AmortizationPlanRecalculator {
     final duePeriods = plan.duePeriods(now);
     if (duePeriods.isEmpty) return plan;
 
+    final bookId = await _ledger.findTransactionBookId(
+      plan.initialTransactionId,
+    );
     final generatedBySequence = <int, String>{};
     for (final period in duePeriods) {
       generatedBySequence[period.sequenceNo] = await _postRecognition(
+        bookId: bookId,
         plan: plan,
         amount: period.amount,
         categoryAllocations: period.categoryAllocations,
@@ -164,6 +168,7 @@ final class AmortizationPlanRecalculator {
   }
 
   Future<String> _postRecognition({
+    String? bookId,
     required AmortizationPlan plan,
     required Money amount,
     required List<AccountAmountAllocation> categoryAllocations,
@@ -179,6 +184,7 @@ final class AmortizationPlanRecalculator {
     );
     return switch (plan.kind) {
       AmortizationKind.prepaidExpense => _ledger.postExpense(
+        bookId: bookId,
         amount: amount,
         categoryAllocations: categoryAllocations,
         settlementAllocations: settlement,
@@ -188,6 +194,7 @@ final class AmortizationPlanRecalculator {
         isExcludedFromBudget: false,
       ),
       AmortizationKind.deferredIncome => _ledger.postIncome(
+        bookId: bookId,
         amount: amount,
         categoryAllocations: categoryAllocations,
         settlementAllocations: settlement,

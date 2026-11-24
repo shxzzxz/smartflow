@@ -110,6 +110,7 @@ final class AdvanceBusinessActivitySource implements BusinessActivitySource {
 
   AdvanceBusinessActivityQuery _queryFor(BusinessActivityPageQuery query) {
     return AdvanceBusinessActivityQuery(
+      bookId: query.bookId,
       occurredFrom: query.occurredFrom,
       occurredUntil: query.occurredUntil,
       before: switch (query.before) {

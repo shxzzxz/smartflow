@@ -51,6 +51,7 @@ class DriftBackupGateway
         'installment_repricing_records':
             (await database.select(database.installmentRepricingRecords).get())
                 .map(_json),
+        'books': (await database.select(database.books).get()).map(_json),
         'accounts': (await database.select(database.accounts).get()).map(_json),
         'account_groups': (await database.select(database.accountGroups).get())
             .map(_json),
@@ -234,6 +235,7 @@ class DriftBackupGateway
         'entries',
         'transaction_lines',
         'transactions',
+        'books',
         'amortization_allocations',
         'amortization_periods',
         'amortization_refunds',
@@ -325,6 +327,12 @@ class DriftBackupGateway
           snapshot
               .rows('counterparties')
               .map((row) => CounterpartyRow.fromJson(row).toCompanion(true)),
+        );
+        batch.insertAll(
+          database.books,
+          snapshot
+              .rows('books')
+              .map((row) => BookRow.fromJson(row).toCompanion(true)),
         );
         batch.insertAll(
           database.transactions,
@@ -602,6 +610,9 @@ class DriftBackupGateway
   }
 
   BackupJson _json(Object row) {
+    if (row is BookRow) {
+      return row.toJson().cast<String, Object?>();
+    }
     if (row is AccountRow) {
       return row.toJson().cast<String, Object?>();
     }

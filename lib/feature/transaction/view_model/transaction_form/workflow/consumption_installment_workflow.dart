@@ -71,6 +71,7 @@ final class _ConsumptionInstallmentFormWorkflow {
 
     await _service.create(
       CreateConsumptionInstallmentCommand(
+        bookId: state.bookId,
         liabilityAccountId: liabilityAccountId,
         amount: amount,
         categoryAllocations: categoryAllocations,

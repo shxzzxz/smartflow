@@ -42,9 +42,8 @@ void main() {
         ),
         GoRoute(
           path: '/account/:id',
-          builder:
-              (context, state) =>
-                  Scaffold(body: Text('账户详情 ${state.pathParameters['id']}')),
+          builder: (context, state) =>
+              Scaffold(body: Text('账户详情 ${state.pathParameters['id']}')),
         ),
       ],
     );
@@ -123,12 +122,11 @@ Widget _buildArchivedAccountsPage({
         ]),
       ),
     ],
-    child:
-        router == null
-            ? MaterialApp(
-              theme: AppTheme.light(),
-              home: const ArchivedAccountsPage(),
-            )
-            : MaterialApp.router(theme: AppTheme.light(), routerConfig: router),
+    child: router == null
+        ? MaterialApp(
+            theme: AppTheme.light(),
+            home: const ArchivedAccountsPage(),
+          )
+        : MaterialApp.router(theme: AppTheme.light(), routerConfig: router),
   );
 }

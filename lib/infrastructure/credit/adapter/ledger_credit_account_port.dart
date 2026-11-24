@@ -19,6 +19,7 @@ class LedgerCreditAccountPort implements CreditAccountLedgerPort {
   ) async {
     final account = await _accountAppService.createAccount(
       ledger_command.CreateAccountCommand(
+        transactionBookId: command.transactionBookId,
         name: command.name,
         type: ledger_command.AccountType.liability,
         openingBalance: command.openingBalance,
@@ -51,6 +52,7 @@ class LedgerCreditAccountPort implements CreditAccountLedgerPort {
   ) {
     return _accountAppService.editAccount(
       ledger_command.EditAccountCommand(
+        transactionBookId: command.transactionBookId,
         id: command.accountId,
         name: command.name,
         iconKey: command.iconKey,

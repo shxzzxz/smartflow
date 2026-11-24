@@ -1,3 +1,4 @@
+import '../../../helper/book_selection_override.dart';
 import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -19,6 +20,8 @@ void main() {
     final service = _RecordingBusinessActivityQueryService();
     final container = ProviderContainer(
       overrides: [
+        bookSelectionTestOverride,
+        bookListTestOverride,
         businessActivityQueryServiceProvider.overrideWithValue(service),
         appSettingsStoreProvider.overrideWithValue(
           const MemoryAppSettingsStore(),
@@ -49,6 +52,8 @@ void main() {
     final service = _RecordingBusinessActivityQueryService();
     final container = ProviderContainer(
       overrides: [
+        bookSelectionTestOverride,
+        bookListTestOverride,
         businessActivityQueryServiceProvider.overrideWithValue(service),
         appSettingsStoreProvider.overrideWithValue(
           const MemoryAppSettingsStore(),
@@ -78,6 +83,8 @@ void main() {
     final service = _RecordingBusinessActivityQueryService();
     final container = ProviderContainer(
       overrides: [
+        bookSelectionTestOverride,
+        bookListTestOverride,
         businessActivityQueryServiceProvider.overrideWithValue(service),
         appSettingsStoreProvider.overrideWithValue(
           const MemoryAppSettingsStore(),
@@ -107,6 +114,8 @@ void main() {
     final service = _RecordingBusinessActivityQueryService();
     final container = ProviderContainer(
       overrides: [
+        bookSelectionTestOverride,
+        bookListTestOverride,
         businessActivityQueryServiceProvider.overrideWithValue(service),
         appSettingsStoreProvider.overrideWithValue(
           const MemoryAppSettingsStore(),
@@ -361,6 +370,8 @@ class _BatchFixture {
     final service = _RecordingBatchService();
     final container = ProviderContainer(
       overrides: [
+        bookSelectionTestOverride,
+        bookListTestOverride,
         businessActivityQueryServiceProvider.overrideWithValue(query),
         appSettingsStoreProvider.overrideWithValue(
           const MemoryAppSettingsStore(),

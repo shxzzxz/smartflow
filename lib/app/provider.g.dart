@@ -2768,7 +2768,7 @@ final class TransactionLedgerWriterProvider
 }
 
 String _$transactionLedgerWriterHash() =>
-    r'42d2fb511c97cf356237c8afa3d056e4c8f58308';
+    r'b6162773d06b549428df3a6304006197215ca1b9';
 
 @ProviderFor(advanceCaseRepository)
 final advanceCaseRepositoryProvider = AdvanceCaseRepositoryProvider._();
@@ -2959,7 +2959,7 @@ final class AmortizationLedgerPortProvider
 }
 
 String _$amortizationLedgerPortHash() =>
-    r'0d924904c76412ca60c96b645c6bf1b68943e51e';
+    r'be0015dbd884190398efc815c369ba05a71cdce5';
 
 @ProviderFor(advanceOrchestrationAppService)
 final advanceOrchestrationAppServiceProvider =
@@ -6058,3 +6058,131 @@ final class BillQueryServiceProvider
 }
 
 String _$billQueryServiceHash() => r'cda940ed42d0bb1f907e16557e59eb2999258e51';
+
+@ProviderFor(bookRepository)
+final bookRepositoryProvider = BookRepositoryProvider._();
+
+final class BookRepositoryProvider
+    extends $FunctionalProvider<BookRepository, BookRepository, BookRepository>
+    with $Provider<BookRepository> {
+  BookRepositoryProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'bookRepositoryProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$bookRepositoryHash();
+
+  @$internal
+  @override
+  $ProviderElement<BookRepository> $createElement($ProviderPointer pointer) =>
+      $ProviderElement(pointer);
+
+  @override
+  BookRepository create(Ref ref) {
+    return bookRepository(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(BookRepository value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<BookRepository>(value),
+    );
+  }
+}
+
+String _$bookRepositoryHash() => r'eee7bc429ef790736095c9656e47692c16e73a40';
+
+@ProviderFor(bookQueryService)
+final bookQueryServiceProvider = BookQueryServiceProvider._();
+
+final class BookQueryServiceProvider
+    extends
+        $FunctionalProvider<
+          BookQueryService,
+          BookQueryService,
+          BookQueryService
+        >
+    with $Provider<BookQueryService> {
+  BookQueryServiceProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'bookQueryServiceProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$bookQueryServiceHash();
+
+  @$internal
+  @override
+  $ProviderElement<BookQueryService> $createElement($ProviderPointer pointer) =>
+      $ProviderElement(pointer);
+
+  @override
+  BookQueryService create(Ref ref) {
+    return bookQueryService(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(BookQueryService value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<BookQueryService>(value),
+    );
+  }
+}
+
+String _$bookQueryServiceHash() => r'100ac1f73b8d89241fc71b9ce9ba6e597ba10c5c';
+
+@ProviderFor(bookAppService)
+final bookAppServiceProvider = BookAppServiceProvider._();
+
+final class BookAppServiceProvider
+    extends $FunctionalProvider<BookAppService, BookAppService, BookAppService>
+    with $Provider<BookAppService> {
+  BookAppServiceProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'bookAppServiceProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$bookAppServiceHash();
+
+  @$internal
+  @override
+  $ProviderElement<BookAppService> $createElement($ProviderPointer pointer) =>
+      $ProviderElement(pointer);
+
+  @override
+  BookAppService create(Ref ref) {
+    return bookAppService(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(BookAppService value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<BookAppService>(value),
+    );
+  }
+}
+
+String _$bookAppServiceHash() => r'44298795a262887acbe6932c0f5dd3f97088498a';

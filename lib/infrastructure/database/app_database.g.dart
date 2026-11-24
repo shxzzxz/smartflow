@@ -1040,6 +1040,360 @@ class AccountsCompanion extends UpdateCompanion<AccountRow> {
   }
 }
 
+class $BooksTable extends Books with TableInfo<$BooksTable, BookRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $BooksTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _nameMeta = const VerificationMeta('name');
+  @override
+  late final GeneratedColumn<String> name = GeneratedColumn<String>(
+    'name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways('UNIQUE'),
+  );
+  static const VerificationMeta _sortOrderMeta = const VerificationMeta(
+    'sortOrder',
+  );
+  @override
+  late final GeneratedColumn<int> sortOrder = GeneratedColumn<int>(
+    'sort_order',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    name,
+    sortOrder,
+    createdAt,
+    updatedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'books';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<BookRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('name')) {
+      context.handle(
+        _nameMeta,
+        name.isAcceptableOrUnknown(data['name']!, _nameMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_nameMeta);
+    }
+    if (data.containsKey('sort_order')) {
+      context.handle(
+        _sortOrderMeta,
+        sortOrder.isAcceptableOrUnknown(data['sort_order']!, _sortOrderMeta),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  BookRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return BookRow(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      name: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}name'],
+      )!,
+      sortOrder: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}sort_order'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+    );
+  }
+
+  @override
+  $BooksTable createAlias(String alias) {
+    return $BooksTable(attachedDatabase, alias);
+  }
+}
+
+class BookRow extends DataClass implements Insertable<BookRow> {
+  final String id;
+  final String name;
+  final int sortOrder;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+  const BookRow({
+    required this.id,
+    required this.name,
+    required this.sortOrder,
+    required this.createdAt,
+    required this.updatedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['name'] = Variable<String>(name);
+    map['sort_order'] = Variable<int>(sortOrder);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    return map;
+  }
+
+  BooksCompanion toCompanion(bool nullToAbsent) {
+    return BooksCompanion(
+      id: Value(id),
+      name: Value(name),
+      sortOrder: Value(sortOrder),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory BookRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return BookRow(
+      id: serializer.fromJson<String>(json['id']),
+      name: serializer.fromJson<String>(json['name']),
+      sortOrder: serializer.fromJson<int>(json['sortOrder']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'name': serializer.toJson<String>(name),
+      'sortOrder': serializer.toJson<int>(sortOrder),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+    };
+  }
+
+  BookRow copyWith({
+    String? id,
+    String? name,
+    int? sortOrder,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+  }) => BookRow(
+    id: id ?? this.id,
+    name: name ?? this.name,
+    sortOrder: sortOrder ?? this.sortOrder,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
+  BookRow copyWithCompanion(BooksCompanion data) {
+    return BookRow(
+      id: data.id.present ? data.id.value : this.id,
+      name: data.name.present ? data.name.value : this.name,
+      sortOrder: data.sortOrder.present ? data.sortOrder.value : this.sortOrder,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('BookRow(')
+          ..write('id: $id, ')
+          ..write('name: $name, ')
+          ..write('sortOrder: $sortOrder, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(id, name, sortOrder, createdAt, updatedAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is BookRow &&
+          other.id == this.id &&
+          other.name == this.name &&
+          other.sortOrder == this.sortOrder &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt);
+}
+
+class BooksCompanion extends UpdateCompanion<BookRow> {
+  final Value<String> id;
+  final Value<String> name;
+  final Value<int> sortOrder;
+  final Value<DateTime> createdAt;
+  final Value<DateTime> updatedAt;
+  final Value<int> rowid;
+  const BooksCompanion({
+    this.id = const Value.absent(),
+    this.name = const Value.absent(),
+    this.sortOrder = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  BooksCompanion.insert({
+    required String id,
+    required String name,
+    this.sortOrder = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       name = Value(name);
+  static Insertable<BookRow> custom({
+    Expression<String>? id,
+    Expression<String>? name,
+    Expression<int>? sortOrder,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? updatedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (name != null) 'name': name,
+      if (sortOrder != null) 'sort_order': sortOrder,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  BooksCompanion copyWith({
+    Value<String>? id,
+    Value<String>? name,
+    Value<int>? sortOrder,
+    Value<DateTime>? createdAt,
+    Value<DateTime>? updatedAt,
+    Value<int>? rowid,
+  }) {
+    return BooksCompanion(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      sortOrder: sortOrder ?? this.sortOrder,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (name.present) {
+      map['name'] = Variable<String>(name.value);
+    }
+    if (sortOrder.present) {
+      map['sort_order'] = Variable<int>(sortOrder.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('BooksCompanion(')
+          ..write('id: $id, ')
+          ..write('name: $name, ')
+          ..write('sortOrder: $sortOrder, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 class $AccountGroupsTable extends AccountGroups
     with TableInfo<$AccountGroupsTable, AccountGroupRow> {
   @override
@@ -2139,6 +2493,16 @@ class $TransactionsTable extends Transactions
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _bookIdMeta = const VerificationMeta('bookId');
+  @override
+  late final GeneratedColumn<String> bookId = GeneratedColumn<String>(
+    'book_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(Book.dailyId),
+  );
   @override
   late final GeneratedColumnWithTypeConverter<BusinessPurpose, String>
   businessPurpose =
@@ -2300,6 +2664,7 @@ class $TransactionsTable extends Transactions
   @override
   List<GeneratedColumn> get $columns => [
     id,
+    bookId,
     businessPurpose,
     occurredAt,
     postedAt,
@@ -2331,6 +2696,12 @@ class $TransactionsTable extends Transactions
       context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
     } else if (isInserting) {
       context.missing(_idMeta);
+    }
+    if (data.containsKey('book_id')) {
+      context.handle(
+        _bookIdMeta,
+        bookId.isAcceptableOrUnknown(data['book_id']!, _bookIdMeta),
+      );
     }
     if (data.containsKey('occurred_at')) {
       context.handle(
@@ -2438,6 +2809,10 @@ class $TransactionsTable extends Transactions
         DriftSqlType.string,
         data['${effectivePrefix}id'],
       )!,
+      bookId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}book_id'],
+      )!,
       businessPurpose: $TransactionsTable.$converterbusinessPurpose.fromSql(
         attachedDatabase.typeMapping.read(
           DriftSqlType.string,
@@ -2516,6 +2891,7 @@ class $TransactionsTable extends Transactions
 
 class TransactionRow extends DataClass implements Insertable<TransactionRow> {
   final String id;
+  final String bookId;
   final BusinessPurpose businessPurpose;
   final DateTime occurredAt;
   final DateTime postedAt;
@@ -2532,6 +2908,7 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
   final DateTime updatedAt;
   const TransactionRow({
     required this.id,
+    required this.bookId,
     required this.businessPurpose,
     required this.occurredAt,
     required this.postedAt,
@@ -2551,6 +2928,7 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
     map['id'] = Variable<String>(id);
+    map['book_id'] = Variable<String>(bookId);
     {
       map['business_purpose'] = Variable<String>(
         $TransactionsTable.$converterbusinessPurpose.toSql(businessPurpose),
@@ -2589,6 +2967,7 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
   TransactionsCompanion toCompanion(bool nullToAbsent) {
     return TransactionsCompanion(
       id: Value(id),
+      bookId: Value(bookId),
       businessPurpose: Value(businessPurpose),
       occurredAt: Value(occurredAt),
       postedAt: Value(postedAt),
@@ -2621,6 +3000,7 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return TransactionRow(
       id: serializer.fromJson<String>(json['id']),
+      bookId: serializer.fromJson<String>(json['bookId']),
       businessPurpose: $TransactionsTable.$converterbusinessPurpose.fromJson(
         serializer.fromJson<String>(json['businessPurpose']),
       ),
@@ -2652,6 +3032,7 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return <String, dynamic>{
       'id': serializer.toJson<String>(id),
+      'bookId': serializer.toJson<String>(bookId),
       'businessPurpose': serializer.toJson<String>(
         $TransactionsTable.$converterbusinessPurpose.toJson(businessPurpose),
       ),
@@ -2675,6 +3056,7 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
 
   TransactionRow copyWith({
     String? id,
+    String? bookId,
     BusinessPurpose? businessPurpose,
     DateTime? occurredAt,
     DateTime? postedAt,
@@ -2691,6 +3073,7 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
     DateTime? updatedAt,
   }) => TransactionRow(
     id: id ?? this.id,
+    bookId: bookId ?? this.bookId,
     businessPurpose: businessPurpose ?? this.businessPurpose,
     occurredAt: occurredAt ?? this.occurredAt,
     postedAt: postedAt ?? this.postedAt,
@@ -2713,6 +3096,7 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
   TransactionRow copyWithCompanion(TransactionsCompanion data) {
     return TransactionRow(
       id: data.id.present ? data.id.value : this.id,
+      bookId: data.bookId.present ? data.bookId.value : this.bookId,
       businessPurpose: data.businessPurpose.present
           ? data.businessPurpose.value
           : this.businessPurpose,
@@ -2750,6 +3134,7 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
   String toString() {
     return (StringBuffer('TransactionRow(')
           ..write('id: $id, ')
+          ..write('bookId: $bookId, ')
           ..write('businessPurpose: $businessPurpose, ')
           ..write('occurredAt: $occurredAt, ')
           ..write('postedAt: $postedAt, ')
@@ -2771,6 +3156,7 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
   @override
   int get hashCode => Object.hash(
     id,
+    bookId,
     businessPurpose,
     occurredAt,
     postedAt,
@@ -2791,6 +3177,7 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
       identical(this, other) ||
       (other is TransactionRow &&
           other.id == this.id &&
+          other.bookId == this.bookId &&
           other.businessPurpose == this.businessPurpose &&
           other.occurredAt == this.occurredAt &&
           other.postedAt == this.postedAt &&
@@ -2809,6 +3196,7 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
 
 class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
   final Value<String> id;
+  final Value<String> bookId;
   final Value<BusinessPurpose> businessPurpose;
   final Value<DateTime> occurredAt;
   final Value<DateTime> postedAt;
@@ -2826,6 +3214,7 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
   final Value<int> rowid;
   const TransactionsCompanion({
     this.id = const Value.absent(),
+    this.bookId = const Value.absent(),
     this.businessPurpose = const Value.absent(),
     this.occurredAt = const Value.absent(),
     this.postedAt = const Value.absent(),
@@ -2844,6 +3233,7 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
   });
   TransactionsCompanion.insert({
     required String id,
+    this.bookId = const Value.absent(),
     required BusinessPurpose businessPurpose,
     required DateTime occurredAt,
     required DateTime postedAt,
@@ -2867,6 +3257,7 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
        sourceKind = Value(sourceKind);
   static Insertable<TransactionRow> custom({
     Expression<String>? id,
+    Expression<String>? bookId,
     Expression<String>? businessPurpose,
     Expression<DateTime>? occurredAt,
     Expression<DateTime>? postedAt,
@@ -2885,6 +3276,7 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
+      if (bookId != null) 'book_id': bookId,
       if (businessPurpose != null) 'business_purpose': businessPurpose,
       if (occurredAt != null) 'occurred_at': occurredAt,
       if (postedAt != null) 'posted_at': postedAt,
@@ -2909,6 +3301,7 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
 
   TransactionsCompanion copyWith({
     Value<String>? id,
+    Value<String>? bookId,
     Value<BusinessPurpose>? businessPurpose,
     Value<DateTime>? occurredAt,
     Value<DateTime>? postedAt,
@@ -2927,6 +3320,7 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
   }) {
     return TransactionsCompanion(
       id: id ?? this.id,
+      bookId: bookId ?? this.bookId,
       businessPurpose: businessPurpose ?? this.businessPurpose,
       occurredAt: occurredAt ?? this.occurredAt,
       postedAt: postedAt ?? this.postedAt,
@@ -2950,6 +3344,9 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
     final map = <String, Expression>{};
     if (id.present) {
       map['id'] = Variable<String>(id.value);
+    }
+    if (bookId.present) {
+      map['book_id'] = Variable<String>(bookId.value);
     }
     if (businessPurpose.present) {
       map['business_purpose'] = Variable<String>(
@@ -3013,6 +3410,7 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
   String toString() {
     return (StringBuffer('TransactionsCompanion(')
           ..write('id: $id, ')
+          ..write('bookId: $bookId, ')
           ..write('businessPurpose: $businessPurpose, ')
           ..write('occurredAt: $occurredAt, ')
           ..write('postedAt: $postedAt, ')
@@ -25145,6 +25543,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
   late final $AccountsTable accounts = $AccountsTable(this);
+  late final $BooksTable books = $BooksTable(this);
   late final $AccountGroupsTable accountGroups = $AccountGroupsTable(this);
   late final $AccountReconciliationSnapshotsTable
   accountReconciliationSnapshots = $AccountReconciliationSnapshotsTable(this);
@@ -25236,6 +25635,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   @override
   List<DatabaseSchemaEntity> get allSchemaEntities => [
     accounts,
+    books,
     accountGroups,
     accountReconciliationSnapshots,
     appMetadata,
@@ -25742,6 +26142,199 @@ typedef $$AccountsTableProcessedTableManager =
       $$AccountsTableUpdateCompanionBuilder,
       (AccountRow, BaseReferences<_$AppDatabase, $AccountsTable, AccountRow>),
       AccountRow,
+      PrefetchHooks Function()
+    >;
+typedef $$BooksTableCreateCompanionBuilder =
+    BooksCompanion Function({
+      required String id,
+      required String name,
+      Value<int> sortOrder,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+      Value<int> rowid,
+    });
+typedef $$BooksTableUpdateCompanionBuilder =
+    BooksCompanion Function({
+      Value<String> id,
+      Value<String> name,
+      Value<int> sortOrder,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+      Value<int> rowid,
+    });
+
+class $$BooksTableFilterComposer extends Composer<_$AppDatabase, $BooksTable> {
+  $$BooksTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get sortOrder => $composableBuilder(
+    column: $table.sortOrder,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$BooksTableOrderingComposer
+    extends Composer<_$AppDatabase, $BooksTable> {
+  $$BooksTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get sortOrder => $composableBuilder(
+    column: $table.sortOrder,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$BooksTableAnnotationComposer
+    extends Composer<_$AppDatabase, $BooksTable> {
+  $$BooksTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get name =>
+      $composableBuilder(column: $table.name, builder: (column) => column);
+
+  GeneratedColumn<int> get sortOrder =>
+      $composableBuilder(column: $table.sortOrder, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+}
+
+class $$BooksTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $BooksTable,
+          BookRow,
+          $$BooksTableFilterComposer,
+          $$BooksTableOrderingComposer,
+          $$BooksTableAnnotationComposer,
+          $$BooksTableCreateCompanionBuilder,
+          $$BooksTableUpdateCompanionBuilder,
+          (BookRow, BaseReferences<_$AppDatabase, $BooksTable, BookRow>),
+          BookRow,
+          PrefetchHooks Function()
+        > {
+  $$BooksTableTableManager(_$AppDatabase db, $BooksTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$BooksTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$BooksTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$BooksTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> name = const Value.absent(),
+                Value<int> sortOrder = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => BooksCompanion(
+                id: id,
+                name: name,
+                sortOrder: sortOrder,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String name,
+                Value<int> sortOrder = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => BooksCompanion.insert(
+                id: id,
+                name: name,
+                sortOrder: sortOrder,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$BooksTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $BooksTable,
+      BookRow,
+      $$BooksTableFilterComposer,
+      $$BooksTableOrderingComposer,
+      $$BooksTableAnnotationComposer,
+      $$BooksTableCreateCompanionBuilder,
+      $$BooksTableUpdateCompanionBuilder,
+      (BookRow, BaseReferences<_$AppDatabase, $BooksTable, BookRow>),
+      BookRow,
       PrefetchHooks Function()
     >;
 typedef $$AccountGroupsTableCreateCompanionBuilder =
@@ -26358,6 +26951,7 @@ typedef $$AppMetadataTableProcessedTableManager =
 typedef $$TransactionsTableCreateCompanionBuilder =
     TransactionsCompanion Function({
       required String id,
+      Value<String> bookId,
       required BusinessPurpose businessPurpose,
       required DateTime occurredAt,
       required DateTime postedAt,
@@ -26377,6 +26971,7 @@ typedef $$TransactionsTableCreateCompanionBuilder =
 typedef $$TransactionsTableUpdateCompanionBuilder =
     TransactionsCompanion Function({
       Value<String> id,
+      Value<String> bookId,
       Value<BusinessPurpose> businessPurpose,
       Value<DateTime> occurredAt,
       Value<DateTime> postedAt,
@@ -26405,6 +27000,11 @@ class $$TransactionsTableFilterComposer
   });
   ColumnFilters<String> get id => $composableBuilder(
     column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get bookId => $composableBuilder(
+    column: $table.bookId,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -26495,6 +27095,11 @@ class $$TransactionsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get bookId => $composableBuilder(
+    column: $table.bookId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get businessPurpose => $composableBuilder(
     column: $table.businessPurpose,
     builder: (column) => ColumnOrderings(column),
@@ -26577,6 +27182,9 @@ class $$TransactionsTableAnnotationComposer
   });
   GeneratedColumn<String> get id =>
       $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get bookId =>
+      $composableBuilder(column: $table.bookId, builder: (column) => column);
 
   GeneratedColumnWithTypeConverter<BusinessPurpose, String>
   get businessPurpose => $composableBuilder(
@@ -26671,6 +27279,7 @@ class $$TransactionsTableTableManager
           updateCompanionCallback:
               ({
                 Value<String> id = const Value.absent(),
+                Value<String> bookId = const Value.absent(),
                 Value<BusinessPurpose> businessPurpose = const Value.absent(),
                 Value<DateTime> occurredAt = const Value.absent(),
                 Value<DateTime> postedAt = const Value.absent(),
@@ -26688,6 +27297,7 @@ class $$TransactionsTableTableManager
                 Value<int> rowid = const Value.absent(),
               }) => TransactionsCompanion(
                 id: id,
+                bookId: bookId,
                 businessPurpose: businessPurpose,
                 occurredAt: occurredAt,
                 postedAt: postedAt,
@@ -26707,6 +27317,7 @@ class $$TransactionsTableTableManager
           createCompanionCallback:
               ({
                 required String id,
+                Value<String> bookId = const Value.absent(),
                 required BusinessPurpose businessPurpose,
                 required DateTime occurredAt,
                 required DateTime postedAt,
@@ -26724,6 +27335,7 @@ class $$TransactionsTableTableManager
                 Value<int> rowid = const Value.absent(),
               }) => TransactionsCompanion.insert(
                 id: id,
+                bookId: bookId,
                 businessPurpose: businessPurpose,
                 occurredAt: occurredAt,
                 postedAt: postedAt,
@@ -37973,6 +38585,8 @@ class $AppDatabaseManager {
   $AppDatabaseManager(this._db);
   $$AccountsTableTableManager get accounts =>
       $$AccountsTableTableManager(_db, _db.accounts);
+  $$BooksTableTableManager get books =>
+      $$BooksTableTableManager(_db, _db.books);
   $$AccountGroupsTableTableManager get accountGroups =>
       $$AccountGroupsTableTableManager(_db, _db.accountGroups);
   $$AccountReconciliationSnapshotsTableTableManager

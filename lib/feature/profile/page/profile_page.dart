@@ -149,6 +149,11 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
         layout: ProfileGroupLayout.list,
         entries: [
           ProfileMenuEntry(
+            title: '账本管理',
+            iconKey: 'book',
+            onTap: () => context.push('/books'),
+          ),
+          ProfileMenuEntry(
             title: '截图记账',
             iconKey: 'capture',
             onTap: () => context.push('/capture'),

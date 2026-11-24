@@ -4,6 +4,7 @@ import 'package:smartflow/domain/ledger/valobj/ledger_enum.dart';
 
 class CreateAccountCommand {
   const CreateAccountCommand({
+    this.transactionBookId,
     required this.name,
     required this.type,
     this.openingBalance = const Money(minorUnits: 0),
@@ -16,6 +17,7 @@ class CreateAccountCommand {
     this.isHidden = false,
   });
 
+  final String? transactionBookId;
   final String name;
   final AccountType type;
   final Money openingBalance;
@@ -30,6 +32,7 @@ class CreateAccountCommand {
 
 class EditAccountCommand {
   const EditAccountCommand({
+    this.transactionBookId,
     required this.id,
     this.name,
     this.sortOrder,
@@ -40,6 +43,7 @@ class EditAccountCommand {
     this.targetBalance,
   });
 
+  final String? transactionBookId;
   final String id;
   final String? name;
   final int? sortOrder;

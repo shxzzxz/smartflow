@@ -6,6 +6,7 @@ import 'package:smartflow/domain/orchestration/valobj/advance_enums.dart';
 
 class CreateAdvanceWorkflowCommand {
   CreateAdvanceWorkflowCommand({
+    this.bookId,
     required this.amount,
     required this.scenario,
     required this.trackingMode,
@@ -24,6 +25,7 @@ class CreateAdvanceWorkflowCommand {
   }) : categoryAllocations = List.unmodifiable(categoryAllocations),
        settlementAllocations = List.unmodifiable(settlementAllocations);
 
+  final String? bookId;
   final Money amount;
   final AdvanceScenario scenario;
   final AdvanceTrackingMode trackingMode;
@@ -107,6 +109,7 @@ final class AccountAdvanceSceneTarget extends ExpenseSceneTarget {
 
 class CreateExpenseSceneWorkflowCommand {
   CreateExpenseSceneWorkflowCommand({
+    this.bookId,
     required this.amount,
     required this.target,
     required List<AccountAmountAllocation> categoryAllocations,
@@ -122,6 +125,7 @@ class CreateExpenseSceneWorkflowCommand {
   }) : categoryAllocations = List.unmodifiable(categoryAllocations),
        settlementAllocations = List.unmodifiable(settlementAllocations);
 
+  final String? bookId;
   final Money amount;
   final ExpenseSceneTarget target;
   final List<AccountAmountAllocation> categoryAllocations;
@@ -166,6 +170,7 @@ class EditExpenseSceneWorkflowCommand {
 
 class CreateAdvanceCollectionWorkflowCommand {
   CreateAdvanceCollectionWorkflowCommand({
+    this.bookId,
     required this.amount,
     required this.advanceTransactionId,
     required this.receivableAccountId,
@@ -176,6 +181,7 @@ class CreateAdvanceCollectionWorkflowCommand {
     this.note,
   }) : settlementAllocations = List.unmodifiable(settlementAllocations);
 
+  final String? bookId;
   final Money amount;
   final String advanceTransactionId;
   final String receivableAccountId;
@@ -188,6 +194,7 @@ class CreateAdvanceCollectionWorkflowCommand {
 
 class CreateAdvanceSettlementWorkflowCommand {
   CreateAdvanceSettlementWorkflowCommand({
+    this.bookId,
     required this.actualReceivedAmount,
     required this.advanceTransactionId,
     required this.receivableAccountId,
@@ -201,6 +208,7 @@ class CreateAdvanceSettlementWorkflowCommand {
   }) : settlementAllocations = List.unmodifiable(settlementAllocations),
        gapExpenseAllocations = List.unmodifiable(gapExpenseAllocations);
 
+  final String? bookId;
   final Money actualReceivedAmount;
   final String advanceTransactionId;
   final String receivableAccountId;
@@ -259,6 +267,7 @@ class EditAdvanceSettlementWorkflowCommand {
 
 class CreateAdvanceRefundWorkflowCommand {
   CreateAdvanceRefundWorkflowCommand({
+    this.bookId,
     required this.parentTransactionId,
     required this.amount,
     required List<AccountAmountAllocation> categoryAllocations,
@@ -270,6 +279,7 @@ class CreateAdvanceRefundWorkflowCommand {
   }) : categoryAllocations = List.unmodifiable(categoryAllocations),
        settlementAllocations = List.unmodifiable(settlementAllocations);
 
+  final String? bookId;
   final String parentTransactionId;
   final Money amount;
   final List<AccountAmountAllocation> categoryAllocations;

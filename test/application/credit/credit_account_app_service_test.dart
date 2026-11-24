@@ -1,3 +1,4 @@
+import '../../helper/fake_book_repository.dart';
 import 'package:smartflow/infrastructure/credit/repository/drift_credit_bill_source_repository.dart';
 import 'package:smartflow/domain/credit/valobj/installment_contract_terms.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -541,6 +542,7 @@ class _Fixture {
     );
     accountAppService = AccountAppServiceImpl(
       accountRepository,
+      bookRepository: FakeBookRepository(),
       transactionRunner: runner,
       ledgerPostingService: postingService,
       transactionRepository: DriftPostingRepository(database),

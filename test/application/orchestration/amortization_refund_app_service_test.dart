@@ -936,6 +936,8 @@ class _RecognitionRequest {
 }
 
 class _FakeLedger implements AmortizationLedgerPort {
+  @override
+  Future<String?> findTransactionBookId(String id) async => null;
   int _nextTransaction = 1;
   final transfers = <_TransferRequest>[];
   final transferRewrites = <_TransferRequest>[];
@@ -960,6 +962,7 @@ class _FakeLedger implements AmortizationLedgerPort {
 
   @override
   Future<String> postTransfer({
+    String? bookId,
     required Money amount,
     required List<AccountAmountAllocation> outgoingAllocations,
     required List<AccountAmountAllocation> incomingAllocations,
@@ -987,6 +990,7 @@ class _FakeLedger implements AmortizationLedgerPort {
 
   @override
   Future<String> postExpense({
+    String? bookId,
     required Money amount,
     required List<AccountAmountAllocation> categoryAllocations,
     required List<AccountAmountAllocation> settlementAllocations,
@@ -1012,6 +1016,7 @@ class _FakeLedger implements AmortizationLedgerPort {
 
   @override
   Future<String> postIncome({
+    String? bookId,
     required Money amount,
     required List<AccountAmountAllocation> categoryAllocations,
     required List<AccountAmountAllocation> settlementAllocations,

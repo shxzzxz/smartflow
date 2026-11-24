@@ -1,3 +1,4 @@
+import '../../../helper/book_selection_override.dart';
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -17,6 +18,7 @@ import 'package:smartflow/design_system/widget/app_plain_form_field.dart';
 import 'package:smartflow/design_system/widget/app_status_banner.dart';
 import 'package:smartflow/design_system/widget/app_tab_swipe_region.dart';
 import 'package:smartflow/feature/shared/provider/ledger_query_providers.dart';
+import 'package:smartflow/feature/shared/provider/book_providers.dart';
 import 'package:smartflow/feature/shared/provider/counterparty_providers.dart';
 import 'package:smartflow/feature/shared/provider/tag_providers.dart';
 import 'package:smartflow/feature/transaction/page/transaction_form_page.dart';
@@ -33,6 +35,47 @@ import '../../../helper/sequential_id_generator.dart';
 import '../../../helper/test_app_database.dart';
 
 void main() {
+  testWidgets(
+    'book option selects a form book from a list without management',
+    (tester) async {
+      await _pumpTransactionForm(
+        tester,
+        _FakeTransactionPostingAppService(),
+        bookSelection: _MultipleBooks.new,
+      );
+      final bookOption = find.byKey(const ValueKey('transaction-book-option'));
+      await tester.tap(bookOption);
+      await tester.pumpAndSettle();
+      expect(find.byType(BottomSheet), findsOneWidget);
+      expect(find.byType(Dialog), findsNothing);
+      expect(find.text('新增账本'), findsNothing);
+      expect(find.text('账本管理'), findsNothing);
+      await tester.tap(find.text('旅行'));
+      await tester.pumpAndSettle();
+
+      final container = ProviderScope.containerOf(
+        tester.element(find.byType(TransactionFormPage)),
+      );
+      expect(
+        container.read(transactionFormViewModelProvider()).requireValue!.bookId,
+        'travel',
+      );
+      expect(
+        container
+            .read(bookSelectionViewModelProvider)
+            .requireValue
+            .currentBook
+            .id,
+        Book.dailyId,
+      );
+      expect(
+        find.descendant(of: bookOption, matching: find.text('旅行')),
+        findsOneWidget,
+      );
+      expect(tester.takeException(), isNull);
+    },
+  );
+
   testWidgets(
     'partial screenshot inputs stay intact when switching entry type',
     (tester) async {
@@ -1431,6 +1474,8 @@ void main() {
   ) async {
     final container = ProviderContainer(
       overrides: [
+        bookSelectionTestOverride,
+        bookListTestOverride,
         transactionAccountOptionsProvider.overrideWithValue(
           const AsyncLoading(),
         ),
@@ -1467,6 +1512,8 @@ void main() {
       final accounts = {'cash': _account('cash'), 'food': _category('food')};
       final container = ProviderContainer(
         overrides: [
+          bookSelectionTestOverride,
+          bookListTestOverride,
           ..._editQueryOverrides(accounts),
           transactionDetailProvider(
             'tx-1',
@@ -1566,6 +1613,8 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          bookSelectionTestOverride,
+          bookListTestOverride,
           testAppDatabaseOverride(),
           ..._editQueryOverrides(accounts),
           transactionDetailProvider(
@@ -1601,6 +1650,8 @@ void main() {
     final accounts = {'cash': _account('cash'), 'food': _category('food')};
     final container = ProviderContainer(
       overrides: [
+        bookSelectionTestOverride,
+        bookListTestOverride,
         ..._editQueryOverrides(accounts),
         transactionDetailProvider('tx-a').overrideWithValue(
           AsyncData(_transactionDetail('tx-a', note: '交易 A')),
@@ -1693,6 +1744,7 @@ Future<void> _pumpTransactionForm(
   TextScaler textScaler = TextScaler.noScaling,
   List<TagView> tags = const [],
   List<CounterpartyView> counterparties = const [],
+  BookSelectionViewModel Function()? bookSelection,
   List<Account>? settlementAccounts,
   List<Account> fundAccounts = const [],
   List<Account> advanceReceivableAccounts = const [],
@@ -1733,6 +1785,10 @@ Future<void> _pumpTransactionForm(
   await tester.pumpWidget(
     ProviderScope(
       overrides: [
+        bookSelection == null
+            ? bookSelectionTestOverride
+            : bookSelectionViewModelProvider.overrideWith(bookSelection),
+        bookListTestOverride,
         testAppDatabaseOverride(),
         transactionPostingAppServiceProvider.overrideWithValue(fakeService),
         if (amortizationService != null)
@@ -1787,6 +1843,22 @@ class _DirectTransactionRunner implements TransactionRunner {
 
   @override
   Future<T> run<T>(Future<T> Function() body) => body();
+}
+
+class _MultipleBooks extends BookSelectionViewModel {
+  @override
+  AsyncValue<BookSelectionState> build() {
+    final daily = Book(id: Book.dailyId, name: Book.dailyName);
+    return AsyncData(
+      BookSelectionState(
+        books: [
+          daily,
+          Book(id: 'travel', name: '旅行'),
+        ],
+        currentBook: daily,
+      ),
+    );
+  }
 }
 
 Account _account(String id, {String? profileKey}) {

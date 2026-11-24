@@ -318,6 +318,7 @@ class ImportPlanReview {
 
 class ImportCommitCommand {
   ImportCommitCommand({
+    this.bookId,
     required this.plan,
     required Map<ImportMappingKey, String> mappings,
     Map<ImportMappingKey, ImportMappingCreation> plannedCreations = const {},
@@ -346,6 +347,7 @@ class ImportCommitCommand {
                ),
            });
 
+  final String? bookId;
   final ImportParseResult plan;
   final Map<ImportMappingKey, String> mappings;
   final Map<ImportMappingKey, ImportMappingCreation> plannedCreations;

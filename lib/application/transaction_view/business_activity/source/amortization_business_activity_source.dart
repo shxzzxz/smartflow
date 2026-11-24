@@ -93,6 +93,7 @@ final class AmortizationBusinessActivitySource
 
   AmortizationBusinessActivityQuery _queryFor(BusinessActivityPageQuery query) {
     return AmortizationBusinessActivityQuery(
+      bookId: query.bookId,
       occurredFrom: query.occurredFrom,
       occurredUntil: query.occurredUntil,
       before: switch (query.before) {

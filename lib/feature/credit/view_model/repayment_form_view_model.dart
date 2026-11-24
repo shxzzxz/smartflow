@@ -1,3 +1,4 @@
+import '../../shared/provider/book_providers.dart';
 import 'package:logging/logging.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
@@ -205,6 +206,15 @@ class RepaymentFormViewModel extends _$RepaymentFormViewModel {
                         .read(transactionPostingAppServiceProvider)
                         .createRepayment(
                           CreateRepaymentCommand(
+                            bookId:
+                                (await ref
+                                        .read(
+                                          bookSelectionViewModelProvider
+                                              .notifier,
+                                        )
+                                        .snapshot())
+                                    .currentBook
+                                    .id,
                             principal: principal,
                             interest: _positiveOrNull(interest),
                             fee: _positiveOrNull(fee),

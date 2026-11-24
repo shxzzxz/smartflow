@@ -1,3 +1,4 @@
+import '../../shared/provider/book_providers.dart';
 import 'package:logging/logging.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
@@ -116,6 +117,12 @@ class InstallmentRepaymentFormViewModel
               transactionInfo: paidFromAccountId == null
                   ? null
                   : RepaymentTransactionInfo(
+                      bookId:
+                          (await ref
+                                  .read(bookSelectionViewModelProvider.notifier)
+                                  .snapshot())
+                              .currentBook
+                              .id,
                       paidFromAccountId: paidFromAccountId,
                       occurredAt: current.occurredAt,
                     ),

@@ -2,6 +2,8 @@ part of 'transaction_form_page.dart';
 
 class _TransactionOptionsPanel extends StatelessWidget {
   const _TransactionOptionsPanel({
+    this.bookId,
+    this.onBookChanged,
     this.requireAccountSelection = false,
     required this.mode,
     required this.occurredAt,
@@ -33,6 +35,8 @@ class _TransactionOptionsPanel extends StatelessWidget {
     required this.onExcludeBudgetChanged,
   });
 
+  final String? bookId;
+  final ValueChanged<String>? onBookChanged;
   final TransactionFormMode mode;
   final bool requireAccountSelection;
   final DateTime occurredAt;
@@ -104,6 +108,12 @@ class _TransactionOptionsPanel extends StatelessWidget {
                     selected: false,
                     onTap: onPickDate,
                   ),
+                  if (bookId != null)
+                    _BookSelectorChip(
+                      key: const ValueKey('transaction-book-option'),
+                      bookId: bookId!,
+                      onChanged: onBookChanged!,
+                    ),
                   if (showPrimaryAccount)
                     _AccountSelectorChip(
                       fallbackToFirst: !requireAccountSelection,
@@ -205,6 +215,38 @@ class _TransactionOptionsPanel extends StatelessWidget {
       validator: (value) => value == null ? '请选择$accountLabel' : null,
       builder: (context, _, errorText, changeValue) =>
           buildPanel(changeValue, errorText),
+    );
+  }
+}
+
+class _BookSelectorChip extends ConsumerWidget {
+  const _BookSelectorChip({
+    required this.bookId,
+    required this.onChanged,
+    super.key,
+  });
+
+  final String bookId;
+  final ValueChanged<String> onChanged;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final selection = ref.watch(bookSelectionViewModelProvider);
+    final book = selection.value?.books
+        .where((book) => book.id == bookId)
+        .firstOrNull;
+    return _QuickActionChip(
+      icon: RemixIcons.book_open_line,
+      label: book?.name ?? '账本',
+      selected: false,
+      onTap:
+          selection is AsyncData<BookSelectionState> &&
+              !selection.value.submitting
+          ? () async {
+              final id = await pickBook(context, ref, selectedBookId: bookId);
+              if (id != null && context.mounted) onChanged(id);
+            }
+          : null,
     );
   }
 }
@@ -323,13 +365,19 @@ class _QuickActionChip extends StatelessWidget {
   final IconData? icon;
   final String label;
   final bool selected;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
   final Widget? leading;
 
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
-    final foreground = selected ? colors.primary : colors.onSurface;
+    final foreground = onTap == null
+        ? colors.onSurface.withValues(
+            alpha: AppComponentTokens.disabledContentOpacity,
+          )
+        : selected
+        ? colors.primary
+        : colors.onSurface;
 
     return Padding(
       padding: const EdgeInsets.only(right: AppSpacing.space2),
@@ -344,8 +392,10 @@ class _QuickActionChip extends StatelessWidget {
           ),
           decoration: BoxDecoration(
             color: selected
-                ? colors.primary.withValues(alpha: 0.08)
-                : AppColors.neutral99,
+                ? colors.primary.withValues(
+                    alpha: AppComponentTokens.controlOverlayOpacity,
+                  )
+                : colors.surfaceContainerLowest,
             borderRadius: BorderRadius.circular(AppRadius.radiusMd),
           ),
           child: Row(

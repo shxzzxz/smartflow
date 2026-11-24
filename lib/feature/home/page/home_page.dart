@@ -18,7 +18,10 @@ import 'package:smartflow/widget/business/transaction/transaction_feed.dart';
 import 'package:smartflow/feature/shared/presentation/cashflow_period_metric_options.dart';
 import 'package:smartflow/feature/shared/presentation/pull_to_create_sensitivity_options.dart';
 import 'package:smartflow/feature/shared/presentation/transaction_list_presentation.dart';
+import '../../book/widget/book_picker.dart';
+import '../../shared/provider/book_providers.dart';
 import '../../shared/view_model/app_settings_view_model.dart';
+import '../../shared/view_model/ui_action_outcome.dart';
 import '../view_model/home_view_model.dart';
 import '../widget/home_pull_to_create.dart';
 import '../../../widget/business/transaction/transaction_batch_action_bar.dart';
@@ -46,6 +49,7 @@ class _HomePageState extends ConsumerState<HomePage> {
   Widget build(BuildContext context) {
     final state = ref.watch(homeViewModelProvider);
     final content = ref.watch(homeContentProvider(state.visibleMonth));
+    final bookSelection = ref.watch(bookSelectionViewModelProvider);
     final settings =
         ref.watch(appSettingsViewModelProvider).value ?? const AppSettings();
     final visibleTransactionIds = _contentTransactionIds(content);
@@ -97,6 +101,13 @@ class _HomePageState extends ConsumerState<HomePage> {
                       )
                     : AppPageHeader.custom(
                         key: const ValueKey('home-header'),
+                        singleRow: true,
+                        leading: BookPickerButton(
+                          bookId:
+                              bookSelection.value?.currentBook.id ??
+                              Book.dailyId,
+                          onChanged: _selectCurrentBook,
+                        ),
                         titleContent: AppMonthSelector(
                           visibleMonth: state.visibleMonth,
                           onPreviousMonth: () => _shiftMonth(-1),
@@ -268,6 +279,20 @@ class _HomePageState extends ConsumerState<HomePage> {
     setState(() {
       _selectedTransactionIds = next;
     });
+  }
+
+  Future<void> _selectCurrentBook(String id) async {
+    final outcome = await ref
+        .read(bookSelectionViewModelProvider.notifier)
+        .selectBook(id);
+    if (!mounted) return;
+    if (outcome case UiActionFailure<void>(:final error)) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(error.message)));
+    } else {
+      setState(() => _selectedTransactionIds.clear());
+    }
   }
 
   void _exitBatchMode() {

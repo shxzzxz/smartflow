@@ -6,11 +6,13 @@ import '../valobj/ledger_violation_reason.dart';
 import '../valobj/account_amount_allocation.dart';
 import '../valobj/transaction_ownership.dart';
 import 'entry.dart';
+import 'book.dart';
 import 'transaction_line.dart';
 
 class Transaction {
   Transaction({
     required this.id,
+    String? bookId,
     required this.businessPurpose,
     required this.occurredAt,
     DateTime? postedAt,
@@ -24,9 +26,11 @@ class Transaction {
     this.parentTransactionId,
     this.lines = const [],
     this.entries = const [],
-  }) : postedAt = postedAt ?? occurredAt;
+  }) : bookId = bookId ?? Book.dailyId,
+       postedAt = postedAt ?? occurredAt;
 
   final String id;
+  String bookId;
   final BusinessPurpose businessPurpose;
   DateTime occurredAt;
   DateTime postedAt;
@@ -228,6 +232,7 @@ class Transaction {
 
   Transaction copyWith({
     String? id,
+    String? bookId,
     BusinessPurpose? businessPurpose,
     DateTime? occurredAt,
     DateTime? postedAt,
@@ -246,6 +251,7 @@ class Transaction {
     final nextId = id ?? this.id;
     return Transaction(
       id: nextId,
+      bookId: bookId ?? this.bookId,
       businessPurpose: businessPurpose ?? this.businessPurpose,
       occurredAt: occurredAt ?? this.occurredAt,
       postedAt: postedAt ?? this.postedAt,

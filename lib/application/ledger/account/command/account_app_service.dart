@@ -1,3 +1,4 @@
+import '../../../../domain/ledger/port/book_repository.dart';
 import 'package:smartflow/application/shared/transaction_runner.dart';
 import 'package:smartflow/core/error/app_exception.dart';
 import 'package:smartflow/core/id/id_generator.dart';
@@ -37,6 +38,7 @@ class AccountAppServiceImpl
     required TransactionRunner transactionRunner,
     required LedgerPostingService ledgerPostingService,
     required TransactionRepository transactionRepository,
+    required BookRepository bookRepository,
     required IdGenerator idGenerator,
     AccountFactory accountFactory = const AccountFactory(),
     AccountGroupRepository? accountGroups,
@@ -44,6 +46,7 @@ class AccountAppServiceImpl
   }) : _runner = transactionRunner,
        _ledgerPostingService = ledgerPostingService,
        _transactionRepository = transactionRepository,
+       _books = bookRepository,
        _idGenerator = idGenerator,
        _accountFactory = accountFactory,
        _accountGroups = accountGroups,
@@ -52,6 +55,7 @@ class AccountAppServiceImpl
   final AccountRepository _repository;
   final LedgerPostingService _ledgerPostingService;
   final TransactionRepository _transactionRepository;
+  final BookRepository _books;
   final TransactionRunner _runner;
   final IdGenerator _idGenerator;
   final AccountFactory _accountFactory;
@@ -94,6 +98,7 @@ class AccountAppServiceImpl
     final posting = await _ledgerPostingService.postOpeningBalanceForAccount(
       account: account,
       instruction: OpeningBalanceInstruction(
+        bookId: command.transactionBookId,
         accountId: account.id,
         amount: command.openingBalance,
         occurredAt: DateTime.now(),
@@ -101,11 +106,18 @@ class AccountAppServiceImpl
     );
 
     return _runner.run<Account>(() async {
+      await _assertBookAvailable(posting.transaction.bookId);
       await _repository.create(account);
       await _transactionRepository.save(posting.transaction);
       await _repository.saveAll(posting.accounts);
       return account;
     });
+  }
+
+  Future<void> _assertBookAvailable(String id) async {
+    if (await _books.findById(id) == null) {
+      throw BusinessException(LedgerErrorCode.bookNotFound);
+    }
   }
 
   Future<String?> _availableGroupId(String? groupId) async {
@@ -140,11 +152,13 @@ class AccountAppServiceImpl
           .postBalanceAdjustmentForAccount(
             account: account,
             instruction: BalanceAdjustmentInstruction(
+              bookId: command.transactionBookId,
               accountId: command.id,
               targetBalance: targetBalance,
               occurredAt: DateTime.now(),
             ),
           );
+      await _assertBookAvailable(adjustment.transaction.bookId);
       await _transactionRepository.save(adjustment.transaction);
       await _repository.saveAll(adjustment.accounts);
     });

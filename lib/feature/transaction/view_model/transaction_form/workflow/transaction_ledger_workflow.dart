@@ -22,6 +22,7 @@ final class _LedgerTransactionFormWorkflow {
         final allocations = incomeAllocations(state, amount);
         await _postingService.createIncome(
           CreateIncomeCommand(
+            bookId: state.bookId,
             amount: amount,
             categoryAllocations: allocations.categories,
             settlementAllocations: allocations.settlements,
@@ -46,6 +47,7 @@ final class _LedgerTransactionFormWorkflow {
         }
         await _postingService.createTransfer(
           CreateTransferCommand.simple(
+            bookId: state.bookId,
             amount: amount,
             fromAccountId: fromAccountId,
             toAccountId: toAccountId,
@@ -76,6 +78,7 @@ final class _LedgerTransactionFormWorkflow {
         }
         await _postingService.createBorrowing(
           CreateBorrowingCommand(
+            bookId: state.bookId,
             amount: amount,
             liabilityAccountId: liabilityAccountId,
             receiveAccountId: receiveAccountId,
@@ -103,6 +106,7 @@ final class _LedgerTransactionFormWorkflow {
         await (_postingService as ReceivableTransactionPostingAppService)
             .createLending(
               CreateLendingCommand(
+                bookId: state.bookId,
                 amount: amount,
                 receivableAccountId: receivableAccountId,
                 paidFromAccountId: paidFromAccountId,

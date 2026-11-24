@@ -1,6 +1,8 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:logging/logging.dart';
 import 'date_boundary_task.dart';
+import '../domain/ledger/port/book_repository.dart';
+import '../infrastructure/ledger/repository/drift_book_repository.dart';
 import '../application/shared/task/foreground_task_runner.dart';
 import '../application/shared/notification/notification_inbox_service.dart';
 import '../application/shared/notification/notification_visibility_task.dart';
@@ -516,6 +518,7 @@ AccountAppService accountAppService(Ref ref) {
 AccountAppServiceImpl _buildAccountAppService(Ref ref) {
   return AccountAppServiceImpl(
     ref.watch(accountRepositoryProvider),
+    bookRepository: ref.watch(bookRepositoryProvider),
     transactionRunner: ref.watch(transactionRunnerProvider),
     ledgerPostingService: ref.watch(ledgerPostingServiceProvider),
     transactionRepository: ref.watch(ledgerRepositoryProvider),
@@ -576,6 +579,7 @@ CategoryQueryService categoryQueryService(Ref ref) {
 @Riverpod(keepAlive: true)
 TransactionLedgerWriter transactionLedgerWriter(Ref ref) {
   return TransactionLedgerWriter(
+    bookRepository: ref.watch(bookRepositoryProvider),
     transactionRunner: ref.watch(transactionRunnerProvider),
     transactionRepository: ref.watch(ledgerRepositoryProvider),
     transactionGroupRepository: ref.watch(ledgerRepositoryProvider),
@@ -607,6 +611,7 @@ AdvanceLedgerPort advanceLedgerPort(Ref ref) {
 @Riverpod(keepAlive: true)
 AmortizationLedgerPort amortizationLedgerPort(Ref ref) {
   return LedgerAmortizationPort(
+    transactions: ref.watch(ledgerRepositoryProvider),
     posting: ref.watch(transactionPostingAppServiceProvider),
     editing: ref.watch(transactionEditAppServiceProvider),
     accounts: ref.watch(accountRepositoryProvider),
@@ -1252,3 +1257,19 @@ BillQueryService billQueryService(Ref ref) {
     ledger: ref.watch(creditLedgerPortProvider),
   );
 }
+
+@Riverpod(keepAlive: true)
+BookRepository bookRepository(Ref ref) =>
+    DriftBookRepository(ref.watch(appDatabaseProvider));
+
+@Riverpod(keepAlive: true)
+BookQueryService bookQueryService(Ref ref) =>
+    BookQueryService(ref.watch(bookRepositoryProvider));
+
+@Riverpod(keepAlive: true)
+BookAppService bookAppService(Ref ref) => BookAppService(
+  books: ref.watch(bookRepositoryProvider),
+  transactions: ref.watch(ledgerRepositoryProvider),
+  transactionRunner: ref.watch(transactionRunnerProvider),
+  idGenerator: ref.watch(idGeneratorProvider),
+);

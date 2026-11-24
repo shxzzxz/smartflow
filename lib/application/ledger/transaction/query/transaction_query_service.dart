@@ -283,6 +283,7 @@ class TransactionQueryServiceImpl implements TransactionQueryService {
           : null;
       return TransactionReadModel(
         id: transaction.id,
+        bookId: transaction.bookId,
         parentTransactionId: transaction.parentTransactionId,
         businessPurpose: transaction.businessPurpose,
         occurredAt: transaction.occurredAt,

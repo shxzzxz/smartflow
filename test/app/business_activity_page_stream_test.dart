@@ -225,15 +225,17 @@ void main() {
       final homeProvider = homeTransactionFeedViewModelProvider(month);
       final homeSubscription = container.listen(homeProvider, (_, _) {});
       addTearDown(homeSubscription.close);
-      await container.read(homeBusinessActivitiesProvider(month).future);
       final queryErrors = <Object>[];
       final querySubscription = container.listen(
-        homeBusinessActivitiesProvider(month),
+        homeBusinessActivitiesProvider(month, 'builtin-daily-book'),
         (_, next) {
           if (next case AsyncError(:final error)) queryErrors.add(error);
         },
       );
       addTearDown(querySubscription.close);
+      await container.read(
+        homeBusinessActivitiesProvider(month, 'builtin-daily-book').future,
+      );
 
       for (var cycle = 0; cycle < 2; cycle++) {
         final transactionId = await container

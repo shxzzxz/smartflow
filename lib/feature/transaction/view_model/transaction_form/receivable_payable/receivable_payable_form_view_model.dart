@@ -1,3 +1,4 @@
+import '../../../../shared/provider/book_providers.dart';
 import 'package:logging/logging.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
@@ -49,14 +50,13 @@ class ReceivablePayableFormViewModel extends _$ReceivablePayableFormViewModel {
     ReceivablePayableFormArgs args,
   ) async {
     final accountsById = await ref.watch(accountsByIdProvider.future);
-    final receiveAccounts =
-        args.kind == ReceivablePayableFormKind.collection
-            ? await ref.watch(
-              accountsForSelectionPurposeProvider(
-                AccountSelectionPurpose.fund,
-              ).future,
-            )
-            : const <Account>[];
+    final receiveAccounts = args.kind == ReceivablePayableFormKind.collection
+        ? await ref.watch(
+            accountsForSelectionPurposeProvider(
+              AccountSelectionPurpose.fund,
+            ).future,
+          )
+        : const <Account>[];
     final transactionId = args.transactionId;
     if (transactionId == null) {
       return ReceivablePayableFormState.loaded(
@@ -195,15 +195,14 @@ class ReceivablePayableFormViewModel extends _$ReceivablePayableFormViewModel {
         usage: AccountUsage.liability,
       ),
     };
-    final receiveAccountId =
-        args.kind == ReceivablePayableFormKind.collection
-            ? _entryForUsage(
-              detail,
-              accountsById,
-              direction: EntryDirection.debit,
-              usage: AccountUsage.fund,
-            )
-            : null;
+    final receiveAccountId = args.kind == ReceivablePayableFormKind.collection
+        ? _entryForUsage(
+            detail,
+            accountsById,
+            direction: EntryDirection.debit,
+            usage: AccountUsage.fund,
+          )
+        : null;
     if (accountId == null ||
         (args.kind == ReceivablePayableFormKind.collection &&
             receiveAccountId == null)) {
@@ -251,6 +250,12 @@ class ReceivablePayableFormViewModel extends _$ReceivablePayableFormViewModel {
         if (transactionId == null) {
           await posting.createReceivableCollection(
             CreateReceivableCollectionCommand(
+              bookId:
+                  (await ref
+                          .read(bookSelectionViewModelProvider.notifier)
+                          .snapshot())
+                      .currentBook
+                      .id,
               principal: amount,
               interest: interest,
               receivableAccountId: accountId,
@@ -276,6 +281,12 @@ class ReceivablePayableFormViewModel extends _$ReceivablePayableFormViewModel {
         if (transactionId == null) {
           await posting.createBadDebt(
             CreateBadDebtCommand(
+              bookId:
+                  (await ref
+                          .read(bookSelectionViewModelProvider.notifier)
+                          .snapshot())
+                      .currentBook
+                      .id,
               amount: amount,
               receivableAccountId: accountId,
               occurredAt: current.occurredAt,
@@ -301,6 +312,12 @@ class ReceivablePayableFormViewModel extends _$ReceivablePayableFormViewModel {
         if (transactionId == null) {
           await posting.createDebtRelief(
             CreateDebtReliefCommand(
+              bookId:
+                  (await ref
+                          .read(bookSelectionViewModelProvider.notifier)
+                          .snapshot())
+                      .currentBook
+                      .id,
               amount: amount,
               liabilityAccountId: accountId,
               occurredAt: current.occurredAt,
@@ -464,10 +481,9 @@ class ReceivablePayableFormState {
     transactionId: transactionId,
     receiveAccounts: receiveAccounts,
     accountId: accountId,
-    receiveAccountId:
-        receiveAccountId == _sentinel
-            ? this.receiveAccountId
-            : receiveAccountId as String?,
+    receiveAccountId: receiveAccountId == _sentinel
+        ? this.receiveAccountId
+        : receiveAccountId as String?,
     occurredAt: occurredAt ?? this.occurredAt,
     submitting: submitting ?? this.submitting,
     amountText: amountText,

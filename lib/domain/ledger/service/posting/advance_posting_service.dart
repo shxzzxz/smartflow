@@ -124,6 +124,7 @@ class AdvancePostingService {
         ? const <AccountAmountAllocation>[]
         : instruction.gapExpenseAllocations;
     final normalizedInstruction = AdvanceSettlementInstruction(
+      bookId: instruction.bookId,
       advanceTransactionId: instruction.advanceTransactionId,
       actualReceivedAmount: instruction.actualReceivedAmount,
       receivableAccountId: instruction.receivableAccountId,

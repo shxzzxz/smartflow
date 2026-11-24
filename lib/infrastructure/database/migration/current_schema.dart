@@ -12,6 +12,10 @@ Future<void> createCurrentSchema(
 ) async {
   await migrator.createAll();
   await database.customStatement(
+    'CREATE INDEX transactions_book_occurred_idx '
+    'ON transactions (book_id, occurred_at DESC, id DESC)',
+  );
+  await database.customStatement(
     'CREATE UNIQUE INDEX budgets_total_unique '
     'ON budgets (month_key) '
     'WHERE account_id IS NULL',

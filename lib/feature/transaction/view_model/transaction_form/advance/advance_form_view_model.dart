@@ -1,3 +1,4 @@
+import '../../../../shared/provider/book_providers.dart';
 import 'package:logging/logging.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
@@ -89,6 +90,12 @@ class AdvanceCollectionFormViewModel extends _$AdvanceCollectionFormViewModel {
             .read(advanceOrchestrationAppServiceProvider)
             .createCollection(
               CreateAdvanceCollectionWorkflowCommand(
+                bookId:
+                    (await ref
+                            .read(bookSelectionViewModelProvider.notifier)
+                            .snapshot())
+                        .currentBook
+                        .id,
                 amount: amount,
                 advanceTransactionId: advanceTransactionId,
                 receivableAccountId: current.receivableAccountId!,
@@ -201,6 +208,12 @@ class AdvanceSettlementFormViewModel extends _$AdvanceSettlementFormViewModel {
             .read(advanceOrchestrationAppServiceProvider)
             .createSettlement(
               CreateAdvanceSettlementWorkflowCommand(
+                bookId:
+                    (await ref
+                            .read(bookSelectionViewModelProvider.notifier)
+                            .snapshot())
+                        .currentBook
+                        .id,
                 actualReceivedAmount: amount,
                 advanceTransactionId: advanceTransactionId,
                 receivableAccountId: current.receivableAccountId!,
@@ -373,6 +386,12 @@ class AdvanceFormViewModel extends _$AdvanceFormViewModel {
             .read(advanceOrchestrationAppServiceProvider)
             .createCollection(
               CreateAdvanceCollectionWorkflowCommand(
+                bookId:
+                    (await ref
+                            .read(bookSelectionViewModelProvider.notifier)
+                            .snapshot())
+                        .currentBook
+                        .id,
                 amount: amount,
                 advanceTransactionId: advanceTransactionId,
                 receivableAccountId: current.receivableAccountId!,
@@ -402,6 +421,12 @@ class AdvanceFormViewModel extends _$AdvanceFormViewModel {
             .read(advanceOrchestrationAppServiceProvider)
             .createSettlement(
               CreateAdvanceSettlementWorkflowCommand(
+                bookId:
+                    (await ref
+                            .read(bookSelectionViewModelProvider.notifier)
+                            .snapshot())
+                        .currentBook
+                        .id,
                 actualReceivedAmount: amount,
                 advanceTransactionId: advanceTransactionId,
                 receivableAccountId: current.receivableAccountId!,

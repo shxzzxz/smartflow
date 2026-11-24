@@ -1,6 +1,14 @@
 import '../../../core/error/app_error_code.dart';
 
 enum LedgerErrorCode implements AppErrorCode {
+  bookNotFound(code: 'ledger.book.not_found', defaultMessage: '账本不存在。'),
+  bookInvalidCommand(
+    code: 'ledger.book.invalid_command',
+    defaultMessage: '请输入账本名称。',
+  ),
+  bookNameExists(code: 'ledger.book.name_exists', defaultMessage: '账本名称已存在。'),
+  bookBuiltin(code: 'ledger.book.builtin', defaultMessage: '日常账本不可删除。'),
+  bookInUse(code: 'ledger.book.in_use', defaultMessage: '账本已被交易使用，无法删除。'),
   transactionInvalidCommand(
     code: 'ledger.transaction.invalid_command',
     defaultMessage: '交易参数不完整或不合法。',

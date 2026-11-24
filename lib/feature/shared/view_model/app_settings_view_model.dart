@@ -21,6 +21,9 @@ class AppSettingsViewModel extends _$AppSettingsViewModel {
     return ref.watch(appSettingsStoreProvider).read();
   }
 
+  Future<void> setCurrentBookId(String value) =>
+      _save((settings) => settings.copyWith(currentBookId: value));
+
   Future<void> setShowAddTransactionFab(bool value) {
     return _save((settings) => settings.copyWith(showAddTransactionFab: value));
   }

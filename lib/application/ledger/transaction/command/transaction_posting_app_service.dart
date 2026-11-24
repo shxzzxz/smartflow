@@ -164,6 +164,7 @@ class TransactionPostingAppServiceImpl
     return _ledgerWriter.persistPosting(
       await _ledgerPostingService.postExpense(
         ExpenseInstruction(
+          bookId: command.bookId,
           amount: command.amount,
           categoryAllocations: command.categoryAllocations,
           settlementAllocations: command.settlementAllocations,
@@ -188,6 +189,7 @@ class TransactionPostingAppServiceImpl
     return _ledgerWriter.persistPosting(
       await _ledgerPostingService.postIncome(
         IncomeInstruction(
+          bookId: command.bookId,
           amount: command.amount,
           categoryAllocations: command.categoryAllocations,
           settlementAllocations: command.settlementAllocations,
@@ -212,6 +214,7 @@ class TransactionPostingAppServiceImpl
     return _ledgerWriter.persistPosting(
       await _ledgerPostingService.postTransfer(
         TransferInstruction(
+          bookId: command.bookId,
           amount: command.amount,
           outgoingAllocations: command.outgoingAllocations,
           incomingAllocations: command.incomingAllocations,
@@ -238,6 +241,7 @@ class TransactionPostingAppServiceImpl
     return _ledgerWriter.persistPosting(
       await _refundPostingService.postRefund(
         RefundInstruction(
+          bookId: command.bookId,
           parentTransactionId: command.parentTransactionId,
           amount: command.amount,
           categoryAllocations: command.categoryAllocations,
@@ -259,6 +263,7 @@ class TransactionPostingAppServiceImpl
     return _ledgerWriter.persistPosting(
       await _advancePostingService.postAdvance(
         AdvanceInstruction(
+          bookId: command.bookId,
           amount: command.amount,
           advanceAmount: command.advanceAmount,
           receivableAccountId: command.receivableAccountId,
@@ -284,6 +289,7 @@ class TransactionPostingAppServiceImpl
     CreateAdvanceCollectionCommand command,
   ) async {
     final instruction = AdvanceCollectionInstruction(
+      bookId: command.bookId,
       advanceTransactionId: command.advanceTransactionId,
       amount: command.amount,
       receivableAccountId: command.receivableAccountId,
@@ -303,6 +309,7 @@ class TransactionPostingAppServiceImpl
     CreateAdvanceSettlementCommand command,
   ) async {
     final instruction = AdvanceSettlementInstruction(
+      bookId: command.bookId,
       advanceTransactionId: command.advanceTransactionId,
       actualReceivedAmount: command.actualReceivedAmount,
       receivableAccountId: command.receivableAccountId,
@@ -326,6 +333,7 @@ class TransactionPostingAppServiceImpl
     return _ledgerWriter.persistPosting(
       await _ledgerPostingService.postRepayment(
         RepaymentInstruction(
+          bookId: command.bookId,
           principal: command.principal,
           liabilityAccountId: command.liabilityAccountId,
           paidFromAccountId: command.paidFromAccountId,
@@ -351,6 +359,7 @@ class TransactionPostingAppServiceImpl
     return _ledgerWriter.persistPosting(
       await _ledgerPostingService.postBorrowing(
         BorrowingInstruction(
+          bookId: command.bookId,
           amount: command.amount,
           liabilityAccountId: command.liabilityAccountId,
           receiveAccountId: command.receiveAccountId,
@@ -372,6 +381,7 @@ class TransactionPostingAppServiceImpl
   ) async => _ledgerWriter.persistPosting(
     await _ledgerPostingService.postLending(
       LendingInstruction(
+        bookId: command.bookId,
         amount: command.amount,
         receivableAccountId: command.receivableAccountId,
         paidFromAccountId: command.paidFromAccountId,
@@ -390,6 +400,7 @@ class TransactionPostingAppServiceImpl
   ) async => _ledgerWriter.persistPosting(
     await _ledgerPostingService.postReceivableCollection(
       ReceivableCollectionInstruction(
+        bookId: command.bookId,
         principal: command.principal,
         interest: command.interest,
         receivableAccountId: command.receivableAccountId,
@@ -409,6 +420,7 @@ class TransactionPostingAppServiceImpl
   ) async => _ledgerWriter.persistPosting(
     await _ledgerPostingService.postBadDebt(
       BadDebtInstruction(
+        bookId: command.bookId,
         amount: command.amount,
         receivableAccountId: command.receivableAccountId,
         occurredAt: command.occurredAt,
@@ -428,6 +440,7 @@ class TransactionPostingAppServiceImpl
   ) async => _ledgerWriter.persistPosting(
     await _ledgerPostingService.postDebtRelief(
       DebtReliefInstruction(
+        bookId: command.bookId,
         amount: command.amount,
         liabilityAccountId: command.liabilityAccountId,
         occurredAt: command.occurredAt,
@@ -447,6 +460,7 @@ class TransactionPostingAppServiceImpl
     return _ledgerWriter.persistPosting(
       await _ledgerPostingService.postOpeningBalance(
         OpeningBalanceInstruction(
+          bookId: command.bookId,
           accountId: command.accountId,
           amount: command.amount,
           occurredAt: command.occurredAt,
@@ -466,6 +480,7 @@ class TransactionPostingAppServiceImpl
     return _ledgerWriter.persistPosting(
       await _ledgerPostingService.postBalanceAdjustment(
         BalanceAdjustmentInstruction(
+          bookId: command.bookId,
           accountId: command.accountId,
           targetBalance: command.targetBalance,
           occurredAt: command.occurredAt,

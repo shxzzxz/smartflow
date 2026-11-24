@@ -1,3 +1,4 @@
+import '../../../helper/book_selection_override.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -29,10 +30,9 @@ void main() {
         ),
         GoRoute(
           path: '/collection',
-          builder:
-              (context, state) => const ReceivableCollectionFormPage(
-                receivableAccountId: 'receivable',
-              ),
+          builder: (context, state) => const ReceivableCollectionFormPage(
+            receivableAccountId: 'receivable',
+          ),
         ),
       ],
     );
@@ -40,6 +40,8 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          bookSelectionTestOverride,
+          bookListTestOverride,
           accountQueryServiceProvider.overrideWithValue(
             _FakeAccountQueryService(receivable),
           ),
@@ -87,6 +89,8 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          bookSelectionTestOverride,
+          bookListTestOverride,
           accountsByIdProvider.overrideWithValue(
             AsyncData({
               'receivable': _account('receivable', AccountSubtype.receivable),
@@ -106,6 +110,8 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          bookSelectionTestOverride,
+          bookListTestOverride,
           accountsByIdProvider.overrideWithValue(
             AsyncData({'payable': _account('payable', AccountSubtype.payable)}),
           ),
@@ -129,10 +135,9 @@ Account _account(
 }) => Account(
   id: id,
   name: id,
-  type:
-      subtype == AccountSubtype.fund || subtype == AccountSubtype.receivable
-          ? AccountType.asset
-          : AccountType.liability,
+  type: subtype == AccountSubtype.fund || subtype == AccountSubtype.receivable
+      ? AccountType.asset
+      : AccountType.liability,
   subtype: subtype,
   balance: balance,
 );

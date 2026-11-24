@@ -240,6 +240,21 @@ END
           ),
         );
       },
+      from67To68: (migration, schema) async {
+        await migration.createTable(schema.books);
+        await migration.addColumn(
+          schema.transactions,
+          schema.transactions.bookId,
+        );
+        await migration.database.customStatement(
+          "INSERT INTO books (id, name, sort_order) "
+          "VALUES ('builtin-daily-book', '日常账本', 0)",
+        );
+        await migration.database.customStatement(
+          'CREATE INDEX transactions_book_occurred_idx '
+          'ON transactions (book_id, occurred_at DESC, id DESC)',
+        );
+      },
     )(migrator, from, to);
   });
 }

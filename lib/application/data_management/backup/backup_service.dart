@@ -7,6 +7,7 @@ import '../../../domain/credit/valobj/reference_rate.dart';
 import '../../../domain/credit/valobj/installment_enums.dart';
 import '../../../domain/insurance/valobj/insurance_enums.dart';
 
+import '../../../domain/ledger/entity/book.dart';
 import 'backup_models.dart';
 
 abstract interface class BackupSnapshotGateway {
@@ -237,6 +238,7 @@ class BackupService {
       _ => BackupTables.all,
     };
     for (final table in requiredTables) {
+      if (table == 'books' && manifest.backupSchemaVersion < 18) continue;
       if (!tables.containsKey(table)) {
         throw BackupValidationException('备份缺少业务表文件: $table');
       }
@@ -274,6 +276,7 @@ class BackupService {
         14 => _upgradeBackupV14ToV15(upgraded),
         15 => _upgradeBackupV15ToV16(upgraded),
         16 => _upgradeBackupV16ToV17(upgraded),
+        17 => _upgradeBackupV17ToV18(upgraded),
         _ => throw BackupValidationException(
           '备份 backupSchemaVersion $version 到当前 '
           '${BackupManifest.currentBackupSchemaVersion} 的迁移尚未实现。',
@@ -281,6 +284,24 @@ class BackupService {
       };
     }
     return upgraded;
+  }
+
+  static BackupSnapshot _upgradeBackupV17ToV18(BackupSnapshot snapshot) {
+    final tables = {...snapshot.tables};
+    tables['books'] = [
+      {
+        'id': 'builtin-daily-book',
+        'name': '日常账本',
+        'sortOrder': 0,
+        'createdAt': 0,
+        'updatedAt': 0,
+      },
+    ];
+    tables['transactions'] = [
+      for (final row in snapshot.rows('transactions'))
+        Map<String, Object?>.from(row)..['bookId'] = 'builtin-daily-book',
+    ];
+    return snapshot.copyWith(tables: tables);
   }
 
   static BackupSnapshot _upgradeBackupV9ToV10(BackupSnapshot snapshot) {
@@ -571,6 +592,19 @@ class BackupService {
     for (final table in BackupTables.all) {
       _indexByIdentity(snapshot.rows(table), table);
     }
+    final books = _index(snapshot.rows('books'));
+    if (!books.containsKey(Book.dailyId)) {
+      throw const BackupValidationException('备份缺少日常账本。');
+    }
+    final bookNames = <String>{};
+    for (final row in books.values) {
+      final name = row['name'];
+      if (name is! String ||
+          name.trim().isEmpty ||
+          !bookNames.add(name.trim())) {
+        throw const BackupValidationException('账本名称为空或重复。');
+      }
+    }
     final accounts = _index(snapshot.rows('accounts'));
     final groups = _index(snapshot.rows('account_groups'));
     final transactions = _index(snapshot.rows('transactions'));
@@ -614,6 +648,7 @@ class BackupService {
       }
     }
     for (final row in snapshot.rows('transactions')) {
+      _requiredReference(row, 'bookId', books, 'transactions.bookId');
       _optionalReference(
         row,
         'parentTransactionId',

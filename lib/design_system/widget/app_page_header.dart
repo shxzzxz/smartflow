@@ -31,6 +31,7 @@ class AppPageHeader extends StatelessWidget {
     this.onBack,
     this.leading,
     this.actions = const [],
+    this.singleRow = false,
   }) : titleContent = null;
 
   const AppPageHeader.custom({
@@ -40,6 +41,7 @@ class AppPageHeader extends StatelessWidget {
     this.onBack,
     this.leading,
     this.actions = const [],
+    this.singleRow = false,
   }) : title = null,
        subtitle = null;
 
@@ -48,6 +50,9 @@ class AppPageHeader extends StatelessWidget {
   final String? subtitle;
   final bool showBackButton;
   final VoidCallback? onBack;
+
+  /// 三段始终同行，核心内容在左右控件之间的剩余宽度内布局。
+  final bool singleRow;
 
   /// 选择器或切换控件；提供时替代自动返回按钮。
   final Widget? leading;
@@ -73,6 +78,26 @@ class AppPageHeader extends StatelessWidget {
               )
             : null);
 
+    final leadingControl = left == null
+        ? const SizedBox.shrink()
+        : AppHeaderControlSurface(
+            borderRadius: AppHeaderTokens.controlRadius,
+            child: IconButtonTheme(
+              data: IconButtonThemeData(
+                style: appHeaderIconButtonStyle.copyWith(
+                  foregroundColor: WidgetStatePropertyAll(
+                    Theme.of(context).colorScheme.onSurface,
+                  ),
+                ),
+              ),
+              child: left,
+            ),
+          );
+    final centerContent = titleContent ?? _buildTitle(context);
+    final trailingControls = actions.isEmpty
+        ? const SizedBox.shrink()
+        : _HeaderActions(actions: actions);
+
     final content = ConstrainedBox(
       constraints: const BoxConstraints(minHeight: AppHeaderTokens.minHeight),
       child: Padding(
@@ -80,29 +105,25 @@ class AppPageHeader extends StatelessWidget {
           horizontal: AppHeaderTokens.edgeInset,
           vertical: AppHeaderTokens.verticalInset,
         ),
-        child: _HeaderLayout(
-          textDirection: Directionality.of(context),
-          keepCenterComplete: titleContent != null,
-          leading: left == null
-              ? const SizedBox.shrink()
-              : AppHeaderControlSurface(
-                  borderRadius: AppHeaderTokens.controlRadius,
-                  child: IconButtonTheme(
-                    data: IconButtonThemeData(
-                      style: appHeaderIconButtonStyle.copyWith(
-                        foregroundColor: WidgetStatePropertyAll(
-                          Theme.of(context).colorScheme.onSurface,
-                        ),
-                      ),
-                    ),
-                    child: left,
-                  ),
-                ),
-          center: titleContent ?? _buildTitle(context),
-          trailing: actions.isEmpty
-              ? const SizedBox.shrink()
-              : _HeaderActions(actions: actions),
-        ),
+        child: singleRow
+            ? Row(
+                children: [
+                  leadingControl,
+                  if (left != null)
+                    const SizedBox(width: AppHeaderTokens.titleActionGap),
+                  Expanded(child: Center(child: centerContent)),
+                  if (actions.isNotEmpty)
+                    const SizedBox(width: AppHeaderTokens.titleActionGap),
+                  trailingControls,
+                ],
+              )
+            : _HeaderLayout(
+                textDirection: Directionality.of(context),
+                keepCenterComplete: titleContent != null,
+                leading: leadingControl,
+                center: centerContent,
+                trailing: trailingControls,
+              ),
       ),
     );
     return AppHeaderAppearanceScope(
@@ -184,6 +205,7 @@ class AppHeaderIconButton extends StatelessWidget {
     super.key,
     this.selected,
     this.showBadge = false,
+    this.compact = false,
   });
 
   final IconData icon;
@@ -191,17 +213,31 @@ class AppHeaderIconButton extends StatelessWidget {
   final bool? selected;
   final bool showBadge;
 
+  /// 收紧水平占位，保留页头图标和触控高度，供月份切换使用。
+  final bool compact;
+
   /// 传 null 表示操作当前不可用。
   final VoidCallback? onPressed;
 
   @override
   Widget build(BuildContext context) {
+    const compactSize = Size(
+      AppHeaderTokens.compactIconButtonWidth,
+      AppHeaderTokens.iconButtonSize,
+    );
+    final style = compact
+        ? appHeaderIconButtonStyle.copyWith(
+            fixedSize: const WidgetStatePropertyAll(compactSize),
+            minimumSize: const WidgetStatePropertyAll(compactSize),
+            maximumSize: const WidgetStatePropertyAll(compactSize),
+          )
+        : appHeaderIconButtonStyle;
     return IconButton(
       onPressed: onPressed,
       icon: Badge(isLabelVisible: showBadge, child: Icon(icon)),
       tooltip: tooltip,
       isSelected: selected,
-      style: appHeaderIconButtonStyle.copyWith(
+      style: style.copyWith(
         backgroundColor: selected == true
             ? WidgetStatePropertyAll(
                 Theme.of(context).colorScheme.primary.withValues(

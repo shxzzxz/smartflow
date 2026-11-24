@@ -1,3 +1,4 @@
+import '../../../helper/book_selection_override.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/app/provider.dart';
@@ -115,6 +116,8 @@ void main() {
         );
         final container = ProviderContainer(
           overrides: [
+            bookSelectionTestOverride,
+            bookListTestOverride,
             accountViewProvider(
               'account-1',
             ).overrideWith((ref) => ref.watch(snapshotProvider)),
@@ -221,10 +224,7 @@ void main() {
       expect(command.creditLimit, const Money(minorUnits: 100000));
       expect(command.billingDay, 5);
       expect(command.repaymentDay, 25);
-      expect(
-        command.iconKey,
-        'builtin:account:rounded-line:cmb_credit_card',
-      );
+      expect(command.iconKey, 'builtin:account:rounded-line:cmb_credit_card');
     });
 
     test('creates loan account without cycle parameters', () async {
@@ -413,6 +413,8 @@ ProviderContainer _container(
 }) {
   final container = ProviderContainer(
     overrides: [
+      bookSelectionTestOverride,
+      bookListTestOverride,
       accountAppServiceProvider.overrideWith((ref) => service),
       creditAccountAppServiceProvider.overrideWith(
         (ref) => creditAppService ?? _FakeCreditAccountAppService(),

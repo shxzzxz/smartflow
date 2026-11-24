@@ -6,6 +6,7 @@ import 'package:smartflow/domain/ledger/valobj/transaction_ownership.dart';
 
 class CreateExpenseCommand {
   CreateExpenseCommand({
+    this.bookId,
     required this.amount,
     required List<AccountAmountAllocation> categoryAllocations,
     required List<AccountAmountAllocation> settlementAllocations,
@@ -21,6 +22,7 @@ class CreateExpenseCommand {
   }) : categoryAllocations = List.unmodifiable(categoryAllocations),
        settlementAllocations = List.unmodifiable(settlementAllocations);
 
+  final String? bookId;
   final Money amount;
   final List<AccountAmountAllocation> categoryAllocations;
   final List<AccountAmountAllocation> settlementAllocations;
@@ -39,6 +41,7 @@ class CreateExpenseCommand {
 
 class CreateIncomeCommand {
   CreateIncomeCommand({
+    this.bookId,
     required this.amount,
     required List<AccountAmountAllocation> categoryAllocations,
     required List<AccountAmountAllocation> settlementAllocations,
@@ -54,6 +57,7 @@ class CreateIncomeCommand {
   }) : categoryAllocations = List.unmodifiable(categoryAllocations),
        settlementAllocations = List.unmodifiable(settlementAllocations);
 
+  final String? bookId;
   final Money amount;
   final List<AccountAmountAllocation> categoryAllocations;
   final List<AccountAmountAllocation> settlementAllocations;
@@ -70,6 +74,7 @@ class CreateIncomeCommand {
 
 class CreateTransferCommand {
   CreateTransferCommand({
+    this.bookId,
     required this.amount,
     required List<AccountAmountAllocation> outgoingAllocations,
     required List<AccountAmountAllocation> incomingAllocations,
@@ -88,6 +93,7 @@ class CreateTransferCommand {
        incomingAllocations = List.unmodifiable(incomingAllocations);
 
   factory CreateTransferCommand.simple({
+    String? bookId,
     required Money amount,
     required String fromAccountId,
     required String toAccountId,
@@ -104,6 +110,7 @@ class CreateTransferCommand {
     Set<String> tagIds = const {},
   }) {
     return CreateTransferCommand(
+      bookId: bookId,
       amount: amount,
       outgoingAllocations: singleAllocation(
         accountId: fromAccountId,
@@ -127,6 +134,7 @@ class CreateTransferCommand {
     );
   }
 
+  final String? bookId;
   final Money amount;
   final List<AccountAmountAllocation> outgoingAllocations;
   final List<AccountAmountAllocation> incomingAllocations;
@@ -145,6 +153,7 @@ class CreateTransferCommand {
 
 class CreateRefundCommand {
   CreateRefundCommand({
+    this.bookId,
     required this.amount,
     required this.parentTransactionId,
     required List<AccountAmountAllocation> categoryAllocations,
@@ -158,6 +167,7 @@ class CreateRefundCommand {
        selfBorneAllocations = List.unmodifiable(selfBorneAllocations),
        settlementAllocations = List.unmodifiable(settlementAllocations);
 
+  final String? bookId;
   final Money amount;
   final String parentTransactionId;
   final List<AccountAmountAllocation> categoryAllocations;
@@ -171,6 +181,7 @@ class CreateRefundCommand {
 
 class CreateAdvanceCommand {
   CreateAdvanceCommand({
+    this.bookId,
     required this.amount,
     Money? advanceAmount,
     required this.receivableAccountId,
@@ -192,6 +203,7 @@ class CreateAdvanceCommand {
        settlementAllocations = List.unmodifiable(settlementAllocations);
 
   /// 实际付款总额，包含自承担支出和垫付应收。
+  final String? bookId;
   final Money amount;
 
   /// 形成应收的垫付金额；自承担部分为 [amount] 与它的差额。
@@ -213,6 +225,7 @@ class CreateAdvanceCommand {
 
 class CreateAdvanceCollectionCommand {
   CreateAdvanceCollectionCommand({
+    this.bookId,
     required this.amount,
     required this.advanceTransactionId,
     required this.receivableAccountId,
@@ -226,6 +239,7 @@ class CreateAdvanceCollectionCommand {
        isExcludedFromBudget = false,
        settlementAllocations = List.unmodifiable(settlementAllocations);
 
+  final String? bookId;
   final Money amount;
   final String advanceTransactionId;
   final String receivableAccountId;
@@ -241,6 +255,7 @@ class CreateAdvanceCollectionCommand {
 
 class CreateAdvanceSettlementCommand {
   CreateAdvanceSettlementCommand({
+    this.bookId,
     required this.actualReceivedAmount,
     required this.advanceTransactionId,
     required this.receivableAccountId,
@@ -257,6 +272,7 @@ class CreateAdvanceSettlementCommand {
        settlementAllocations = List.unmodifiable(settlementAllocations),
        gapExpenseAllocations = List.unmodifiable(gapExpenseAllocations);
 
+  final String? bookId;
   final Money actualReceivedAmount;
   final String advanceTransactionId;
   final String receivableAccountId;
@@ -274,6 +290,7 @@ class CreateAdvanceSettlementCommand {
 
 class CreateRepaymentCommand {
   const CreateRepaymentCommand({
+    this.bookId,
     required this.principal,
     required this.liabilityAccountId,
     required this.paidFromAccountId,
@@ -289,6 +306,7 @@ class CreateRepaymentCommand {
     this.tagIds = const {},
   });
 
+  final String? bookId;
   final Money principal;
   final Money? interest;
   final Money? fee;
@@ -308,6 +326,7 @@ class CreateRepaymentCommand {
 
 class CreateBorrowingCommand {
   const CreateBorrowingCommand({
+    this.bookId,
     required this.amount,
     required this.liabilityAccountId,
     required this.receiveAccountId,
@@ -320,6 +339,7 @@ class CreateBorrowingCommand {
     this.tagIds = const {},
   });
 
+  final String? bookId;
   final Money amount;
   final String liabilityAccountId;
   final String receiveAccountId;
@@ -334,6 +354,7 @@ class CreateBorrowingCommand {
 
 class CreateLendingCommand {
   const CreateLendingCommand({
+    this.bookId,
     required this.amount,
     required this.receivableAccountId,
     required this.paidFromAccountId,
@@ -343,6 +364,7 @@ class CreateLendingCommand {
     this.note,
     this.tagIds = const {},
   });
+  final String? bookId;
   final Money amount;
   final String receivableAccountId;
   final String paidFromAccountId;
@@ -355,6 +377,7 @@ class CreateLendingCommand {
 
 class CreateReceivableCollectionCommand {
   const CreateReceivableCollectionCommand({
+    this.bookId,
     required this.principal,
     required this.receivableAccountId,
     required this.receiveAccountId,
@@ -365,6 +388,7 @@ class CreateReceivableCollectionCommand {
     this.note,
     this.tagIds = const {},
   });
+  final String? bookId;
   final Money principal;
   final Money interest;
   final String receivableAccountId;
@@ -378,6 +402,7 @@ class CreateReceivableCollectionCommand {
 
 class CreateBadDebtCommand {
   const CreateBadDebtCommand({
+    this.bookId,
     required this.amount,
     required this.receivableAccountId,
     required this.occurredAt,
@@ -388,6 +413,7 @@ class CreateBadDebtCommand {
     this.note,
     this.tagIds = const {},
   });
+  final String? bookId;
   final Money amount;
   final String receivableAccountId;
   final DateTime occurredAt;
@@ -401,6 +427,7 @@ class CreateBadDebtCommand {
 
 class CreateDebtReliefCommand {
   const CreateDebtReliefCommand({
+    this.bookId,
     required this.amount,
     required this.liabilityAccountId,
     required this.occurredAt,
@@ -410,6 +437,7 @@ class CreateDebtReliefCommand {
     this.note,
     this.tagIds = const {},
   });
+  final String? bookId;
   final Money amount;
   final String liabilityAccountId;
   final DateTime occurredAt;
@@ -422,6 +450,7 @@ class CreateDebtReliefCommand {
 
 class CreateOpeningBalanceCommand {
   const CreateOpeningBalanceCommand({
+    this.bookId,
     required this.accountId,
     required this.amount,
     required this.occurredAt,
@@ -431,6 +460,7 @@ class CreateOpeningBalanceCommand {
     this.sourceKind = SourceKind.manual,
   });
 
+  final String? bookId;
   final String accountId;
   final Money amount;
   final DateTime occurredAt;
@@ -442,6 +472,7 @@ class CreateOpeningBalanceCommand {
 
 class AdjustBalanceCommand {
   const AdjustBalanceCommand({
+    this.bookId,
     required this.accountId,
     required this.targetBalance,
     required this.occurredAt,
@@ -449,6 +480,7 @@ class AdjustBalanceCommand {
     this.note,
   });
 
+  final String? bookId;
   final String accountId;
   final Money targetBalance;
   final DateTime occurredAt;

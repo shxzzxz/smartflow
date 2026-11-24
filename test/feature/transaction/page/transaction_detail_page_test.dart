@@ -1,3 +1,4 @@
+import '../../../helper/book_selection_override.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -47,6 +48,8 @@ void main() {
       await tester.pumpWidget(
         ProviderScope(
           overrides: [
+            bookSelectionTestOverride,
+            bookListTestOverride,
             _detailContextOverride('purpose-icon', detail),
             accountLookupProvider.overrideWith(
               (ref) => Stream.value(AccountLookup(_accounts)),
@@ -105,6 +108,8 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          bookSelectionTestOverride,
+          bookListTestOverride,
           _detailContextOverride('lending', detail),
           accountLookupProvider.overrideWith(
             (ref) => Stream.value(
@@ -151,6 +156,8 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          bookSelectionTestOverride,
+          bookListTestOverride,
           _detailContextOverride('tx-1', _detail()),
           accountLookupProvider.overrideWith(
             (ref) => Stream.value(AccountLookup(_accounts)),
@@ -231,6 +238,8 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          bookSelectionTestOverride,
+          bookListTestOverride,
           _detailContextOverride('tx-advance', _combinedAdvanceDetail()),
           accountLookupProvider.overrideWith(
             (ref) => Stream.value(AccountLookup(_accounts)),
@@ -262,6 +271,8 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          bookSelectionTestOverride,
+          bookListTestOverride,
           _detailContextOverride('transfer', _transferDetail()),
           accountLookupProvider.overrideWith(
             (ref) => Stream.value(AccountLookup(_accounts)),
@@ -299,6 +310,9 @@ void main() {
   testWidgets('amortization module opens plan and confirms plan deletion', (
     tester,
   ) async {
+    await tester.binding.setSurfaceSize(const Size(480, 1200));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
     final detail = TransactionReadModel(
       id: 'amortization-entry',
       businessPurpose: BusinessPurpose.transfer,
@@ -314,6 +328,8 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          bookSelectionTestOverride,
+          bookListTestOverride,
           _detailContextOverride(
             'amortization-entry',
             detail,
@@ -383,6 +399,9 @@ void main() {
   testWidgets(
     'shows category and account breakdowns as compact rows above tags',
     (tester) async {
+      await tester.binding.setSurfaceSize(const Size(480, 1200));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+
       final router = GoRouter(
         initialLocation: '/transaction/tx-multi',
         routes: [
@@ -402,6 +421,8 @@ void main() {
       await tester.pumpWidget(
         ProviderScope(
           overrides: [
+            bookSelectionTestOverride,
+            bookListTestOverride,
             _detailContextOverride('tx-multi', _multiDetail()),
             accountLookupProvider.overrideWith(
               (ref) => Stream.value(AccountLookup(_accounts)),
@@ -536,6 +557,8 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          bookSelectionTestOverride,
+          bookListTestOverride,
           _detailContextOverride('tx-many', _multiDetail(many: true)),
           accountLookupProvider.overrideWith(
             (ref) => Stream.value(AccountLookup(_accounts)),
@@ -635,6 +658,8 @@ void main() {
       await tester.pumpWidget(
         ProviderScope(
           overrides: [
+            bookSelectionTestOverride,
+            bookListTestOverride,
             _detailContextOverride('child', child, parent: parent),
             accountLookupProvider.overrideWith(
               (ref) => Stream.value(AccountLookup(_accounts)),
@@ -667,10 +692,15 @@ void main() {
   );
 
   testWidgets('edits transaction tags from the detail tag row', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(480, 1200));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
     final updateService = _FakeTransactionUpdateAppService();
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          bookSelectionTestOverride,
+          bookListTestOverride,
           _detailContextOverride('tx-1', _detail()),
           accountLookupProvider.overrideWith(
             (ref) => Stream.value(AccountLookup(_accounts)),
@@ -735,6 +765,8 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          bookSelectionTestOverride,
+          bookListTestOverride,
           _detailContextOverride('tx-advance', _advanceDetail()),
           transactionDetailProvider(
             'tx-advance',

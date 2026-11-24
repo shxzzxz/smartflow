@@ -1,3 +1,7 @@
+import 'package:smartflow/infrastructure/database/app_database.dart'
+    show BooksCompanion;
+import 'package:smartflow/infrastructure/ledger/repository/drift_book_repository.dart';
+import '../../helper/fake_book_repository.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/application/credit/credit_command_api.dart';
 import 'package:smartflow/application/credit/credit_query_api.dart';
@@ -36,6 +40,99 @@ import '../../helper/sequential_id_generator.dart';
 import '../../helper/test_app_database.dart';
 
 void main() {
+  test(
+    'expenses in two books share a bill repaid by one transaction in a third book',
+    () async {
+      final fixture = _Fixture();
+      addTearDown(fixture.close);
+      for (final id in ['book-a', 'book-b', 'book-c']) {
+        await fixture.database
+            .into(fixture.database.books)
+            .insert(BooksCompanion.insert(id: id, name: id));
+      }
+      final account = await fixture.createCreditAccount();
+      await fixture.createExpenseCategory();
+      final first = await fixture.postExpense(
+        bookId: 'book-a',
+        accountId: account.id,
+        amount: const Money(minorUnits: 10000),
+        occurredAt: DateTime(2026, 6, 1),
+      );
+      final second = await fixture.postExpense(
+        bookId: 'book-b',
+        accountId: account.id,
+        amount: const Money(minorUnits: 5000),
+        occurredAt: DateTime(2026, 6, 2),
+      );
+      await fixture.generation.generateDueBills(now: DateTime(2026, 6, 4));
+      await fixture.generation.generateDueBills(now: DateTime(2026, 6, 6));
+      final bill = (await fixture.billRepository.listBillsByAccount(account.id))
+          .singleWhere(
+            (bill) => bill.expectedPrincipal == const Money(minorUnits: 15000),
+          );
+      expect(bill.expectedPrincipal, const Money(minorUnits: 15000));
+      await fixture.accountRepository.create(
+        Account(
+          id: 'bank-book-test',
+          name: 'Bank',
+          type: AccountType.asset,
+          subtype: AccountSubtype.fund,
+          profileKey: 'ledger.fund',
+          source: AccountSource.user,
+          balance: const Money(minorUnits: 20000),
+        ),
+      );
+      final repayment = await fixture.repaymentAppService.createBillRepayment(
+        CreateBillRepaymentCommand(
+          billId: bill.id,
+          allocations: [
+            for (final item in bill.items)
+              BillRepaymentAllocation(
+                billItemId: item.id,
+                allocated: RepaymentAmountDto(
+                  principal: item.expectedPrincipal,
+                  interest: item.expectedInterest,
+                  fee: item.expectedFee,
+                  discount: Money.zero(),
+                ),
+              ),
+          ],
+          transactionInfo: RepaymentTransactionInfo(
+            bookId: 'book-c',
+            paidFromAccountId: 'bank-book-test',
+            occurredAt: DateTime(2026, 6, 6),
+          ),
+        ),
+      );
+      expect(
+        (await fixture.transactionQueryService.findTransactionById(
+          first.transactionId,
+        ))!.bookId,
+        'book-a',
+      );
+      expect(
+        (await fixture.transactionQueryService.findTransactionById(
+          second.transactionId,
+        ))!.bookId,
+        'book-b',
+      );
+      final transaction = (await fixture.transactionQueryService
+          .findTransactionById(repayment.transactionId!))!;
+      expect(transaction.bookId, 'book-c');
+      expect(transaction.parentTransactionId, isNull);
+      expect(
+        (await fixture.accountQueryService.findAccountById(
+          account.id,
+        ))!.balance,
+        Money.zero(),
+      );
+      expect(
+        (await fixture.billRepository.findBill(bill.id))!.hasOutstandingItems,
+        isFalse,
+      );
+    },
+  );
+
   group('CreditBillGenerationAppService', () {
     test('account and installment writes do not generate bills', () async {
       final fixture = _Fixture();
@@ -1213,6 +1310,7 @@ class _Fixture {
     );
     final accountAppService = AccountAppServiceImpl(
       accountRepository,
+      bookRepository: FakeBookRepository(),
       transactionRunner: runner,
       ledgerPostingService: postingService,
       transactionRepository: postingRepository,
@@ -1283,6 +1381,7 @@ class _Fixture {
     database,
   );
   late final TransactionLedgerWriter ledgerWriter = TransactionLedgerWriter(
+    bookRepository: DriftBookRepository(database),
     transactionRunner: runner,
     transactionRepository: postingRepository,
     transactionGroupRepository: postingRepository,
@@ -1427,12 +1526,14 @@ class _Fixture {
   }
 
   Future<PostedTransactionResult> postExpense({
+    String? bookId,
     required String accountId,
     required Money amount,
     required DateTime occurredAt,
   }) {
     return postingAppService.createExpense(
       CreateExpenseCommand(
+        bookId: bookId,
         amount: amount,
         categoryAllocations: singleAllocation(
           accountId: 'expense-food',
@@ -1448,6 +1549,7 @@ class _Fixture {
   }
 
   Future<PostedTransactionResult> postRefund({
+    String? bookId,
     required String accountId,
     required String parentTransactionId,
     required Money amount,
@@ -1455,6 +1557,7 @@ class _Fixture {
   }) {
     return postingAppService.createRefund(
       CreateRefundCommand(
+        bookId: bookId,
         amount: amount,
         parentTransactionId: parentTransactionId,
         categoryAllocations: const [],

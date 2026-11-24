@@ -217,6 +217,7 @@ class DriftPostingRepository
         .into(_database.transactions)
         .insert(
           TransactionsCompanion.insert(
+            bookId: Value(transaction.bookId),
             id: transactionId,
             businessPurpose: transaction.businessPurpose,
             occurredAt: transaction.occurredAt,
@@ -399,6 +400,7 @@ class DriftPostingRepository
       _database.transactions,
     )..where((t) => t.id.equals(transaction.id))).write(
       TransactionsCompanion(
+        bookId: Value(transaction.bookId),
         businessPurpose: Value(transaction.businessPurpose),
         occurredAt: Value(transaction.occurredAt),
         postedAt: Value(transaction.postedAt),

@@ -31,3 +31,6 @@ export 'transaction/query/transaction_queries.dart';
 export 'transaction/query/transaction_query_service.dart';
 export 'transaction/query/transaction_read_models.dart';
 export 'transaction/query/transaction_scope.dart';
+
+export '../../domain/ledger/entity/book.dart';
+export 'book/query/book_query_service.dart';

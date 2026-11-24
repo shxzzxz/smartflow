@@ -67,6 +67,7 @@ class RefundPostingService {
       LedgerViolationReason.allocationExceedsAvailable.throwException();
     }
     final normalizedInstruction = RefundInstruction(
+      bookId: instruction.bookId,
       parentTransactionId: instruction.parentTransactionId,
       amount: instruction.amount,
       categoryAllocations: categoryAllocations,

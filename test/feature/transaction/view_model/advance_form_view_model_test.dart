@@ -1,3 +1,4 @@
+import '../../../helper/book_selection_override.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -188,6 +189,8 @@ ProviderContainer _container(
   final accounts = {cash.id: cash, receivable.id: receivable, food.id: food};
   final container = ProviderContainer(
     overrides: [
+      bookSelectionTestOverride,
+      bookListTestOverride,
       accountsForSelectionPurposeProvider(
         AccountSelectionPurpose.settlement,
       ).overrideWithValue(AsyncData([cash])),

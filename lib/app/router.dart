@@ -22,6 +22,7 @@ import '../feature/amortization/page/amortization_configuration_edit_page.dart';
 import '../feature/amortization/page/amortization_plans_page.dart';
 import '../feature/category/page/categories_page.dart';
 import '../feature/tag/page/tags_page.dart';
+import '../feature/book/page/books_page.dart';
 import '../feature/category/page/category_form_page.dart';
 import '../feature/counterparty/page/counterparties_page.dart';
 import '../feature/calendar/page/calendar_page.dart';
@@ -612,6 +613,7 @@ final appRouter = GoRouter(
         ),
       ],
     ),
+    GoRoute(path: '/books', builder: (context, state) => const BooksPage()),
     GoRoute(path: '/tags', builder: (context, state) => const TagsPage()),
     GoRoute(
       path: '/counterparties',

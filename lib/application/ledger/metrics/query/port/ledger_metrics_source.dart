@@ -63,6 +63,7 @@ class TagAggregate {
 abstract interface class LedgerMetricsSource {
   /// 按账户类型分桶累计 entries 的余额变化(应用 [TransactionScopeFilter] 口径)。
   Future<Map<AccountType, int>> aggregateByAccountType({
+    String? bookId,
     required Set<AccountType> accountTypes,
     required TransactionScopeFilter scope,
     DateTimeWindow window = const DateTimeWindow(),
@@ -92,6 +93,7 @@ abstract interface class LedgerMetricsSource {
   /// 返回 `Map<日期, Map<账户类型, 余额变化 minor>>`,日期按 [DateTime] 标准化为
   /// 当日 0 点(无时区偏移)。
   Future<Map<DateTime, Map<AccountType, int>>> aggregateByAccountTypeByDay({
+    String? bookId,
     required Set<AccountType> accountTypes,
     required TransactionScopeFilter scope,
     DateTimeWindow window = const DateTimeWindow(),

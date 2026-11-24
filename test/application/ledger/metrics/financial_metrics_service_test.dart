@@ -539,6 +539,7 @@ class _FakeLedgerMetricsSource implements LedgerMetricsSource {
 
   @override
   Future<Map<AccountType, int>> aggregateByAccountType({
+    String? bookId,
     required Set<AccountType> accountTypes,
     required TransactionScopeFilter scope,
     DateTimeWindow window = const DateTimeWindow(),
@@ -548,6 +549,7 @@ class _FakeLedgerMetricsSource implements LedgerMetricsSource {
 
   @override
   Future<Map<DateTime, Map<AccountType, int>>> aggregateByAccountTypeByDay({
+    String? bookId,
     required Set<AccountType> accountTypes,
     required TransactionScopeFilter scope,
     DateTimeWindow window = const DateTimeWindow(),

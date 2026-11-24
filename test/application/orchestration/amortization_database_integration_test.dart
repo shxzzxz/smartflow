@@ -1,3 +1,4 @@
+import '../../helper/fake_book_repository.dart';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -631,6 +632,8 @@ Future<int> _ownerTransactionCount(AppDatabase database, String planId) async {
 }
 
 final class _FailingAfterTransferLedger implements AmortizationLedgerPort {
+  @override
+  Future<String?> findTransactionBookId(String id) async => null;
   _FailingAfterTransferLedger(this.delegate);
 
   final AmortizationLedgerPort delegate;
@@ -650,6 +653,7 @@ final class _FailingAfterTransferLedger implements AmortizationLedgerPort {
 
   @override
   Future<String> postTransfer({
+    String? bookId,
     required Money amount,
     required List<AccountAmountAllocation> outgoingAllocations,
     required List<AccountAmountAllocation> incomingAllocations,
@@ -762,6 +766,7 @@ class _Fixture {
     final resolver = DriftSystemAccountResolver(database);
     final ids = SequentialIdGenerator(prefix: 'amortization');
     final writer = TransactionLedgerWriter(
+      bookRepository: FakeBookRepository(),
       transactionRunner: runner,
       transactionRepository: transactions,
       transactionGroupRepository: transactions,
@@ -784,6 +789,7 @@ class _Fixture {
       idGenerator: ids,
     );
     final ledger = LedgerAmortizationPort(
+      transactions: transactions,
       posting: posting,
       editing: editing,
       accounts: accounts,

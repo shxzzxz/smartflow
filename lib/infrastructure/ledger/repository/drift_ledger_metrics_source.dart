@@ -27,8 +27,10 @@ class DriftLedgerMetricsSource implements LedgerMetricsSource {
 
     final accountIdCol = _db.accounts.id;
     final typeCol = _db.accounts.accountType;
-    final sumExpr =
-        balanceDeltaExpr(entries: _db.entries, accounts: _db.accounts).sum();
+    final sumExpr = balanceDeltaExpr(
+      entries: _db.entries,
+      accounts: _db.accounts,
+    ).sum();
     final select =
         _db.selectOnly(_db.entries).join([
             innerJoin(
@@ -81,8 +83,10 @@ class DriftLedgerMetricsSource implements LedgerMetricsSource {
 
     final tagIdCol = _db.transactionTags.tagId;
     final typeCol = _db.accounts.accountType;
-    final sumExpr =
-        balanceDeltaExpr(entries: _db.entries, accounts: _db.accounts).sum();
+    final sumExpr = balanceDeltaExpr(
+      entries: _db.entries,
+      accounts: _db.accounts,
+    ).sum();
     final groupRoot = coalesce<String>([
       _db.transactions.parentTransactionId,
       _db.transactions.id,
@@ -134,6 +138,7 @@ class DriftLedgerMetricsSource implements LedgerMetricsSource {
 
   @override
   Future<Map<AccountType, int>> aggregateByAccountType({
+    String? bookId,
     required Set<AccountType> accountTypes,
     required TransactionScopeFilter scope,
     DateTimeWindow window = const DateTimeWindow(),
@@ -166,6 +171,9 @@ class DriftLedgerMetricsSource implements LedgerMetricsSource {
           ..where(_db.accounts.accountType.isInValues(accountTypes))
           ..groupBy([typeCol]);
 
+    if (bookId != null) {
+      select.where(_db.transactions.bookId.equals(bookId));
+    }
     if (window.from != null) {
       select.where(
         _db.transactions.occurredAt.isBiggerOrEqualValue(window.from!),
@@ -191,6 +199,7 @@ class DriftLedgerMetricsSource implements LedgerMetricsSource {
 
   @override
   Future<Map<DateTime, Map<AccountType, int>>> aggregateByAccountTypeByDay({
+    String? bookId,
     required Set<AccountType> accountTypes,
     required TransactionScopeFilter scope,
     DateTimeWindow window = const DateTimeWindow(),
@@ -199,8 +208,10 @@ class DriftLedgerMetricsSource implements LedgerMetricsSource {
 
     final occurredAtCol = _db.transactions.occurredAt;
     final typeCol = _db.accounts.accountType;
-    final sumExpr =
-        balanceDeltaExpr(entries: _db.entries, accounts: _db.accounts).sum();
+    final sumExpr = balanceDeltaExpr(
+      entries: _db.entries,
+      accounts: _db.accounts,
+    ).sum();
 
     final select =
         _db.selectOnly(_db.entries).join([
@@ -221,6 +232,9 @@ class DriftLedgerMetricsSource implements LedgerMetricsSource {
           ..where(_db.accounts.accountType.isInValues(accountTypes))
           ..groupBy([occurredAtCol, typeCol]);
 
+    if (bookId != null) {
+      select.where(_db.transactions.bookId.equals(bookId));
+    }
     if (window.from != null) {
       select.where(
         _db.transactions.occurredAt.isBiggerOrEqualValue(window.from!),
@@ -270,8 +284,10 @@ class DriftLedgerMetricsSource implements LedgerMetricsSource {
       orElse: const Constant(0),
     );
     final typeCol = _db.accounts.accountType;
-    final sumExpr =
-        balanceDeltaExpr(entries: _db.entries, accounts: _db.accounts).sum();
+    final sumExpr = balanceDeltaExpr(
+      entries: _db.entries,
+      accounts: _db.accounts,
+    ).sum();
     final select =
         _db.selectOnly(_db.entries).join([
             innerJoin(
@@ -347,8 +363,9 @@ List<_MonthBucket> _monthBuckets(DateTimeWindow window) {
   final lastMonth = MonthKey.fromDate(lastIncluded);
   while (month.compareTo(lastMonth) <= 0) {
     final bucketFrom = month.start.isAfter(from) ? month.start : from;
-    final bucketUntil =
-        month.nextMonthStart.isBefore(until) ? month.nextMonthStart : until;
+    final bucketUntil = month.nextMonthStart.isBefore(until)
+        ? month.nextMonthStart
+        : until;
     result.add(_MonthBucket(key: month, from: bucketFrom, until: bucketUntil));
     month = MonthKey.fromDate(month.nextMonthStart);
   }

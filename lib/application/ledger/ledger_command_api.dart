@@ -33,3 +33,7 @@ export 'transaction/command/transaction_posting_app_service.dart';
 export 'transaction/command/transaction_update_app_service.dart';
 export 'tag/command/tag_application_service.dart';
 export 'tag/query/tag_read_models.dart';
+
+export '../../domain/ledger/entity/book.dart';
+export 'book/command/book_app_service.dart';
+export 'book/command/book_command.dart';

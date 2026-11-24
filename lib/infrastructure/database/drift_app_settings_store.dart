@@ -8,6 +8,7 @@ import 'package:smartflow/infrastructure/database/app_database.dart';
 class DriftAppSettingsStore implements AppSettingsStore {
   const DriftAppSettingsStore(this._database);
 
+  static const _currentBookIdKey = 'settings.current_book_id';
   static const _showAddTransactionFabKey = 'settings.show_add_transaction_fab';
   static const _showBottomNavLabelsKey = 'settings.show_bottom_nav_labels';
   static const _bottomNavigationStyleKey = 'settings.bottom_navigation_style';
@@ -31,6 +32,7 @@ class DriftAppSettingsStore implements AppSettingsStore {
     final rows =
         await (_database.select(_database.appMetadata)..where(
               (table) => table.key.isIn(const [
+                _currentBookIdKey,
                 _showAddTransactionFabKey,
                 _showBottomNavLabelsKey,
                 _bottomNavigationStyleKey,
@@ -49,6 +51,7 @@ class DriftAppSettingsStore implements AppSettingsStore {
     final values = {for (final row in rows) row.key: row.value};
     const defaults = AppSettings();
     return AppSettings(
+      currentBookId: values[_currentBookIdKey] ?? defaults.currentBookId,
       showAddTransactionFab:
           _parseBool(values[_showAddTransactionFabKey]) ??
           defaults.showAddTransactionFab,
@@ -100,6 +103,7 @@ class DriftAppSettingsStore implements AppSettingsStore {
   Future<void> save(AppSettings settings) {
     return _database.batch((batch) {
       batch.insertAllOnConflictUpdate(_database.appMetadata, [
+        _entry(_currentBookIdKey, settings.currentBookId),
         _entry(_showAddTransactionFabKey, settings.showAddTransactionFab),
         _entry(_showBottomNavLabelsKey, settings.showBottomNavLabels),
         _entry(

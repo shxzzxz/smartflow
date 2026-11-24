@@ -16,6 +16,7 @@ import '../../../amortization/provider/amortization_providers.dart';
 import '../../../shared/provider/counterparty_providers.dart';
 import '../../../shared/provider/ledger_query_providers.dart';
 import '../../../shared/provider/tag_providers.dart';
+import '../../../shared/provider/book_providers.dart';
 import '../../../shared/view_model/action_guard.dart';
 import '../../../shared/view_model/ui_action_outcome.dart';
 import '../../presentation/transaction_form_presentation.dart';
@@ -85,6 +86,7 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
     final accountsByIdAsync = editTransactionId == null
         ? null
         : ref.watch(accountsByIdProvider);
+    final bookSelectionAsync = ref.watch(bookSelectionViewModelProvider);
     final tagsAsync = ref.watch(tagListProvider);
     final counterpartiesAsync = ref.watch(counterpartyListProvider);
     final editTagIdsAsync = editTransactionId == null
@@ -106,8 +108,15 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
     }
 
     if (editTransactionId == null) {
+      if (bookSelectionAsync case AsyncError(:final error, :final stackTrace)) {
+        return AsyncValue.error(error, stackTrace);
+      }
+      if (bookSelectionAsync.isLoading || !bookSelectionAsync.hasValue) {
+        return const AsyncValue.loading();
+      }
       return AsyncValue.data(
         _initializedState ??= TransactionFormState.initial(
+          bookId: bookSelectionAsync.requireValue.currentBook.id,
           prefill: prefill,
           mode: initialMode,
           fromAccountId: initialFromAccountId,
@@ -225,6 +234,7 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
     );
     return AsyncValue.data(
       _initializedState ??= TransactionFormState.fromEditSnapshot(
+        bookId: detail.bookId,
         snapshot: snapshot,
         accountOptions: accountOptions,
         expenseTree: expenseTree,
@@ -235,6 +245,9 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
       ),
     );
   }
+
+  void selectBook(String bookId) =>
+      _update((current) => current.copyWith(bookId: bookId));
 
   Future<SubmitOutcome> submit({
     required String amountText,

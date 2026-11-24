@@ -1,3 +1,4 @@
+import '../../../helper/book_selection_override.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:logging/logging.dart';
@@ -363,6 +364,8 @@ ProviderContainer _container({
   final funds = [_account('cash', AccountType.asset)];
   final container = ProviderContainer(
     overrides: [
+      bookSelectionTestOverride,
+      bookListTestOverride,
       if (products != null)
         installmentProductAppServiceProvider.overrideWithValue(products),
       accountsForSelectionPurposeProvider.overrideWith(

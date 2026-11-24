@@ -118,8 +118,9 @@ class _PageHeaderPreviewsState extends State<PageHeaderPreviews> {
         ),
       ),
       _example(
-        '左侧切换与月份选择',
+        '三段同行与紧凑月份选择',
         AppPageHeader.custom(
+          singleRow: true,
           leading: AppHeaderIconButton(
             icon: _showLunar ? RemixIcons.eye_line : RemixIcons.eye_off_line,
             tooltip: _showLunar ? '隐藏农历' : '显示农历',

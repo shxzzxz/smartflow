@@ -52,7 +52,7 @@ final class RefundFormViewModelProvider
 }
 
 String _$refundFormViewModelHash() =>
-    r'2faab94293ba24cb9cb1145e795033e7812ed0e8';
+    r'ab5b58838410ea42ed26fcda7bdcd9258b6496c0';
 
 final class RefundFormViewModelFamily extends $Family
     with

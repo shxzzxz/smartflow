@@ -1,3 +1,4 @@
+import '../../../helper/book_selection_override.dart';
 // ignore_for_file: riverpod_lint/scoped_providers_should_specify_dependencies
 
 import 'package:flutter/material.dart';
@@ -502,6 +503,8 @@ Widget _buildAccountsPageApp({
 }) {
   return ProviderScope(
     overrides: [
+      bookSelectionTestOverride,
+      bookListTestOverride,
       accountViewsProvider.overrideWith((ref) => AsyncValue.data(accounts)),
       archivedAccountViewsProvider.overrideWith(
         (ref) => AsyncValue.data(archivedAccounts),

@@ -13,6 +13,9 @@ import 'package:smartflow/application/ledger/counterparty/port/counterparty_repo
 import 'package:smartflow/domain/ledger/valobj/ledger_violation_reason.dart';
 
 import 'transaction_command.dart';
+import '../../../../core/error/app_exception.dart';
+import '../../../../domain/ledger/valobj/ledger_error_code.dart';
+import '../../../../domain/ledger/port/book_repository.dart';
 
 class TransactionLedgerWriter {
   const TransactionLedgerWriter({
@@ -22,12 +25,14 @@ class TransactionLedgerWriter {
     required AccountRepository accountRepository,
     required TransactionTagRepository transactionTagRepository,
     required CounterpartyRepository counterpartyRepository,
+    required BookRepository bookRepository,
   }) : _transactionRunner = transactionRunner,
        _transactionRepository = transactionRepository,
        _transactionGroupRepository = transactionGroupRepository,
        _accountRepository = accountRepository,
        _transactionTagRepository = transactionTagRepository,
-       _counterpartyRepository = counterpartyRepository;
+       _counterpartyRepository = counterpartyRepository,
+       _bookRepository = bookRepository;
 
   final TransactionRunner _transactionRunner;
   final TransactionRepository _transactionRepository;
@@ -35,6 +40,7 @@ class TransactionLedgerWriter {
   final AccountRepository _accountRepository;
   final TransactionTagRepository _transactionTagRepository;
   final CounterpartyRepository _counterpartyRepository;
+  final BookRepository _bookRepository;
 
   Future<PostedTransactionResult> updateTags(
     UpdateTransactionTagsCommand command,
@@ -92,6 +98,7 @@ class TransactionLedgerWriter {
   }) async {
     return _transactionRunner.run(() async {
       await _assertCounterpartiesExist([posting.transaction]);
+      await _assertBooksExist([posting.transaction]);
       await _transactionRepository.save(posting.transaction);
       await _accountRepository.saveAll(posting.accounts);
       if (tagIds.isNotEmpty) {
@@ -118,6 +125,7 @@ class TransactionLedgerWriter {
     TransactionGroupRewriteResult rewrite,
   ) async {
     await _assertCounterpartiesExist(rewrite.currentGroup.transactions);
+    await _assertBooksExist(rewrite.currentGroup.transactions);
     await _transactionGroupRepository.applyRewrite(rewrite.plan);
     await _accountRepository.saveAll(rewrite.accounts);
     return PostedTransactionResult(
@@ -143,12 +151,22 @@ class TransactionLedgerWriter {
   ) async {
     return _transactionRunner.run(() async {
       await _assertCounterpartiesExist(update.transactions);
+      await _assertBooksExist(update.transactions);
       await _transactionRepository.updateAll(update.transactions);
       await _accountRepository.saveAll(update.accounts);
       return PostedTransactionResult(
         transactionId: update.currentTransaction.id,
       );
     });
+  }
+
+  Future<void> _assertBooksExist(Iterable<Transaction> transactions) async {
+    for (final id
+        in transactions.map((transaction) => transaction.bookId).toSet()) {
+      if (await _bookRepository.findById(id) == null) {
+        throw BusinessException(LedgerErrorCode.bookNotFound);
+      }
+    }
   }
 
   Future<void> _assertCounterpartiesExist(

@@ -10,6 +10,7 @@ import '../../../application/transaction_view/transaction_view_query_api.dart';
 import '../../../core/time/month_key.dart';
 import 'package:smartflow/feature/shared/presentation/transaction_list_presentation.dart';
 import '../../shared/provider/current_date_time_provider.dart';
+import '../../shared/provider/book_providers.dart';
 import '../../shared/provider/ledger_query_providers.dart';
 import '../../shared/view_model/app_settings_view_model.dart';
 
@@ -98,21 +99,26 @@ class HomeBatchMode extends _$HomeBatchMode {
 Stream<BusinessActivityPage> homeBusinessActivities(
   Ref ref,
   DateTime visibleMonth,
+  String bookId,
 ) {
   final filter = ref.watch(
     homeViewModelProvider.select((state) => state.transactionFilter),
   );
   final service = ref.watch(businessActivityQueryServiceProvider);
-  return service.watchPage(_homeBusinessActivityQuery(visibleMonth, filter));
+  return service.watchPage(
+    _homeBusinessActivityQuery(visibleMonth, filter, bookId: bookId),
+  );
 }
 
 BusinessActivityPageQuery _homeBusinessActivityQuery(
   DateTime visibleMonth,
   HomeTransactionFilter filter, {
   BusinessActivityCursor? before,
+  String? bookId,
 }) {
   final month = MonthKey(year: visibleMonth.year, month: visibleMonth.month);
   return BusinessActivityPageQuery(
+    bookId: bookId,
     categoryAccountIds: filter.categoryAccountIds,
     settlementAccountIds: filter.settlementAccountIds,
     tagIds: filter.tagIds,
@@ -129,19 +135,31 @@ class HomeTransactionFeedViewModel extends _$HomeTransactionFeedViewModel {
   var _requestGeneration = 0;
   var _refreshRequested = false;
   HomeTransactionFilter? _activeFilter;
+  String? _activeBookId;
 
   @override
   HomeTransactionFeedState build(DateTime visibleMonth) {
     final filter = ref.watch(
       homeViewModelProvider.select((state) => state.transactionFilter),
     );
+    final bookId = ref
+        .watch(bookSelectionViewModelProvider)
+        .value
+        ?.currentBook
+        .id;
+    if (bookId == null) return const HomeTransactionFeedState.loading();
+    if (_activeBookId != bookId) {
+      _requestGeneration += 1;
+      _refreshRequested = true;
+    }
+    _activeBookId = bookId;
     final activeFilter = _activeFilter;
     if (activeFilter != null && !identical(activeFilter, filter)) {
       _requestGeneration += 1;
       _refreshRequested = false;
     }
     _activeFilter = filter;
-    final provider = homeBusinessActivitiesProvider(visibleMonth);
+    final provider = homeBusinessActivitiesProvider(visibleMonth, bookId);
     final items = ref.read(provider);
     ref.listen(provider, (_, next) => _applyFirstPage(next));
     return switch (items) {
@@ -229,6 +247,7 @@ class HomeTransactionFeedViewModel extends _$HomeTransactionFeedViewModel {
               visibleMonth,
               filter,
               before: current.nextCursor,
+              bookId: _activeBookId,
             ),
           );
       if (!ref.mounted || requestGeneration != _requestGeneration) return;
@@ -254,7 +273,12 @@ class HomeTransactionFeedViewModel extends _$HomeTransactionFeedViewModel {
     _requestGeneration += 1;
     _refreshRequested = true;
     state = current.copyWith(hasPendingRefresh: false, isRefreshing: true);
-    ref.invalidate(homeBusinessActivitiesProvider(visibleMonth));
+    ref.invalidate(
+      homeBusinessActivitiesProvider(
+        visibleMonth,
+        _activeBookId ?? Book.dailyId,
+      ),
+    );
   }
 }
 
@@ -262,6 +286,7 @@ class HomeTransactionFeedViewModel extends _$HomeTransactionFeedViewModel {
 Stream<CashflowComparison> homeCashflowComparison(
   Ref ref,
   DateTime visibleMonth,
+  String bookId,
 ) {
   final now = ref.watch(currentDateTimeProvider);
   final month = MonthKey(year: visibleMonth.year, month: visibleMonth.month);
@@ -271,7 +296,11 @@ Stream<CashflowComparison> homeCashflowComparison(
   return ref
       .watch(financialMetricsServiceProvider)
       .watchCashflowComparison(
-        CashflowComparisonQuery(month: month, asOfDate: asOfDate),
+        CashflowComparisonQuery(
+          month: month,
+          asOfDate: asOfDate,
+          bookId: bookId,
+        ),
       );
 }
 
@@ -279,11 +308,14 @@ Stream<CashflowComparison> homeCashflowComparison(
 Stream<List<DailyCashflowSummary>> homeDailyCashflowSummaries(
   Ref ref,
   DateTime visibleMonth,
+  String bookId,
 ) {
   final month = MonthKey(year: visibleMonth.year, month: visibleMonth.month);
   return ref
       .watch(financialMetricsServiceProvider)
-      .watchDailyCashflowSummaries(DailyCashflowSummaryQuery(month: month));
+      .watchDailyCashflowSummaries(
+        DailyCashflowSummaryQuery(month: month, bookId: bookId),
+      );
 }
 
 @riverpod
@@ -316,12 +348,20 @@ HomeFilterOptionsState homeFilterOptions(Ref ref) {
 
 @riverpod
 HomeContentState homeContent(Ref ref, DateTime visibleMonth) {
+  final bookId = ref
+      .watch(bookSelectionViewModelProvider)
+      .value
+      ?.currentBook
+      .id;
+  if (bookId == null) return const HomeContentState.loading();
   final transactions = ref.watch(
     homeTransactionFeedViewModelProvider(visibleMonth),
   );
-  final comparison = ref.watch(homeCashflowComparisonProvider(visibleMonth));
+  final comparison = ref.watch(
+    homeCashflowComparisonProvider(visibleMonth, bookId),
+  );
   final dailySummaries = ref.watch(
-    homeDailyCashflowSummariesProvider(visibleMonth),
+    homeDailyCashflowSummariesProvider(visibleMonth, bookId),
   );
   final accountLookup = ref.watch(accountLookupProvider);
   final budgetReport = ref.watch(monthlyBudgetReportProvider(visibleMonth));

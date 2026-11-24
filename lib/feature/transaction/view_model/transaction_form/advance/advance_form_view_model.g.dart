@@ -57,7 +57,7 @@ final class AdvanceCollectionFormViewModelProvider
 }
 
 String _$advanceCollectionFormViewModelHash() =>
-    r'c81d246dce878d4f19a778b6edf8720ed35cdd00';
+    r'14ccb7c07c9c81359171475c8efd8a820a836fef';
 
 final class AdvanceCollectionFormViewModelFamily extends $Family
     with
@@ -165,7 +165,7 @@ final class AdvanceSettlementFormViewModelProvider
 }
 
 String _$advanceSettlementFormViewModelHash() =>
-    r'1ef40531bf7a6b862ab99d12c28af37d7d9952c6';
+    r'7501a52c47ca6280c086471bbfcc3de607f61f23';
 
 final class AdvanceSettlementFormViewModelFamily extends $Family
     with
@@ -267,7 +267,7 @@ final class AdvanceFormViewModelProvider
 }
 
 String _$advanceFormViewModelHash() =>
-    r'c7183c13ddd858cfda7aff4a79a38f301eddcc2c';
+    r'15c0918e0dddaa12dc145b4837d7cec0734b65ff';
 
 final class AdvanceFormViewModelFamily extends $Family
     with

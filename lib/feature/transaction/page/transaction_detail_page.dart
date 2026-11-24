@@ -1,3 +1,4 @@
+import '../../book/widget/book_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -173,6 +174,7 @@ class _DetailBody extends ConsumerWidget {
                 onPostedAtTap: () => _editPostedAt(context, ref),
                 onAccountTap: (row) => _handleAccountTap(context, ref, row),
                 onNoteTap: () => _editNote(context, ref),
+                onBookTap: () => _editBook(context, ref, state),
               ),
               if (state.businessModules.isNotEmpty) ...[
                 const SizedBox(height: AppSpacing.space12),
@@ -201,6 +203,28 @@ class _DetailBody extends ConsumerWidget {
         _ActionBar(state: state),
       ],
     );
+  }
+
+  Future<void> _editBook(
+    BuildContext context,
+    WidgetRef ref,
+    TransactionDetailLoaded state,
+  ) async {
+    final id = await pickBook(
+      context,
+      ref,
+      selectedBookId: state.detail.bookId,
+    );
+    if (id == null || !context.mounted) return;
+    final outcome = await ref
+        .read(transactionDetailViewModelProvider(state.transactionId).notifier)
+        .changeBook(id);
+    if (!context.mounted) return;
+    if (outcome case UiActionFailure<void>(:final error)) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(error.message)));
+    }
   }
 
   Future<void> _editNote(BuildContext context, WidgetRef ref) async {
@@ -626,6 +650,7 @@ class _PrimaryMetaCard extends StatelessWidget {
     required this.onPostedAtTap,
     required this.onAccountTap,
     required this.onNoteTap,
+    required this.onBookTap,
   });
 
   final TransactionDetailLoaded state;
@@ -633,6 +658,7 @@ class _PrimaryMetaCard extends StatelessWidget {
   final VoidCallback onPostedAtTap;
   final ValueChanged<DetailAccountRow> onAccountTap;
   final VoidCallback onNoteTap;
+  final VoidCallback onBookTap;
 
   @override
   Widget build(BuildContext context) {
@@ -641,6 +667,7 @@ class _PrimaryMetaCard extends StatelessWidget {
     final colors = Theme.of(context).colorScheme;
     return _RowCard(
       rows: [
+        AppPlainValueRow(label: '账本', value: state.bookName, onTap: onBookTap),
         AppPlainValueRow(
           label: '交易时间',
           value: state.occurredAtText,

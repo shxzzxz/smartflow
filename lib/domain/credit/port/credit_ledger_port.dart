@@ -21,6 +21,7 @@ class CreditLedgerExpenseAllocation {
 
 class CreditLedgerPostExpenseCommand {
   CreditLedgerPostExpenseCommand({
+    this.bookId,
     required this.amount,
     required List<CreditLedgerExpenseAllocation> categoryAllocations,
     required List<CreditLedgerExpenseAllocation> settlementAllocations,
@@ -35,6 +36,7 @@ class CreditLedgerPostExpenseCommand {
   }) : categoryAllocations = List.unmodifiable(categoryAllocations),
        settlementAllocations = List.unmodifiable(settlementAllocations);
 
+  final String? bookId;
   final Money amount;
   final List<CreditLedgerExpenseAllocation> categoryAllocations;
   final List<CreditLedgerExpenseAllocation> settlementAllocations;
@@ -50,6 +52,7 @@ class CreditLedgerPostExpenseCommand {
 
 class CreditLedgerPostRefundCommand {
   CreditLedgerPostRefundCommand({
+    this.bookId,
     required this.parentTransactionId,
     required this.amount,
     required List<CreditLedgerExpenseAllocation> categoryAllocations,
@@ -61,6 +64,7 @@ class CreditLedgerPostRefundCommand {
   }) : categoryAllocations = List.unmodifiable(categoryAllocations),
        settlementAllocations = List.unmodifiable(settlementAllocations);
 
+  final String? bookId;
   final String parentTransactionId;
   final Money amount;
   final List<CreditLedgerExpenseAllocation> categoryAllocations;
@@ -184,6 +188,7 @@ class CreditLedgerOwnership {
 
 class CreditLedgerCreateLiabilityAccountCommand {
   const CreditLedgerCreateLiabilityAccountCommand({
+    this.transactionBookId,
     required this.name,
     required this.kind,
     required this.openingBalance,
@@ -194,6 +199,7 @@ class CreditLedgerCreateLiabilityAccountCommand {
     this.isHidden = false,
   });
 
+  final String? transactionBookId;
   final String name;
   final CreditLiabilityAccountKind kind;
   final Money openingBalance;
@@ -206,6 +212,7 @@ class CreditLedgerCreateLiabilityAccountCommand {
 
 class CreditLedgerEditLiabilityAccountCommand {
   const CreditLedgerEditLiabilityAccountCommand({
+    this.transactionBookId,
     required this.accountId,
     this.name,
     this.iconKey,
@@ -214,6 +221,7 @@ class CreditLedgerEditLiabilityAccountCommand {
     this.targetBalance,
   });
 
+  final String? transactionBookId;
   final String accountId;
   final String? name;
   final Patch<String>? iconKey;
@@ -224,6 +232,7 @@ class CreditLedgerEditLiabilityAccountCommand {
 
 class CreditLedgerPostRepaymentCommand {
   const CreditLedgerPostRepaymentCommand({
+    this.bookId,
     required this.liabilityAccountId,
     required this.paidFromAccountId,
     required this.occurredAt,
@@ -234,6 +243,7 @@ class CreditLedgerPostRepaymentCommand {
     this.tagIds = const {},
   });
 
+  final String? bookId;
   final String liabilityAccountId;
   final String paidFromAccountId;
   final DateTime occurredAt;
@@ -246,6 +256,7 @@ class CreditLedgerPostRepaymentCommand {
 
 class CreditLedgerPostBorrowingCommand {
   const CreditLedgerPostBorrowingCommand({
+    this.bookId,
     required this.liabilityAccountId,
     required this.receiveAccountId,
     required this.amount,
@@ -255,6 +266,7 @@ class CreditLedgerPostBorrowingCommand {
     this.ownership,
   });
 
+  final String? bookId;
   final String liabilityAccountId;
   final String receiveAccountId;
   final Money amount;

@@ -13,6 +13,7 @@ class ConsumptionInstallmentAllocation {
 
 class CreateConsumptionInstallmentCommand {
   CreateConsumptionInstallmentCommand({
+    this.bookId,
     this.name,
     required this.liabilityAccountId,
     required this.amount,
@@ -30,6 +31,7 @@ class CreateConsumptionInstallmentCommand {
   }) : categoryAllocations = List.unmodifiable(categoryAllocations),
        settlementAllocations = List.unmodifiable(settlementAllocations);
 
+  final String? bookId;
   final String? name;
   final String liabilityAccountId;
   final Money amount;
@@ -59,6 +61,7 @@ class ConsumptionInstallmentResult {
 
 class CreateConsumptionInstallmentRefundCommand {
   CreateConsumptionInstallmentRefundCommand({
+    this.bookId,
     required this.contractId,
     required this.parentTransactionId,
     required this.amount,
@@ -71,6 +74,7 @@ class CreateConsumptionInstallmentRefundCommand {
   }) : categoryAllocations = List.unmodifiable(categoryAllocations),
        settlementAllocations = List.unmodifiable(settlementAllocations);
 
+  final String? bookId;
   final String contractId;
   final String parentTransactionId;
   final Money amount;

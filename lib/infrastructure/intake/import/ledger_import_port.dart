@@ -168,6 +168,7 @@ class LedgerImportPort implements ImportLedgerPort {
 
   @override
   Future<String> createExpense({
+    String? bookId,
     required Money amount,
     required String paidFromAccountId,
     required String expenseCategoryId,
@@ -179,6 +180,7 @@ class LedgerImportPort implements ImportLedgerPort {
   }) async {
     final result = await _posting.createExpense(
       CreateExpenseCommand(
+        bookId: bookId,
         amount: amount,
         categoryAllocations: singleAllocation(
           accountId: expenseCategoryId,
@@ -201,6 +203,7 @@ class LedgerImportPort implements ImportLedgerPort {
 
   @override
   Future<String> createIncome({
+    String? bookId,
     required Money amount,
     required String receiveAccountId,
     required String incomeCategoryId,
@@ -212,6 +215,7 @@ class LedgerImportPort implements ImportLedgerPort {
   }) async {
     final result = await _posting.createIncome(
       CreateIncomeCommand(
+        bookId: bookId,
         amount: amount,
         categoryAllocations: singleAllocation(
           accountId: incomeCategoryId,
@@ -234,6 +238,7 @@ class LedgerImportPort implements ImportLedgerPort {
 
   @override
   Future<String> createTransfer({
+    String? bookId,
     required Money amount,
     required String fromAccountId,
     required String toAccountId,
@@ -244,6 +249,7 @@ class LedgerImportPort implements ImportLedgerPort {
   }) async {
     final result = await _posting.createTransfer(
       CreateTransferCommand.simple(
+        bookId: bookId,
         amount: amount,
         fromAccountId: fromAccountId,
         toAccountId: toAccountId,
@@ -259,6 +265,7 @@ class LedgerImportPort implements ImportLedgerPort {
 
   @override
   Future<String> createRefund({
+    String? bookId,
     required String topLevelTransactionId,
     required Money amount,
     required String refundToAccountId,
@@ -279,6 +286,7 @@ class LedgerImportPort implements ImportLedgerPort {
       final categories = patchAllocations(current: available, total: amount);
       return advances.createRefund(
         CreateAdvanceRefundWorkflowCommand(
+          bookId: bookId,
           parentTransactionId: topLevelTransactionId,
           amount: amount,
           categoryAllocations: categories,
@@ -294,6 +302,7 @@ class LedgerImportPort implements ImportLedgerPort {
     }
     final result = await _posting.createRefund(
       CreateRefundCommand(
+        bookId: bookId,
         amount: amount,
         parentTransactionId: topLevelTransactionId,
         categoryAllocations: const [],
@@ -311,6 +320,7 @@ class LedgerImportPort implements ImportLedgerPort {
 
   @override
   Future<String> createAdvance({
+    String? bookId,
     required Money amount,
     required String receivableAccountId,
     required String paidFromAccountId,
@@ -327,6 +337,7 @@ class LedgerImportPort implements ImportLedgerPort {
     }
     return advances.createAdvance(
       CreateAdvanceWorkflowCommand(
+        bookId: bookId,
         amount: amount,
         scenario: AdvanceScenario.reimbursement,
         trackingMode: AdvanceTrackingMode.itemized,
@@ -352,6 +363,7 @@ class LedgerImportPort implements ImportLedgerPort {
 
   @override
   Future<String> createAdvanceCollection({
+    String? bookId,
     required String topLevelTransactionId,
     required Money amount,
     required String receivableAccountId,
@@ -366,6 +378,7 @@ class LedgerImportPort implements ImportLedgerPort {
     }
     return advances.createCollection(
       CreateAdvanceCollectionWorkflowCommand(
+        bookId: bookId,
         amount: amount,
         advanceTransactionId: topLevelTransactionId,
         receivableAccountId: receivableAccountId,
@@ -382,6 +395,7 @@ class LedgerImportPort implements ImportLedgerPort {
 
   @override
   Future<String> settleAdvance({
+    String? bookId,
     required String topLevelTransactionId,
     required Money actualReceivedAmount,
     required String receivableAccountId,
@@ -402,6 +416,7 @@ class LedgerImportPort implements ImportLedgerPort {
     }
     return advances.createSettlement(
       CreateAdvanceSettlementWorkflowCommand(
+        bookId: bookId,
         actualReceivedAmount: actualReceivedAmount,
         advanceTransactionId: topLevelTransactionId,
         receivableAccountId: receivableAccountId,
@@ -435,6 +450,7 @@ class LedgerImportPort implements ImportLedgerPort {
 
   @override
   Future<String> createRepayment({
+    String? bookId,
     required Money principal,
     required String liabilityAccountId,
     required String paidFromAccountId,
@@ -447,6 +463,7 @@ class LedgerImportPort implements ImportLedgerPort {
   }) async {
     final result = await _posting.createRepayment(
       CreateRepaymentCommand(
+        bookId: bookId,
         principal: principal,
         liabilityAccountId: liabilityAccountId,
         paidFromAccountId: paidFromAccountId,
@@ -464,6 +481,7 @@ class LedgerImportPort implements ImportLedgerPort {
 
   @override
   Future<String> createInterestExpense({
+    String? bookId,
     required Money amount,
     required String paidFromAccountId,
     required DateTime occurredAt,
@@ -483,6 +501,7 @@ class LedgerImportPort implements ImportLedgerPort {
 
   @override
   Future<String> createBorrowing({
+    String? bookId,
     required Money amount,
     required String liabilityAccountId,
     required String receiveAccountId,
@@ -492,6 +511,7 @@ class LedgerImportPort implements ImportLedgerPort {
   }) async {
     final result = await _posting.createBorrowing(
       CreateBorrowingCommand(
+        bookId: bookId,
         amount: amount,
         liabilityAccountId: liabilityAccountId,
         receiveAccountId: receiveAccountId,
@@ -506,6 +526,7 @@ class LedgerImportPort implements ImportLedgerPort {
 
   @override
   Future<String> createLending({
+    String? bookId,
     required Money amount,
     required String receivableAccountId,
     required String paidFromAccountId,
@@ -516,6 +537,7 @@ class LedgerImportPort implements ImportLedgerPort {
     final result = await (_posting as ReceivableTransactionPostingAppService)
         .createLending(
           CreateLendingCommand(
+            bookId: bookId,
             amount: amount,
             receivableAccountId: receivableAccountId,
             paidFromAccountId: paidFromAccountId,
@@ -529,6 +551,7 @@ class LedgerImportPort implements ImportLedgerPort {
 
   @override
   Future<String> createReceivableCollection({
+    String? bookId,
     required Money principal,
     required String receivableAccountId,
     required String receiveAccountId,
@@ -540,6 +563,7 @@ class LedgerImportPort implements ImportLedgerPort {
     final result = await (_posting as ReceivableTransactionPostingAppService)
         .createReceivableCollection(
           CreateReceivableCollectionCommand(
+            bookId: bookId,
             principal: principal,
             interest: interest ?? Money.zero(),
             receivableAccountId: receivableAccountId,
@@ -554,6 +578,7 @@ class LedgerImportPort implements ImportLedgerPort {
 
   @override
   Future<String> createOpeningBalance({
+    String? bookId,
     required Money amount,
     required String accountId,
     required DateTime occurredAt,
@@ -562,6 +587,7 @@ class LedgerImportPort implements ImportLedgerPort {
   }) async {
     final result = await _posting.createOpeningBalance(
       CreateOpeningBalanceCommand(
+        bookId: bookId,
         accountId: accountId,
         amount: amount,
         occurredAt: occurredAt,

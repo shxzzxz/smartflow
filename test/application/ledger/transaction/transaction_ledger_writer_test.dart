@@ -1,3 +1,4 @@
+import '../../../helper/fake_book_repository.dart';
 import 'package:smartflow/application/ledger/transaction/command/transaction_ledger_writer.dart';
 import 'package:smartflow/application/shared/transaction_runner.dart';
 import 'package:smartflow/core/money/money.dart';
@@ -25,6 +26,7 @@ void main() {
       final transactions = _FakeTransactionRepository(runner);
       final accounts = _FakeAccountRepository(runner);
       final writer = TransactionLedgerWriter(
+        bookRepository: FakeBookRepository(),
         transactionRunner: runner,
         transactionRepository: transactions,
         transactionGroupRepository: transactions,
@@ -65,6 +67,7 @@ void main() {
       final transactions = _FakeTransactionRepository(runner);
       final accounts = _FakeAccountRepository(runner);
       final writer = TransactionLedgerWriter(
+        bookRepository: FakeBookRepository(),
         transactionRunner: runner,
         transactionRepository: transactions,
         transactionGroupRepository: transactions,
@@ -96,6 +99,7 @@ void main() {
       final transactions = _FakeTransactionRepository(runner);
       final accounts = _FakeAccountRepository(runner);
       final writer = TransactionLedgerWriter(
+        bookRepository: FakeBookRepository(),
         transactionRunner: runner,
         transactionRepository: transactions,
         transactionGroupRepository: transactions,
@@ -124,6 +128,7 @@ void main() {
     final runner = _TrackingRunner();
     final transactions = _FakeTransactionRepository(runner);
     final writer = TransactionLedgerWriter(
+      bookRepository: FakeBookRepository(),
       transactionRunner: runner,
       transactionRepository: transactions,
       transactionGroupRepository: transactions,

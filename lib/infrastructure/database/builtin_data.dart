@@ -2,6 +2,7 @@ import 'package:drift/drift.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../domain/ledger/valobj/ledger_enum.dart';
+import '../../domain/ledger/entity/book.dart';
 import '../../domain/credit/entity/installment_product.dart';
 import '../../shared/account_group/initial_account_groups.dart';
 import '../../shared/account_profile/account_profile_kind.dart';
@@ -10,7 +11,7 @@ import '../credit/repository/drift_installment_product_repository.dart';
 import 'app_database.dart';
 
 const builtinDataVersionKey = 'builtin_data_version';
-const currentBuiltinDataVersion = 17;
+const currentBuiltinDataVersion = 18;
 
 const _accountIconStyleSettingKey = 'settings.account_icon_style';
 const _categoryIconStyleSettingKey = 'settings.category_icon_style';
@@ -113,6 +114,24 @@ Future<void> ensureBuiltinData(AppDatabase database) async {
     }
     if (version < 17) {
       await _seedHaircutAndBeautyCategories(database);
+    }
+    if (version < 18) {
+      // Migration verification can open a historical schema without books.
+      final bookTables = await database
+          .customSelect(
+            "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'books'",
+          )
+          .get();
+      if (bookTables.isEmpty) {
+        await _writeBuiltinDataVersion(database, 17);
+        return;
+      }
+      await database
+          .into(database.books)
+          .insert(
+            BooksCompanion.insert(id: Book.dailyId, name: Book.dailyName),
+            mode: InsertMode.insertOrIgnore,
+          );
     }
     await _writeBuiltinDataVersion(database, currentBuiltinDataVersion);
   });

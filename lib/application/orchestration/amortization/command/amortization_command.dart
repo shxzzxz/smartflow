@@ -5,6 +5,7 @@ import '../../../../domain/orchestration/valobj/amortization_enums.dart';
 
 class CreateAmortizationPlanCommand {
   CreateAmortizationPlanCommand({
+    this.bookId,
     required this.kind,
     required this.total,
     required List<AccountAmountAllocation> fundingAllocations,
@@ -24,6 +25,7 @@ class CreateAmortizationPlanCommand {
   }) : fundingAllocations = List.unmodifiable(fundingAllocations),
        recognitionAllocations = List.unmodifiable(recognitionAllocations);
 
+  final String? bookId;
   final AmortizationKind kind;
   final Money total;
   final List<AccountAmountAllocation> fundingAllocations;
@@ -44,6 +46,7 @@ class CreateAmortizationPlanCommand {
 
 class CreateAmortizationRefundCommand {
   CreateAmortizationRefundCommand({
+    this.bookId,
     required this.planId,
     required List<AccountAmountAllocation> categoryAllocations,
     required List<AccountAmountAllocation> settlementAllocations,
@@ -53,6 +56,7 @@ class CreateAmortizationRefundCommand {
   }) : categoryAllocations = List.unmodifiable(categoryAllocations),
        settlementAllocations = List.unmodifiable(settlementAllocations);
 
+  final String? bookId;
   final String planId;
   final List<AccountAmountAllocation> categoryAllocations;
   final List<AccountAmountAllocation> settlementAllocations;
@@ -155,6 +159,7 @@ class UpdateAmortizationConfigurationCommand {
 
 class TerminateAmortizationPlanCommand {
   TerminateAmortizationPlanCommand({
+    this.bookId,
     required this.planId,
     required this.terminatedAt,
     required List<AccountAmountAllocation> categoryReturnAllocations,
@@ -162,6 +167,7 @@ class TerminateAmortizationPlanCommand {
   }) : categoryReturnAllocations = List.unmodifiable(categoryReturnAllocations),
        settlementAllocations = List.unmodifiable(settlementAllocations);
 
+  final String? bookId;
   final String planId;
   final DateTime terminatedAt;
   final List<AccountAmountAllocation> categoryReturnAllocations;
@@ -170,6 +176,7 @@ class TerminateAmortizationPlanCommand {
 
 class EditAmortizationTerminationCommand {
   EditAmortizationTerminationCommand({
+    this.bookId,
     required this.planId,
     required this.terminationId,
     required this.terminatedAt,
@@ -178,6 +185,7 @@ class EditAmortizationTerminationCommand {
   }) : categoryReturnAllocations = List.unmodifiable(categoryReturnAllocations),
        settlementAllocations = List.unmodifiable(settlementAllocations);
 
+  final String? bookId;
   final String planId;
   final String terminationId;
   final DateTime terminatedAt;

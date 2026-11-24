@@ -6,6 +6,8 @@ import 'package:smartflow/domain/ledger/valobj/transaction_ownership.dart';
 import '../valobj/amortization_enums.dart';
 
 abstract interface class AmortizationLedgerPort {
+  Future<String?> findTransactionBookId(String transactionId);
+
   Future<void> validatePlanAccounts({
     required AmortizationKind kind,
     required String deferralAccountId,
@@ -19,6 +21,7 @@ abstract interface class AmortizationLedgerPort {
   });
 
   Future<String> postTransfer({
+    String? bookId,
     required Money amount,
     required List<AccountAmountAllocation> outgoingAllocations,
     required List<AccountAmountAllocation> incomingAllocations,
@@ -35,6 +38,7 @@ abstract interface class AmortizationLedgerPort {
   });
 
   Future<String> postExpense({
+    String? bookId,
     required Money amount,
     required List<AccountAmountAllocation> categoryAllocations,
     required List<AccountAmountAllocation> settlementAllocations,
@@ -49,6 +53,7 @@ abstract interface class AmortizationLedgerPort {
   });
 
   Future<String> postIncome({
+    String? bookId,
     required Money amount,
     required List<AccountAmountAllocation> categoryAllocations,
     required List<AccountAmountAllocation> settlementAllocations,

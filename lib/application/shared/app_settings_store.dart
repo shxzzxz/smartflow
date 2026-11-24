@@ -1,3 +1,4 @@
+import '../../domain/ledger/entity/book.dart';
 import 'app_appearance_settings.dart';
 import 'notification/notification_time.dart';
 
@@ -105,6 +106,7 @@ enum TransactionListDisplayMode {
 
 class AppSettings {
   const AppSettings({
+    this.currentBookId = Book.dailyId,
     this.showAddTransactionFab = true,
     this.showBottomNavLabels = true,
     this.bottomNavigationStyle = BottomNavigationStyle.classic,
@@ -119,6 +121,7 @@ class AppSettings {
     this.appearance = const AppAppearanceSettings(),
   });
 
+  final String currentBookId;
   final bool showAddTransactionFab;
   final bool showBottomNavLabels;
   final BottomNavigationStyle bottomNavigationStyle;
@@ -133,6 +136,7 @@ class AppSettings {
   final AppAppearanceSettings appearance;
 
   AppSettings copyWith({
+    String? currentBookId,
     bool? showAddTransactionFab,
     bool? showBottomNavLabels,
     BottomNavigationStyle? bottomNavigationStyle,
@@ -147,6 +151,7 @@ class AppSettings {
     AppAppearanceSettings? appearance,
   }) {
     return AppSettings(
+      currentBookId: currentBookId ?? this.currentBookId,
       showAddTransactionFab:
           showAddTransactionFab ?? this.showAddTransactionFab,
       showBottomNavLabels: showBottomNavLabels ?? this.showBottomNavLabels,

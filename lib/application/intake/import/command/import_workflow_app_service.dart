@@ -422,6 +422,7 @@ class ImportWorkflowAppServiceImpl implements ImportWorkflowAppService {
               group,
               index,
               _ResolutionContext(
+                bookId: command.bookId,
                 source: plan.source,
                 mappings: {
                   ...resolvedMappings,
@@ -1610,6 +1611,7 @@ class ImportWorkflowAppServiceImpl implements ImportWorkflowAppService {
   ) async {
     return switch (draft) {
       ImportExpenseDraft draft => _ledger.createExpense(
+        bookId: context.bookId,
         amount: draft.amount,
         paidFromAccountId: await context.account(
           draft.paidFrom,
@@ -1628,6 +1630,7 @@ class ImportWorkflowAppServiceImpl implements ImportWorkflowAppService {
         isExcludedFromBudget: draft.isExcludedFromBudget,
       ),
       ImportIncomeDraft draft => _ledger.createIncome(
+        bookId: context.bookId,
         amount: draft.amount,
         receiveAccountId: await context.account(
           draft.receiveAccount,
@@ -1646,6 +1649,7 @@ class ImportWorkflowAppServiceImpl implements ImportWorkflowAppService {
         isExcludedFromBudget: draft.isExcludedFromBudget,
       ),
       ImportTransferDraft draft => _ledger.createTransfer(
+        bookId: context.bookId,
         amount: draft.amount,
         fromAccountId: await context.account(
           draft.fromAccount,
@@ -1663,6 +1667,7 @@ class ImportWorkflowAppServiceImpl implements ImportWorkflowAppService {
         note: draft.note,
       ),
       ImportAdvanceDraft draft => _ledger.createAdvance(
+        bookId: context.bookId,
         amount: draft.amount,
         receivableAccountId: await context.account(
           draft.receivableAccount,
@@ -1686,6 +1691,7 @@ class ImportWorkflowAppServiceImpl implements ImportWorkflowAppService {
         isExcludedFromBudget: draft.isExcludedFromBudget,
       ),
       ImportRepaymentDraft draft => _ledger.createRepayment(
+        bookId: context.bookId,
         principal: draft.principal,
         liabilityAccountId: await context.account(
           draft.liabilityAccount,
@@ -1705,6 +1711,7 @@ class ImportWorkflowAppServiceImpl implements ImportWorkflowAppService {
         note: draft.note,
       ),
       ImportInterestExpenseDraft draft => _ledger.createInterestExpense(
+        bookId: context.bookId,
         amount: draft.amount,
         paidFromAccountId: await context.account(
           draft.paidFrom,
@@ -1716,6 +1723,7 @@ class ImportWorkflowAppServiceImpl implements ImportWorkflowAppService {
         note: draft.note,
       ),
       ImportBorrowingDraft draft => _ledger.createBorrowing(
+        bookId: context.bookId,
         amount: draft.amount,
         liabilityAccountId: await context.account(
           draft.liabilityAccount,
@@ -1732,6 +1740,7 @@ class ImportWorkflowAppServiceImpl implements ImportWorkflowAppService {
         note: draft.note,
       ),
       ImportLendingDraft draft => _ledger.createLending(
+        bookId: context.bookId,
         amount: draft.amount,
         receivableAccountId: await context.account(
           draft.receivableAccount,
@@ -1749,6 +1758,7 @@ class ImportWorkflowAppServiceImpl implements ImportWorkflowAppService {
       ),
       ImportReceivableCollectionDraft draft =>
         _ledger.createReceivableCollection(
+          bookId: context.bookId,
           principal: draft.principal,
           interest: draft.interest,
           receivableAccountId: await context.account(
@@ -1766,6 +1776,7 @@ class ImportWorkflowAppServiceImpl implements ImportWorkflowAppService {
           note: draft.note,
         ),
       ImportOpeningBalanceDraft draft => _ledger.createOpeningBalance(
+        bookId: context.bookId,
         amount: draft.amount,
         accountId: await context.account(
           draft.account,
@@ -1794,6 +1805,7 @@ class ImportWorkflowAppServiceImpl implements ImportWorkflowAppService {
   }) async {
     return switch (draft) {
       ImportRefundDraft draft => _ledger.createRefund(
+        bookId: context.bookId,
         topLevelTransactionId: topLevelId,
         amount: draft.amount,
         refundToAccountId: await context.account(
@@ -1807,6 +1819,7 @@ class ImportWorkflowAppServiceImpl implements ImportWorkflowAppService {
         note: draft.note,
       ),
       ImportAdvanceCollectionDraft draft => _ledger.createAdvanceCollection(
+        bookId: context.bookId,
         topLevelTransactionId: topLevelId,
         amount: draft.amount,
         receivableAccountId: await context.account(
@@ -1824,6 +1837,7 @@ class ImportWorkflowAppServiceImpl implements ImportWorkflowAppService {
         note: draft.note,
       ),
       ImportAdvanceSettlementDraft draft => _ledger.settleAdvance(
+        bookId: context.bookId,
         topLevelTransactionId: topLevelId,
         actualReceivedAmount: draft.actualReceivedAmount,
         receivableAccountId: await context.account(
@@ -1859,6 +1873,7 @@ typedef _TargetUsage = ImportTargetUsage;
 
 class _ResolutionContext {
   _ResolutionContext({
+    this.bookId,
     required this.source,
     required this.mappings,
     this.plannedCreations = const {},
@@ -1868,6 +1883,7 @@ class _ResolutionContext {
     Map<String, ImportLedgerTarget?>? targetCache,
   }) : _targets = targetCache ?? {};
 
+  final String? bookId;
   final ImportSource source;
   final Map<ImportMappingKey, String> mappings;
   final Map<ImportMappingKey, ImportMappingCreation> plannedCreations;

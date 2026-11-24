@@ -1,3 +1,5 @@
+import '../../../../helper/book_selection_override.dart';
+import '../../../../helper/fake_book_repository.dart';
 import 'package:smartflow/infrastructure/credit/repository/drift_credit_bill_source_repository.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -1845,6 +1847,8 @@ ImportViewModel _preparedViewModel(_Fixture fixture, ImportPlanReview review) {
   );
   final container = ProviderContainer(
     overrides: [
+      bookSelectionTestOverride,
+      bookListTestOverride,
       importWorkflowAppServiceProvider.overrideWithValue(fixture.service),
       importViewModelProvider.overrideWith(
         () => _PreparedImportViewModel(initialState),
@@ -1891,6 +1895,7 @@ class _Fixture {
     final postings = DriftPostingRepository(database);
     final systemAccounts = DriftSystemAccountResolver(database);
     final writer = TransactionLedgerWriter(
+      bookRepository: FakeBookRepository(),
       transactionRunner: runner,
       transactionRepository: postings,
       transactionGroupRepository: postings,
@@ -1932,6 +1937,7 @@ class _Fixture {
     );
     final accountCommands = AccountAppServiceImpl(
       accounts,
+      bookRepository: FakeBookRepository(),
       transactionRunner: runner,
       ledgerPostingService: ledgerPosting,
       transactionRepository: postings,

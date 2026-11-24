@@ -1,3 +1,4 @@
+import '../../../helper/book_selection_override.dart';
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -342,6 +343,8 @@ Widget _app({
   final planService = service.planService;
   final container = ProviderContainer(
     overrides: [
+      bookSelectionTestOverride,
+      bookListTestOverride,
       accountsForSelectionPurposeProvider.overrideWith(
         (ref, purpose) => Stream.value(
           purpose == AccountSelectionPurpose.fund

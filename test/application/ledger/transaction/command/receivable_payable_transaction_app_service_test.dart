@@ -1,3 +1,4 @@
+import '../../../../helper/fake_book_repository.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/application/ledger/transaction/command/transaction_command.dart';
 import 'package:smartflow/application/ledger/transaction/command/transaction_edit_app_service.dart';
@@ -272,6 +273,7 @@ class _Fixture {
     final resolver = DriftSystemAccountResolver(database);
     final ids = SequentialIdGenerator(prefix: 'receivable-payable');
     final writer = TransactionLedgerWriter(
+      bookRepository: FakeBookRepository(),
       transactionRunner: runner,
       transactionRepository: transactions,
       transactionGroupRepository: transactions,

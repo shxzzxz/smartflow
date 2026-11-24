@@ -17,6 +17,7 @@ final class _ExpenseSceneFormWorkflow {
     );
     await _service.createExpenseScene(
       CreateExpenseSceneWorkflowCommand(
+        bookId: state.bookId,
         amount: amount,
         target: expenseSceneTarget(state, advanceReceivableAccountId),
         categoryAllocations: allocations.categories,

@@ -1,7 +1,13 @@
 import 'package:smartflow/core/time/month_key.dart';
 
 class CashflowComparisonQuery {
-  const CashflowComparisonQuery({required this.month, this.asOfDate});
+  const CashflowComparisonQuery({
+    required this.month,
+    this.asOfDate,
+    this.bookId,
+  });
+
+  final String? bookId;
 
   final MonthKey month;
   final DateTime? asOfDate;
@@ -63,7 +69,9 @@ class BalanceReportQuery {
 }
 
 class DailyCashflowSummaryQuery {
-  const DailyCashflowSummaryQuery({required this.month});
+  const DailyCashflowSummaryQuery({required this.month, this.bookId});
+
+  final String? bookId;
 
   final MonthKey month;
 }

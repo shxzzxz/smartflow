@@ -1,3 +1,4 @@
+import '../../domain/ledger/port/transaction_repository.dart';
 import '../../application/ledger/transaction/command/transaction_command.dart';
 import '../../application/ledger/transaction/command/transaction_edit_app_service.dart';
 import '../../application/ledger/transaction/command/transaction_posting_app_service.dart';
@@ -17,13 +18,20 @@ class LedgerAmortizationPort implements AmortizationLedgerPort {
     required TransactionPostingAppService posting,
     required TransactionEditAppService editing,
     required AccountRepository accounts,
+    required TransactionRepository transactions,
   }) : _posting = posting,
        _editing = editing,
-       _accounts = accounts;
+       _accounts = accounts,
+       _transactions = transactions;
 
   final TransactionPostingAppService _posting;
   final TransactionEditAppService _editing;
   final AccountRepository _accounts;
+  final TransactionRepository _transactions;
+
+  @override
+  Future<String?> findTransactionBookId(String id) async =>
+      (await _transactions.findById(id))?.bookId;
 
   @override
   Future<void> validatePlanAccounts({
@@ -110,6 +118,7 @@ class LedgerAmortizationPort implements AmortizationLedgerPort {
 
   @override
   Future<String> postTransfer({
+    String? bookId,
     required Money amount,
     required List<AccountAmountAllocation> outgoingAllocations,
     required List<AccountAmountAllocation> incomingAllocations,
@@ -126,6 +135,7 @@ class LedgerAmortizationPort implements AmortizationLedgerPort {
   }) async {
     final result = await _posting.createTransfer(
       CreateTransferCommand(
+        bookId: bookId,
         amount: amount,
         outgoingAllocations: outgoingAllocations,
         incomingAllocations: incomingAllocations,
@@ -146,6 +156,7 @@ class LedgerAmortizationPort implements AmortizationLedgerPort {
 
   @override
   Future<String> postExpense({
+    String? bookId,
     required Money amount,
     required List<AccountAmountAllocation> categoryAllocations,
     required List<AccountAmountAllocation> settlementAllocations,
@@ -160,6 +171,7 @@ class LedgerAmortizationPort implements AmortizationLedgerPort {
   }) async {
     final result = await _posting.createExpense(
       CreateExpenseCommand(
+        bookId: bookId,
         amount: amount,
         categoryAllocations: categoryAllocations,
         settlementAllocations: settlementAllocations,
@@ -178,6 +190,7 @@ class LedgerAmortizationPort implements AmortizationLedgerPort {
 
   @override
   Future<String> postIncome({
+    String? bookId,
     required Money amount,
     required List<AccountAmountAllocation> categoryAllocations,
     required List<AccountAmountAllocation> settlementAllocations,
@@ -192,6 +205,7 @@ class LedgerAmortizationPort implements AmortizationLedgerPort {
   }) async {
     final result = await _posting.createIncome(
       CreateIncomeCommand(
+        bookId: bookId,
         amount: amount,
         categoryAllocations: categoryAllocations,
         settlementAllocations: settlementAllocations,

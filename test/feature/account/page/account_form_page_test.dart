@@ -1,3 +1,4 @@
+import '../../../helper/book_selection_override.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -24,6 +25,8 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          bookSelectionTestOverride,
+          bookListTestOverride,
           accountViewProvider(
             'account-1',
           ).overrideWithValue(const AsyncLoading<AccountView?>()),
@@ -43,6 +46,8 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          bookSelectionTestOverride,
+          bookListTestOverride,
           accountAppServiceProvider.overrideWith(
             (ref) => _FakeAccountAppService(),
           ),
@@ -62,6 +67,8 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          bookSelectionTestOverride,
+          bookListTestOverride,
           accountAppServiceProvider.overrideWith((ref) => service),
           _accountGroupsOverride(),
         ],
@@ -81,6 +88,8 @@ void main() {
   ) async {
     final container = ProviderContainer(
       overrides: [
+        bookSelectionTestOverride,
+        bookListTestOverride,
         accountAppServiceProvider.overrideWith(
           (ref) => _FakeAccountAppService(),
         ),
@@ -121,6 +130,8 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          bookSelectionTestOverride,
+          bookListTestOverride,
           accountAppServiceProvider.overrideWith(
             (ref) => _FakeAccountAppService(),
           ),
@@ -143,6 +154,8 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          bookSelectionTestOverride,
+          bookListTestOverride,
           accountAppServiceProvider.overrideWith(
             (ref) => _FakeAccountAppService(),
           ),
@@ -164,6 +177,8 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          bookSelectionTestOverride,
+          bookListTestOverride,
           accountAppServiceProvider.overrideWith(
             (ref) => _FakeAccountAppService(),
           ),
@@ -225,6 +240,8 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          bookSelectionTestOverride,
+          bookListTestOverride,
           accountAppServiceProvider.overrideWithValue(service),
           accountViewProvider(
             'account-1',
@@ -256,6 +273,8 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          bookSelectionTestOverride,
+          bookListTestOverride,
           accountViewProvider(
             'loading',
           ).overrideWithValue(const AsyncLoading()),
@@ -270,6 +289,8 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          bookSelectionTestOverride,
+          bookListTestOverride,
           accountViewProvider('error').overrideWithValue(
             AsyncValue.error(StateError('boom'), StackTrace.empty),
           ),
@@ -283,6 +304,8 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          bookSelectionTestOverride,
+          bookListTestOverride,
           accountViewProvider(
             'missing',
           ).overrideWithValue(const AsyncData(null)),
@@ -308,6 +331,8 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          bookSelectionTestOverride,
+          bookListTestOverride,
           accountViewProvider(
             'account-1',
           ).overrideWithValue(AsyncValue.data(account)),
@@ -336,6 +361,8 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          bookSelectionTestOverride,
+          bookListTestOverride,
           accountViewProvider(
             'account-1',
           ).overrideWithValue(AsyncValue.data(account)),
@@ -374,6 +401,8 @@ void main() {
     );
     final container = ProviderContainer(
       overrides: [
+        bookSelectionTestOverride,
+        bookListTestOverride,
         accountViewProvider(
           'account-a',
         ).overrideWithValue(AsyncValue.data(accountA)),
@@ -423,6 +452,8 @@ void main() {
     );
     final container = ProviderContainer(
       overrides: [
+        bookSelectionTestOverride,
+        bookListTestOverride,
         accountViewProvider(
           'account-1',
         ).overrideWithValue(AsyncValue.data(account)),

@@ -120,10 +120,10 @@ return notFound(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>({TResult Function( String transactionId,  TransactionDetailContext context,  TransactionReadModel detail,  DetailBehaviorConfig behavior,  DetailHero hero,  List<DetailAllocationBreakdown> allocationBreakdowns,  String occurredAtText,  String postedAtText,  String createdAtText,  List<DetailAccountRow> accountRows,  DetailRefund? refund,  DetailAdvance? advance,  List<DetailBusinessModule> businessModules,  bool canEditReportingFlags,  bool showExcludeStats,  bool showExcludeBudget,  bool excludeStats,  bool excludeBudget,  List<DetailActionButton> actionButtons,  bool submitting,  String? noteText)?  loaded,TResult Function()?  notFound,required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>({TResult Function( String transactionId,  TransactionDetailContext context,  TransactionReadModel detail,  DetailBehaviorConfig behavior,  DetailHero hero,  List<DetailAllocationBreakdown> allocationBreakdowns,  String occurredAtText,  String postedAtText,  String createdAtText,  List<DetailAccountRow> accountRows,  DetailRefund? refund,  DetailAdvance? advance,  List<DetailBusinessModule> businessModules,  bool canEditReportingFlags,  bool showExcludeStats,  bool showExcludeBudget,  bool excludeStats,  bool excludeBudget,  List<DetailActionButton> actionButtons,  bool submitting,  String bookName,  String? noteText)?  loaded,TResult Function()?  notFound,required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case TransactionDetailLoaded() when loaded != null:
-return loaded(_that.transactionId,_that.context,_that.detail,_that.behavior,_that.hero,_that.allocationBreakdowns,_that.occurredAtText,_that.postedAtText,_that.createdAtText,_that.accountRows,_that.refund,_that.advance,_that.businessModules,_that.canEditReportingFlags,_that.showExcludeStats,_that.showExcludeBudget,_that.excludeStats,_that.excludeBudget,_that.actionButtons,_that.submitting,_that.noteText);case TransactionDetailNotFound() when notFound != null:
+return loaded(_that.transactionId,_that.context,_that.detail,_that.behavior,_that.hero,_that.allocationBreakdowns,_that.occurredAtText,_that.postedAtText,_that.createdAtText,_that.accountRows,_that.refund,_that.advance,_that.businessModules,_that.canEditReportingFlags,_that.showExcludeStats,_that.showExcludeBudget,_that.excludeStats,_that.excludeBudget,_that.actionButtons,_that.submitting,_that.bookName,_that.noteText);case TransactionDetailNotFound() when notFound != null:
 return notFound();case _:
   return orElse();
 
@@ -142,10 +142,10 @@ return notFound();case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>({required TResult Function( String transactionId,  TransactionDetailContext context,  TransactionReadModel detail,  DetailBehaviorConfig behavior,  DetailHero hero,  List<DetailAllocationBreakdown> allocationBreakdowns,  String occurredAtText,  String postedAtText,  String createdAtText,  List<DetailAccountRow> accountRows,  DetailRefund? refund,  DetailAdvance? advance,  List<DetailBusinessModule> businessModules,  bool canEditReportingFlags,  bool showExcludeStats,  bool showExcludeBudget,  bool excludeStats,  bool excludeBudget,  List<DetailActionButton> actionButtons,  bool submitting,  String? noteText)  loaded,required TResult Function()  notFound,}) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>({required TResult Function( String transactionId,  TransactionDetailContext context,  TransactionReadModel detail,  DetailBehaviorConfig behavior,  DetailHero hero,  List<DetailAllocationBreakdown> allocationBreakdowns,  String occurredAtText,  String postedAtText,  String createdAtText,  List<DetailAccountRow> accountRows,  DetailRefund? refund,  DetailAdvance? advance,  List<DetailBusinessModule> businessModules,  bool canEditReportingFlags,  bool showExcludeStats,  bool showExcludeBudget,  bool excludeStats,  bool excludeBudget,  List<DetailActionButton> actionButtons,  bool submitting,  String bookName,  String? noteText)  loaded,required TResult Function()  notFound,}) {final _that = this;
 switch (_that) {
 case TransactionDetailLoaded():
-return loaded(_that.transactionId,_that.context,_that.detail,_that.behavior,_that.hero,_that.allocationBreakdowns,_that.occurredAtText,_that.postedAtText,_that.createdAtText,_that.accountRows,_that.refund,_that.advance,_that.businessModules,_that.canEditReportingFlags,_that.showExcludeStats,_that.showExcludeBudget,_that.excludeStats,_that.excludeBudget,_that.actionButtons,_that.submitting,_that.noteText);case TransactionDetailNotFound():
+return loaded(_that.transactionId,_that.context,_that.detail,_that.behavior,_that.hero,_that.allocationBreakdowns,_that.occurredAtText,_that.postedAtText,_that.createdAtText,_that.accountRows,_that.refund,_that.advance,_that.businessModules,_that.canEditReportingFlags,_that.showExcludeStats,_that.showExcludeBudget,_that.excludeStats,_that.excludeBudget,_that.actionButtons,_that.submitting,_that.bookName,_that.noteText);case TransactionDetailNotFound():
 return notFound();}
 }
 /// A variant of `when` that fallback to returning `null`
@@ -160,10 +160,10 @@ return notFound();}
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>({TResult? Function( String transactionId,  TransactionDetailContext context,  TransactionReadModel detail,  DetailBehaviorConfig behavior,  DetailHero hero,  List<DetailAllocationBreakdown> allocationBreakdowns,  String occurredAtText,  String postedAtText,  String createdAtText,  List<DetailAccountRow> accountRows,  DetailRefund? refund,  DetailAdvance? advance,  List<DetailBusinessModule> businessModules,  bool canEditReportingFlags,  bool showExcludeStats,  bool showExcludeBudget,  bool excludeStats,  bool excludeBudget,  List<DetailActionButton> actionButtons,  bool submitting,  String? noteText)?  loaded,TResult? Function()?  notFound,}) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>({TResult? Function( String transactionId,  TransactionDetailContext context,  TransactionReadModel detail,  DetailBehaviorConfig behavior,  DetailHero hero,  List<DetailAllocationBreakdown> allocationBreakdowns,  String occurredAtText,  String postedAtText,  String createdAtText,  List<DetailAccountRow> accountRows,  DetailRefund? refund,  DetailAdvance? advance,  List<DetailBusinessModule> businessModules,  bool canEditReportingFlags,  bool showExcludeStats,  bool showExcludeBudget,  bool excludeStats,  bool excludeBudget,  List<DetailActionButton> actionButtons,  bool submitting,  String bookName,  String? noteText)?  loaded,TResult? Function()?  notFound,}) {final _that = this;
 switch (_that) {
 case TransactionDetailLoaded() when loaded != null:
-return loaded(_that.transactionId,_that.context,_that.detail,_that.behavior,_that.hero,_that.allocationBreakdowns,_that.occurredAtText,_that.postedAtText,_that.createdAtText,_that.accountRows,_that.refund,_that.advance,_that.businessModules,_that.canEditReportingFlags,_that.showExcludeStats,_that.showExcludeBudget,_that.excludeStats,_that.excludeBudget,_that.actionButtons,_that.submitting,_that.noteText);case TransactionDetailNotFound() when notFound != null:
+return loaded(_that.transactionId,_that.context,_that.detail,_that.behavior,_that.hero,_that.allocationBreakdowns,_that.occurredAtText,_that.postedAtText,_that.createdAtText,_that.accountRows,_that.refund,_that.advance,_that.businessModules,_that.canEditReportingFlags,_that.showExcludeStats,_that.showExcludeBudget,_that.excludeStats,_that.excludeBudget,_that.actionButtons,_that.submitting,_that.bookName,_that.noteText);case TransactionDetailNotFound() when notFound != null:
 return notFound();case _:
   return null;
 
@@ -176,7 +176,7 @@ return notFound();case _:
 
 
 class TransactionDetailLoaded implements TransactionDetailUiState {
-  const TransactionDetailLoaded({required this.transactionId, required this.context, required this.detail, required this.behavior, required this.hero, required  List<DetailAllocationBreakdown> allocationBreakdowns, required this.occurredAtText, required this.postedAtText, required this.createdAtText, required  List<DetailAccountRow> accountRows, required this.refund, required this.advance, required  List<DetailBusinessModule> businessModules, this.canEditReportingFlags = true, required this.showExcludeStats, required this.showExcludeBudget, required this.excludeStats, required this.excludeBudget, required  List<DetailActionButton> actionButtons, required this.submitting, this.noteText}): _allocationBreakdowns = allocationBreakdowns,_accountRows = accountRows,_businessModules = businessModules,_actionButtons = actionButtons;
+  const TransactionDetailLoaded({required this.transactionId, required this.context, required this.detail, required this.behavior, required this.hero, required  List<DetailAllocationBreakdown> allocationBreakdowns, required this.occurredAtText, required this.postedAtText, required this.createdAtText, required  List<DetailAccountRow> accountRows, required this.refund, required this.advance, required  List<DetailBusinessModule> businessModules, this.canEditReportingFlags = true, required this.showExcludeStats, required this.showExcludeBudget, required this.excludeStats, required this.excludeBudget, required  List<DetailActionButton> actionButtons, required this.submitting, this.bookName = Book.dailyName, this.noteText}): _allocationBreakdowns = allocationBreakdowns,_accountRows = accountRows,_businessModules = businessModules,_actionButtons = actionButtons;
   
 
  final  String transactionId;
@@ -223,6 +223,7 @@ class TransactionDetailLoaded implements TransactionDetailUiState {
 }
 
  final  bool submitting;
+@JsonKey() final  String bookName;
  final  String? noteText;
 
 /// Create a copy of TransactionDetailUiState
@@ -235,16 +236,16 @@ $TransactionDetailLoadedCopyWith<TransactionDetailLoaded> get copyWith => _$Tran
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is TransactionDetailLoaded&&(identical(other.transactionId, transactionId) || other.transactionId == transactionId)&&(identical(other.context, context) || other.context == context)&&(identical(other.detail, detail) || other.detail == detail)&&(identical(other.behavior, behavior) || other.behavior == behavior)&&(identical(other.hero, hero) || other.hero == hero)&&const DeepCollectionEquality().equals(other._allocationBreakdowns, _allocationBreakdowns)&&(identical(other.occurredAtText, occurredAtText) || other.occurredAtText == occurredAtText)&&(identical(other.postedAtText, postedAtText) || other.postedAtText == postedAtText)&&(identical(other.createdAtText, createdAtText) || other.createdAtText == createdAtText)&&const DeepCollectionEquality().equals(other._accountRows, _accountRows)&&(identical(other.refund, refund) || other.refund == refund)&&(identical(other.advance, advance) || other.advance == advance)&&const DeepCollectionEquality().equals(other._businessModules, _businessModules)&&(identical(other.canEditReportingFlags, canEditReportingFlags) || other.canEditReportingFlags == canEditReportingFlags)&&(identical(other.showExcludeStats, showExcludeStats) || other.showExcludeStats == showExcludeStats)&&(identical(other.showExcludeBudget, showExcludeBudget) || other.showExcludeBudget == showExcludeBudget)&&(identical(other.excludeStats, excludeStats) || other.excludeStats == excludeStats)&&(identical(other.excludeBudget, excludeBudget) || other.excludeBudget == excludeBudget)&&const DeepCollectionEquality().equals(other._actionButtons, _actionButtons)&&(identical(other.submitting, submitting) || other.submitting == submitting)&&(identical(other.noteText, noteText) || other.noteText == noteText));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is TransactionDetailLoaded&&(identical(other.transactionId, transactionId) || other.transactionId == transactionId)&&(identical(other.context, context) || other.context == context)&&(identical(other.detail, detail) || other.detail == detail)&&(identical(other.behavior, behavior) || other.behavior == behavior)&&(identical(other.hero, hero) || other.hero == hero)&&const DeepCollectionEquality().equals(other._allocationBreakdowns, _allocationBreakdowns)&&(identical(other.occurredAtText, occurredAtText) || other.occurredAtText == occurredAtText)&&(identical(other.postedAtText, postedAtText) || other.postedAtText == postedAtText)&&(identical(other.createdAtText, createdAtText) || other.createdAtText == createdAtText)&&const DeepCollectionEquality().equals(other._accountRows, _accountRows)&&(identical(other.refund, refund) || other.refund == refund)&&(identical(other.advance, advance) || other.advance == advance)&&const DeepCollectionEquality().equals(other._businessModules, _businessModules)&&(identical(other.canEditReportingFlags, canEditReportingFlags) || other.canEditReportingFlags == canEditReportingFlags)&&(identical(other.showExcludeStats, showExcludeStats) || other.showExcludeStats == showExcludeStats)&&(identical(other.showExcludeBudget, showExcludeBudget) || other.showExcludeBudget == showExcludeBudget)&&(identical(other.excludeStats, excludeStats) || other.excludeStats == excludeStats)&&(identical(other.excludeBudget, excludeBudget) || other.excludeBudget == excludeBudget)&&const DeepCollectionEquality().equals(other._actionButtons, _actionButtons)&&(identical(other.submitting, submitting) || other.submitting == submitting)&&(identical(other.bookName, bookName) || other.bookName == bookName)&&(identical(other.noteText, noteText) || other.noteText == noteText));
 }
 
 
 @override
-int get hashCode => Object.hashAll([runtimeType,transactionId,context,detail,behavior,hero,const DeepCollectionEquality().hash(_allocationBreakdowns),occurredAtText,postedAtText,createdAtText,const DeepCollectionEquality().hash(_accountRows),refund,advance,const DeepCollectionEquality().hash(_businessModules),canEditReportingFlags,showExcludeStats,showExcludeBudget,excludeStats,excludeBudget,const DeepCollectionEquality().hash(_actionButtons),submitting,noteText]);
+int get hashCode => Object.hashAll([runtimeType,transactionId,context,detail,behavior,hero,const DeepCollectionEquality().hash(_allocationBreakdowns),occurredAtText,postedAtText,createdAtText,const DeepCollectionEquality().hash(_accountRows),refund,advance,const DeepCollectionEquality().hash(_businessModules),canEditReportingFlags,showExcludeStats,showExcludeBudget,excludeStats,excludeBudget,const DeepCollectionEquality().hash(_actionButtons),submitting,bookName,noteText]);
 
 @override
 String toString() {
-  return 'TransactionDetailUiState.loaded(transactionId: $transactionId, context: $context, detail: $detail, behavior: $behavior, hero: $hero, allocationBreakdowns: $allocationBreakdowns, occurredAtText: $occurredAtText, postedAtText: $postedAtText, createdAtText: $createdAtText, accountRows: $accountRows, refund: $refund, advance: $advance, businessModules: $businessModules, canEditReportingFlags: $canEditReportingFlags, showExcludeStats: $showExcludeStats, showExcludeBudget: $showExcludeBudget, excludeStats: $excludeStats, excludeBudget: $excludeBudget, actionButtons: $actionButtons, submitting: $submitting, noteText: $noteText)';
+  return 'TransactionDetailUiState.loaded(transactionId: $transactionId, context: $context, detail: $detail, behavior: $behavior, hero: $hero, allocationBreakdowns: $allocationBreakdowns, occurredAtText: $occurredAtText, postedAtText: $postedAtText, createdAtText: $createdAtText, accountRows: $accountRows, refund: $refund, advance: $advance, businessModules: $businessModules, canEditReportingFlags: $canEditReportingFlags, showExcludeStats: $showExcludeStats, showExcludeBudget: $showExcludeBudget, excludeStats: $excludeStats, excludeBudget: $excludeBudget, actionButtons: $actionButtons, submitting: $submitting, bookName: $bookName, noteText: $noteText)';
 }
 
 
@@ -255,7 +256,7 @@ abstract mixin class $TransactionDetailLoadedCopyWith<$Res> implements $Transact
   factory $TransactionDetailLoadedCopyWith(TransactionDetailLoaded value, $Res Function(TransactionDetailLoaded) _then) = _$TransactionDetailLoadedCopyWithImpl;
 @useResult
 $Res call({
- String transactionId, TransactionDetailContext context, TransactionReadModel detail, DetailBehaviorConfig behavior, DetailHero hero, List<DetailAllocationBreakdown> allocationBreakdowns, String occurredAtText, String postedAtText, String createdAtText, List<DetailAccountRow> accountRows, DetailRefund? refund, DetailAdvance? advance, List<DetailBusinessModule> businessModules, bool canEditReportingFlags, bool showExcludeStats, bool showExcludeBudget, bool excludeStats, bool excludeBudget, List<DetailActionButton> actionButtons, bool submitting, String? noteText
+ String transactionId, TransactionDetailContext context, TransactionReadModel detail, DetailBehaviorConfig behavior, DetailHero hero, List<DetailAllocationBreakdown> allocationBreakdowns, String occurredAtText, String postedAtText, String createdAtText, List<DetailAccountRow> accountRows, DetailRefund? refund, DetailAdvance? advance, List<DetailBusinessModule> businessModules, bool canEditReportingFlags, bool showExcludeStats, bool showExcludeBudget, bool excludeStats, bool excludeBudget, List<DetailActionButton> actionButtons, bool submitting, String bookName, String? noteText
 });
 
 
@@ -272,7 +273,7 @@ class _$TransactionDetailLoadedCopyWithImpl<$Res>
 
 /// Create a copy of TransactionDetailUiState
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') $Res call({Object? transactionId = null,Object? context = null,Object? detail = null,Object? behavior = null,Object? hero = null,Object? allocationBreakdowns = null,Object? occurredAtText = null,Object? postedAtText = null,Object? createdAtText = null,Object? accountRows = null,Object? refund = freezed,Object? advance = freezed,Object? businessModules = null,Object? canEditReportingFlags = null,Object? showExcludeStats = null,Object? showExcludeBudget = null,Object? excludeStats = null,Object? excludeBudget = null,Object? actionButtons = null,Object? submitting = null,Object? noteText = freezed,}) {
+@pragma('vm:prefer-inline') $Res call({Object? transactionId = null,Object? context = null,Object? detail = null,Object? behavior = null,Object? hero = null,Object? allocationBreakdowns = null,Object? occurredAtText = null,Object? postedAtText = null,Object? createdAtText = null,Object? accountRows = null,Object? refund = freezed,Object? advance = freezed,Object? businessModules = null,Object? canEditReportingFlags = null,Object? showExcludeStats = null,Object? showExcludeBudget = null,Object? excludeStats = null,Object? excludeBudget = null,Object? actionButtons = null,Object? submitting = null,Object? bookName = null,Object? noteText = freezed,}) {
   return _then(TransactionDetailLoaded(
 transactionId: null == transactionId ? _self.transactionId : transactionId // ignore: cast_nullable_to_non_nullable
 as String,context: null == context ? _self.context : context // ignore: cast_nullable_to_non_nullable
@@ -294,7 +295,8 @@ as bool,excludeStats: null == excludeStats ? _self.excludeStats : excludeStats /
 as bool,excludeBudget: null == excludeBudget ? _self.excludeBudget : excludeBudget // ignore: cast_nullable_to_non_nullable
 as bool,actionButtons: null == actionButtons ? _self._actionButtons : actionButtons // ignore: cast_nullable_to_non_nullable
 as List<DetailActionButton>,submitting: null == submitting ? _self.submitting : submitting // ignore: cast_nullable_to_non_nullable
-as bool,noteText: freezed == noteText ? _self.noteText : noteText // ignore: cast_nullable_to_non_nullable
+as bool,bookName: null == bookName ? _self.bookName : bookName // ignore: cast_nullable_to_non_nullable
+as String,noteText: freezed == noteText ? _self.noteText : noteText // ignore: cast_nullable_to_non_nullable
 as String?,
   ));
 }

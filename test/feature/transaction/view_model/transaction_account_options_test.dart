@@ -1,3 +1,4 @@
+import '../../../helper/book_selection_override.dart';
 import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -42,7 +43,11 @@ void main() {
     final accounts = StreamController<List<Account>>();
     addTearDown(accounts.close);
     final container = ProviderContainer(
-      overrides: [accountListProvider.overrideWith((ref) => accounts.stream)],
+      overrides: [
+        bookSelectionTestOverride,
+        bookListTestOverride,
+        accountListProvider.overrideWith((ref) => accounts.stream),
+      ],
     );
     addTearDown(container.dispose);
     final subscription = container.listen(
