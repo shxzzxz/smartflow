@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:logging/logging.dart';
 
@@ -20,6 +21,19 @@ import '../application/shared/notification/notification_delivery.dart';
 import '../application/shared/task/foreground_task_runner.dart';
 import '../application/intake/intake_recognition_api.dart';
 import '../core/error/app_exception.dart';
+
+// 框架委托的语言范围不同，只启用三者共同支持的语言。
+final _supportedFrameworkLocales = List<Locale>.unmodifiable([
+  const Locale('zh', 'CN'),
+  ...kMaterialSupportedLanguages
+      .where((languageCode) => languageCode != 'zh')
+      .map(Locale.new)
+      .where(
+        (locale) =>
+            GlobalWidgetsLocalizations.delegate.isSupported(locale) &&
+            GlobalCupertinoLocalizations.delegate.isSupported(locale),
+      ),
+]);
 
 class SmartFlowApp extends ConsumerStatefulWidget {
   const SmartFlowApp({super.key, this.scaffoldMessengerKey});
@@ -191,6 +205,19 @@ class _SmartFlowAppState extends ConsumerState<SmartFlowApp>
     return MaterialApp.router(
       title: 'SmartFlow',
       debugShowCheckedModeBanner: false,
+      localizationsDelegates: GlobalMaterialLocalizations.delegates,
+      supportedLocales: _supportedFrameworkLocales,
+      localeListResolutionCallback: (locales, supportedLocales) {
+        for (final locale in locales ?? const <Locale>[]) {
+          if (supportedLocales.any(
+            (supported) => supported.languageCode == locale.languageCode,
+          )) {
+            // 保留系统的地区和文字体系，匹配简繁体等现成翻译。
+            return locale;
+          }
+        }
+        return supportedLocales.first;
+      },
       scaffoldMessengerKey: widget.scaffoldMessengerKey,
       theme: AppTheme.light(appearance: appearance),
       darkTheme: AppTheme.dark(appearance: appearance),
