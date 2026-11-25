@@ -834,7 +834,7 @@ void main() {
           '${tempDirectory.path}/business_icons/manifest.json',
         );
         await assetFile.writeAsBytes([9, 9, 9]);
-        expect(
+        await expectLater(
           () => assetService.inspect(tempDirectory),
           throwsA(isA<BackupValidationException>()),
         );
