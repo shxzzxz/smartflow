@@ -9,6 +9,7 @@ class DriftAppSettingsStore implements AppSettingsStore {
   const DriftAppSettingsStore(this._database);
 
   static const _currentBookIdKey = 'settings.current_book_id';
+  static const _showAllBooksKey = 'settings.show_all_books';
   static const _showAddTransactionFabKey = 'settings.show_add_transaction_fab';
   static const _showBottomNavLabelsKey = 'settings.show_bottom_nav_labels';
   static const _bottomNavigationStyleKey = 'settings.bottom_navigation_style';
@@ -33,6 +34,7 @@ class DriftAppSettingsStore implements AppSettingsStore {
         await (_database.select(_database.appMetadata)..where(
               (table) => table.key.isIn(const [
                 _currentBookIdKey,
+                _showAllBooksKey,
                 _showAddTransactionFabKey,
                 _showBottomNavLabelsKey,
                 _bottomNavigationStyleKey,
@@ -52,6 +54,8 @@ class DriftAppSettingsStore implements AppSettingsStore {
     const defaults = AppSettings();
     return AppSettings(
       currentBookId: values[_currentBookIdKey] ?? defaults.currentBookId,
+      showAllBooks:
+          _parseBool(values[_showAllBooksKey]) ?? defaults.showAllBooks,
       showAddTransactionFab:
           _parseBool(values[_showAddTransactionFabKey]) ??
           defaults.showAddTransactionFab,
@@ -104,6 +108,7 @@ class DriftAppSettingsStore implements AppSettingsStore {
     return _database.batch((batch) {
       batch.insertAllOnConflictUpdate(_database.appMetadata, [
         _entry(_currentBookIdKey, settings.currentBookId),
+        _entry(_showAllBooksKey, settings.showAllBooks),
         _entry(_showAddTransactionFabKey, settings.showAddTransactionFab),
         _entry(_showBottomNavLabelsKey, settings.showBottomNavLabels),
         _entry(

@@ -107,6 +107,7 @@ enum TransactionListDisplayMode {
 class AppSettings {
   const AppSettings({
     this.currentBookId = Book.dailyId,
+    this.showAllBooks = false,
     this.showAddTransactionFab = true,
     this.showBottomNavLabels = true,
     this.bottomNavigationStyle = BottomNavigationStyle.classic,
@@ -122,6 +123,7 @@ class AppSettings {
   });
 
   final String currentBookId;
+  final bool showAllBooks;
   final bool showAddTransactionFab;
   final bool showBottomNavLabels;
   final BottomNavigationStyle bottomNavigationStyle;
@@ -137,6 +139,7 @@ class AppSettings {
 
   AppSettings copyWith({
     String? currentBookId,
+    bool? showAllBooks,
     bool? showAddTransactionFab,
     bool? showBottomNavLabels,
     BottomNavigationStyle? bottomNavigationStyle,
@@ -152,6 +155,7 @@ class AppSettings {
   }) {
     return AppSettings(
       currentBookId: currentBookId ?? this.currentBookId,
+      showAllBooks: showAllBooks ?? this.showAllBooks,
       showAddTransactionFab:
           showAddTransactionFab ?? this.showAddTransactionFab,
       showBottomNavLabels: showBottomNavLabels ?? this.showBottomNavLabels,

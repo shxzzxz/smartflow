@@ -113,8 +113,8 @@ class BookPickerButton extends StatefulWidget {
   });
 
   final List<Book> books;
-  final String bookId;
-  final ValueChanged<String> onChanged;
+  final String? bookId;
+  final ValueChanged<String?> onChanged;
   final VoidCallback onCreateBook;
   final VoidCallback onManageBooks;
   final bool enabled;
@@ -131,6 +131,11 @@ class _BookPickerButtonState extends State<BookPickerButton> {
     final book = widget.books
         .where((book) => book.id == widget.bookId)
         .firstOrNull;
+    final name = widget.bookId == null ? '全部账本' : book?.name ?? '账本';
+    final options = <({String? id, String name})>[
+      (id: null, name: '全部账本'),
+      for (final book in widget.books) (id: book.id, name: book.name),
+    ];
     final colors = Theme.of(context).colorScheme;
     return MenuAnchor(
       controller: _menuController,
@@ -148,7 +153,7 @@ class _BookPickerButtonState extends State<BookPickerButton> {
         ),
       ),
       menuChildren: [
-        for (final option in widget.books)
+        for (final option in options)
           MenuItemButton(
             leadingIcon: const Icon(RemixIcons.book_open_line),
             trailingIcon: option.id == widget.bookId
@@ -199,7 +204,7 @@ class _BookPickerButtonState extends State<BookPickerButton> {
         ),
       ],
       builder: (context, controller, child) => Tooltip(
-        message: '切换账本：${book?.name ?? '账本'}',
+        message: '切换账本：$name',
         child: ConstrainedBox(
           constraints: const BoxConstraints(
             maxWidth: AppHeaderTokens.selectorMaxWidth,
@@ -222,11 +227,7 @@ class _BookPickerButtonState extends State<BookPickerButton> {
             onPressed: widget.enabled
                 ? (controller.isOpen ? controller.close : controller.open)
                 : null,
-            child: Text(
-              book?.name ?? '账本',
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
+            child: Text(name, maxLines: 1, overflow: TextOverflow.ellipsis),
           ),
         ),
       ),

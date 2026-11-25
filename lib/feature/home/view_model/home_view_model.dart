@@ -99,7 +99,7 @@ class HomeBatchMode extends _$HomeBatchMode {
 Stream<BusinessActivityPage> homeBusinessActivities(
   Ref ref,
   DateTime visibleMonth,
-  String bookId,
+  String? bookId,
 ) {
   final filter = ref.watch(
     homeViewModelProvider.select((state) => state.transactionFilter),
@@ -147,8 +147,9 @@ class HomeTransactionFeedViewModel extends _$HomeTransactionFeedViewModel {
       _requestGeneration += 1;
       return const HomeTransactionFeedState.error(message: '加载失败，请稍后重试');
     }
-    final bookId = bookSelection.value?.currentBook.id;
-    if (bookId == null) return const HomeTransactionFeedState.loading();
+    final selection = bookSelection.value;
+    if (selection == null) return const HomeTransactionFeedState.loading();
+    final bookId = selection.queryBookId;
     if (_activeBookId != bookId) {
       _requestGeneration += 1;
       _refreshRequested = true;
@@ -287,7 +288,7 @@ class HomeTransactionFeedViewModel extends _$HomeTransactionFeedViewModel {
 Stream<CashflowComparison> homeCashflowComparison(
   Ref ref,
   DateTime visibleMonth,
-  String bookId,
+  String? bookId,
 ) {
   final now = ref.watch(currentDateTimeProvider);
   final month = MonthKey(year: visibleMonth.year, month: visibleMonth.month);
@@ -309,7 +310,7 @@ Stream<CashflowComparison> homeCashflowComparison(
 Stream<List<DailyCashflowSummary>> homeDailyCashflowSummaries(
   Ref ref,
   DateTime visibleMonth,
-  String bookId,
+  String? bookId,
 ) {
   final month = MonthKey(year: visibleMonth.year, month: visibleMonth.month);
   return ref
@@ -353,8 +354,9 @@ HomeContentState homeContent(Ref ref, DateTime visibleMonth) {
   if (bookSelection.hasError) {
     return const HomeContentState.error(message: '加载失败，请稍后重试。');
   }
-  final bookId = bookSelection.value?.currentBook.id;
-  if (bookId == null) return const HomeContentState.loading();
+  final selection = bookSelection.value;
+  if (selection == null) return const HomeContentState.loading();
+  final bookId = selection.queryBookId;
   final transactions = ref.watch(
     homeTransactionFeedViewModelProvider(visibleMonth),
   );

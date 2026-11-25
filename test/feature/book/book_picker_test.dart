@@ -1,3 +1,6 @@
+// 测试替身只在根 ProviderScope 中覆盖。
+// ignore_for_file: riverpod_lint/scoped_providers_should_specify_dependencies
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -225,6 +228,51 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('home selects all books and switches back to daily', (
+    tester,
+  ) async {
+    await tester.pumpWidget(_homeApp());
+    await tester.pumpAndSettle();
+    await tester.tap(find.byType(BookPickerButton));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('全部账本'));
+    await tester.pumpAndSettle();
+
+    final container = ProviderScope.containerOf(
+      tester.element(find.byType(HomePage)),
+    );
+    final selection = container
+        .read(bookSelectionViewModelProvider)
+        .requireValue;
+    expect(selection.currentBook.id, Book.dailyId);
+    expect(selection.showAllBooks, isTrue);
+    expect(find.byTooltip('切换账本：全部账本'), findsOneWidget);
+    expect(find.text('全部账本'), findsOneWidget);
+    expect(find.text('新建'), findsNothing);
+
+    await tester.tap(find.byType(BookPickerButton));
+    await tester.pumpAndSettle();
+    final allBooksOption = find.ancestor(
+      of: find.text('全部账本'),
+      matching: find.byType(MenuItemButton),
+    );
+    expect(
+      find.descendant(
+        of: allBooksOption,
+        matching: find.byIcon(RemixIcons.check_line),
+      ),
+      findsOneWidget,
+    );
+    await tester.tap(find.text(Book.dailyName));
+    await tester.pumpAndSettle();
+    final daily = container.read(bookSelectionViewModelProvider).requireValue;
+    expect(daily.showAllBooks, isFalse);
+    expect(daily.queryBookId, Book.dailyId);
+    expect(find.byTooltip('切换账本：${Book.dailyName}'), findsOneWidget);
+    expect(find.text('全部账本'), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets(
     'management creates a book and offers no delete action for daily',
     (tester) async {
@@ -379,12 +427,15 @@ class _Books extends BookSelectionViewModel {
   }
 
   @override
-  Future<UiActionOutcome<void>> selectBook(String id) async {
+  Future<UiActionOutcome<void>> selectBook(String? id) async {
     final current = state.requireValue;
     state = AsyncData(
       BookSelectionState(
         books: current.books,
-        currentBook: current.books.firstWhere((book) => book.id == id),
+        currentBook: current.books.firstWhere(
+          (book) => book.id == (id ?? Book.dailyId),
+        ),
+        showAllBooks: id == null,
       ),
     );
     return const UiActionOutcome.success(null);
@@ -398,6 +449,7 @@ class _Books extends BookSelectionViewModel {
       BookSelectionState(
         books: [...current.books, book],
         currentBook: current.currentBook,
+        showAllBooks: current.showAllBooks,
       ),
     );
     return UiActionOutcome.success(book);

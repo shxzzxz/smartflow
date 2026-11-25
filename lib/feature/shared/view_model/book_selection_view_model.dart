@@ -22,16 +22,21 @@ class BookSelectionState {
   BookSelectionState({
     required List<Book> books,
     required this.currentBook,
+    this.showAllBooks = false,
     this.submitting = false,
   }) : books = List.unmodifiable(books);
 
   final List<Book> books;
   final Book currentBook;
+  final bool showAllBooks;
   final bool submitting;
+
+  String? get queryBookId => showAllBooks ? null : currentBook.id;
 
   BookSelectionState withSubmitting(bool value) => BookSelectionState(
     books: books,
     currentBook: currentBook,
+    showAllBooks: showAllBooks,
     submitting: value,
   );
 }
@@ -81,12 +86,16 @@ class BookSelectionViewModel extends _$BookSelectionViewModel {
   }
 
   BookSelectionState _selection(AppSettings settings, List<Book> books) {
+    final currentBookId = settings.showAllBooks
+        ? Book.dailyId
+        : settings.currentBookId;
     final current =
-        books.where((book) => book.id == settings.currentBookId).firstOrNull ??
+        books.where((book) => book.id == currentBookId).firstOrNull ??
         books.firstWhere((book) => book.isBuiltin);
     return BookSelectionState(
       books: books,
       currentBook: current,
+      showAllBooks: settings.showAllBooks,
       submitting: _submitting,
     );
   }
@@ -109,14 +118,16 @@ class BookSelectionViewModel extends _$BookSelectionViewModel {
     if (loaded != null) state = AsyncData(loaded.withSubmitting(value));
   }
 
-  Future<UiActionOutcome<void>> selectBook(String id) =>
+  Future<UiActionOutcome<void>> selectBook(String? id) =>
       guardUiAction(_logger, 'select book', () async {
-        if (await ref.read(bookQueryServiceProvider).findBook(id) == null) {
+        final currentBookId = id ?? Book.dailyId;
+        if (await ref.read(bookQueryServiceProvider).findBook(currentBookId) ==
+            null) {
           throw BusinessException(LedgerErrorCode.bookNotFound);
         }
         await ref
             .read(appSettingsViewModelProvider.notifier)
-            .setCurrentBookId(id);
+            .setCurrentBookId(currentBookId, showAllBooks: id == null);
       });
 
   Future<UiActionOutcome<Book>> createBook(String name) => _runManagement(

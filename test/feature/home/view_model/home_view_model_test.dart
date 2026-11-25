@@ -1,4 +1,5 @@
 import '../../../helper/book_selection_override.dart';
+import '../../../helper/fake_book_repository.dart';
 import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -13,6 +14,7 @@ import 'package:smartflow/domain/orchestration/valobj/amortization_enums.dart';
 import 'package:smartflow/feature/home/view_model/home_view_model.dart';
 import 'package:smartflow/feature/shared/provider/current_date_time_provider.dart';
 import 'package:smartflow/feature/shared/provider/book_providers.dart';
+import 'package:smartflow/feature/shared/view_model/app_settings_view_model.dart';
 
 void main() {
   group('HomeViewModel', () {
@@ -125,6 +127,127 @@ void main() {
       expect(loaded.groups.single.incomeMinor, 10000);
       expect(loaded.groups.single.rows.single.transactionId, 'tx-1');
     });
+
+    test(
+      'all books queries globally and switching discards pending pages',
+      () async {
+        final businessService = _FakeBusinessActivityQueryService();
+        final metricsService = _FakeFinancialMetricsService();
+        final accountService = _FakeAccountQueryService(accountsById: {});
+        final visibleMonth = DateTime(2026, 1);
+        final container = _container(
+          businessService,
+          metricsService,
+          accountService,
+          useRealBookSelection: true,
+          settingsStore: _MemorySettingsStore(
+            const AppSettings(showAllBooks: true),
+          ),
+          overrides: [
+            bookQueryServiceProvider.overrideWithValue(
+              BookQueryService(FakeBookRepository()),
+            ),
+          ],
+        );
+        final viewModelSubscription = container.listen(
+          homeViewModelProvider,
+          (_, _) {},
+        );
+        addTearDown(viewModelSubscription.close);
+        container
+            .read(homeViewModelProvider.notifier)
+            .applyTransactionFilter(
+              categoryAccountIds: {'cat-food'},
+              settlementAccountIds: {'acc-cash'},
+              tagIds: {'tag-travel'},
+            );
+        final ready = Completer<HomeContentLoaded>();
+        final subscription = container.listen(
+          homeContentProvider(visibleMonth),
+          (_, next) {
+            if (ready.isCompleted) return;
+            if (next is HomeContentLoaded) {
+              ready.complete(next);
+            } else if (next is HomeContentError) {
+              ready.completeError(StateError(next.message));
+            }
+          },
+        );
+        addTearDown(subscription.close);
+        await container.read(appSettingsViewModelProvider.future);
+        await container.read(bookListProvider.future);
+        await container.pump();
+
+        final firstQuery = businessService.queries.single;
+        expect(firstQuery.bookId, isNull);
+        expect(firstQuery.occurredFrom, DateTime(2026, 1));
+        expect(firstQuery.occurredUntil, DateTime(2026, 2));
+        expect(firstQuery.categoryAccountIds, {'cat-food'});
+        expect(firstQuery.settlementAccountIds, {'acc-cash'});
+        expect(firstQuery.tagIds, {'tag-travel'});
+        expect(metricsService.comparisonQueries.single.bookId, isNull);
+        expect(metricsService.dailyQueries.single.bookId, isNull);
+
+        businessService.emit(
+          _page([_businessActivity(id: 'all-first')], hasMore: true),
+        );
+        metricsService.emitComparison(_comparison());
+        metricsService.emitDaily([
+          DailyCashflowSummary(
+            date: DateTime(2026, 1, 1),
+            income: const Money(minorUnits: 10000),
+            expense: const Money(minorUnits: 2500),
+          ),
+        ]);
+        final loaded = await ready.future.timeout(const Duration(seconds: 10));
+        expect(loaded.groups.single.rows.single.transactionId, 'all-first');
+
+        businessService.nextPage = _page([
+          _businessActivity(id: 'all-next'),
+        ], hasMore: true);
+        final feed = container.read(
+          homeTransactionFeedViewModelProvider(visibleMonth).notifier,
+        );
+        await feed.loadMore();
+        final nextQuery = businessService.queries.last;
+        expect(nextQuery.bookId, isNull);
+        expect(nextQuery.categoryAccountIds, {'cat-food'});
+        expect(nextQuery.settlementAccountIds, {'acc-cash'});
+        expect(nextQuery.tagIds, {'tag-travel'});
+        expect(
+          nextQuery.before?.activityKey,
+          const BusinessActivityKey.transactionGroup('all-first'),
+        );
+        final allFeed =
+            container.read(homeTransactionFeedViewModelProvider(visibleMonth))
+                as HomeTransactionFeedLoaded;
+        expect(allFeed.items.map((item) => item.displayTransactionId), [
+          'all-first',
+          'all-next',
+        ]);
+
+        final oldPage = Completer<BusinessActivityPage>();
+        businessService.nextPageFuture = oldPage.future;
+        final pending = feed.loadMore();
+        await container
+            .read(bookSelectionViewModelProvider.notifier)
+            .selectBook(Book.dailyId);
+        await container.pump();
+        expect(businessService.queries.last.bookId, Book.dailyId);
+        expect(metricsService.comparisonQueries.last.bookId, Book.dailyId);
+        expect(metricsService.dailyQueries.last.bookId, Book.dailyId);
+        businessService.emit(_page([_businessActivity(id: 'daily-first')]));
+        await _flush();
+        oldPage.complete(_page([_businessActivity(id: 'stale-all')]));
+        await pending;
+        final dailyFeed =
+            container.read(homeTransactionFeedViewModelProvider(visibleMonth))
+                as HomeTransactionFeedLoaded;
+        expect(dailyFeed.items.map((item) => item.displayTransactionId), [
+          'daily-first',
+        ]);
+      },
+    );
 
     test('captions income and expense by the selected period metric', () async {
       final businessService = _FakeBusinessActivityQueryService();
@@ -608,10 +731,11 @@ ProviderContainer _container(
   _FakeAccountQueryService accountService, {
   List<dynamic> overrides = const [],
   AppSettingsStore? settingsStore,
+  bool useRealBookSelection = false,
 }) {
   final container = ProviderContainer(
     overrides: [
-      bookSelectionTestOverride,
+      if (!useRealBookSelection) bookSelectionTestOverride,
       bookListTestOverride,
       currentDateTimeProvider.overrideWith((ref) => DateTime(2026, 1, 15, 9)),
       businessActivityQueryServiceProvider.overrideWithValue(businessService),

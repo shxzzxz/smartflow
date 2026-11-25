@@ -30,7 +30,7 @@ class _PageHeaderPreviewsState extends State<PageHeaderPreviews> {
   var _showLunar = true;
   var _tab = 0;
   var _statisticsView = StatisticsViewType.period;
-  var _bookId = Book.dailyId;
+  String? _bookId = Book.dailyId;
   final _books = [
     Book(id: Book.dailyId, name: Book.dailyName),
     Book(id: 'travel', name: '旅行与家庭活动账本'),

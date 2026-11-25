@@ -113,6 +113,103 @@ void main() {
     },
   );
 
+  test('all books persists its scope and new transactions use daily', () async {
+    final selection = fixture.container.read(
+      bookSelectionViewModelProvider.notifier,
+    );
+    await selection.snapshot();
+    await selection.selectBook(fixture.b.id);
+    await selection.selectBook(null);
+    await fixture.container.pump();
+
+    final settings = await DriftAppSettingsStore(fixture.db).read();
+    expect(settings.currentBookId, Book.dailyId);
+    expect(settings.showAllBooks, isTrue);
+    final selected = await selection.snapshot();
+    expect(selected.currentBook.id, Book.dailyId);
+    expect(selected.queryBookId, isNull);
+    expect(selected.books.map((book) => book.id), [
+      Book.dailyId,
+      fixture.a.id,
+      fixture.b.id,
+      fixture.c.id,
+    ]);
+
+    final prefill = TransactionFormPrefill(
+      occurredAt: DateTime(2026, 1, 10),
+      note: '',
+      reviewMessage: '',
+      amount: const Money(minorUnits: 10000),
+      settlementAccountId: fixture.cash.id,
+      categoryId: fixture.category.id,
+    );
+    final form = transactionFormViewModelProvider(prefill: prefill);
+    final ready = Completer<TransactionFormState>();
+    final subscription = fixture.container.listen(form, (_, next) {
+      if (ready.isCompleted) return;
+      if (next.hasError) {
+        ready.completeError(next.error!, next.stackTrace);
+      } else if (next.value case final value?) {
+        if (value.expenseSettlementAccounts.any(
+          (account) => account.id == fixture.cash.id,
+        )) {
+          ready.complete(value);
+        }
+      }
+    }, fireImmediately: true);
+    addTearDown(subscription.close);
+    final initial = await ready.future.timeout(const Duration(seconds: 10));
+    expect(initial.bookId, Book.dailyId);
+    final outcome = await fixture.container
+        .read(form.notifier)
+        .submit(amountText: '100', noteText: 'all books');
+    expect(
+      outcome,
+      isA<SubmitSuccess>(),
+      reason: outcome is SubmitFailure ? outcome.error.message : null,
+    );
+    final dailyTransaction =
+        (await fixture.db.select(fixture.db.transactions).get()).single;
+    expect(dailyTransaction.bookId, Book.dailyId);
+    final otherTransactionId = await fixture.expense(bookId: fixture.a.id);
+    final month = MonthKey(year: 2026, month: 1);
+    final allActivities = await fixture.container
+        .read(businessActivityQueryServiceProvider)
+        .findPage(
+          BusinessActivityPageQuery(
+            bookId: selected.queryBookId,
+            occurredFrom: month.start,
+            occurredUntil: month.nextMonthStart,
+          ),
+        );
+    expect(
+      allActivities.items.map((activity) => activity.displayTransactionId),
+      unorderedEquals([dailyTransaction.id, otherTransactionId]),
+    );
+    final metrics = fixture.container.read(financialMetricsServiceProvider);
+    final total = await metrics
+        .watchCashflowComparison(
+          CashflowComparisonQuery(month: month, bookId: selected.queryBookId),
+        )
+        .first;
+    final daily = await metrics
+        .watchDailyCashflowSummaries(
+          DailyCashflowSummaryQuery(month: month, bookId: selected.queryBookId),
+        )
+        .first;
+    expect(total.current.expense, const Money(minorUnits: 20000));
+    expect(daily.single.expense, const Money(minorUnits: 20000));
+
+    await selection.selectBook(fixture.a.id);
+    await fixture.container.pump();
+    final specific = await selection.snapshot();
+    expect(specific.currentBook.id, fixture.a.id);
+    expect(specific.queryBookId, fixture.a.id);
+    final restored = await DriftAppSettingsStore(fixture.db).read();
+    expect(restored.currentBookId, fixture.a.id);
+    expect(restored.showAllBooks, isFalse);
+  });
+
   test('an interest-only import retains the selected book', () async {
     final plan = ImportParseResult(
       source: ImportSource.yimu,

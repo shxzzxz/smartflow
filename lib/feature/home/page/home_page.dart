@@ -105,9 +105,9 @@ class _HomePageState extends ConsumerState<HomePage> {
                         singleRow: true,
                         leading: BookPickerButton(
                           books: bookSelection.value?.books ?? const [],
-                          bookId:
-                              bookSelection.value?.currentBook.id ??
-                              Book.dailyId,
+                          bookId: bookSelection.value == null
+                              ? Book.dailyId
+                              : bookSelection.value!.queryBookId,
                           enabled:
                               bookSelection is AsyncData<BookSelectionState> &&
                               !bookSelection.value.submitting,
@@ -303,7 +303,7 @@ class _HomePageState extends ConsumerState<HomePage> {
     }
   }
 
-  Future<void> _selectCurrentBook(String id) async {
+  Future<void> _selectCurrentBook(String? id) async {
     final outcome = await ref
         .read(bookSelectionViewModelProvider.notifier)
         .selectBook(id);

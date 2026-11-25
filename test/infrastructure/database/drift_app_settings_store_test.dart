@@ -59,6 +59,7 @@ void main() {
 
         final settings = await store.read();
 
+        expect(settings.showAllBooks, isFalse);
         expect(
           settings.pullToCreateSensitivity,
           PullToCreateSensitivity.standard,

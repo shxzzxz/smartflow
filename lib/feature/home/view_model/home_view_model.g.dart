@@ -128,7 +128,7 @@ final class HomeBusinessActivitiesProvider
         $StreamProvider<BusinessActivityPage> {
   HomeBusinessActivitiesProvider._({
     required HomeBusinessActivitiesFamily super.from,
-    required (DateTime, String) super.argument,
+    required (DateTime, String?) super.argument,
   }) : super(
          retry: null,
          name: r'homeBusinessActivitiesProvider',
@@ -155,7 +155,7 @@ final class HomeBusinessActivitiesProvider
 
   @override
   Stream<BusinessActivityPage> create(Ref ref) {
-    final argument = this.argument as (DateTime, String);
+    final argument = this.argument as (DateTime, String?);
     return homeBusinessActivities(ref, argument.$1, argument.$2);
   }
 
@@ -172,13 +172,13 @@ final class HomeBusinessActivitiesProvider
 }
 
 String _$homeBusinessActivitiesHash() =>
-    r'176ee5fb0471cac790d4b4c7a21e97f89f1c3e78';
+    r'3db17097cbc7b94f07e5c58e011e050d43ee32ba';
 
 final class HomeBusinessActivitiesFamily extends $Family
     with
         $FunctionalFamilyOverride<
           Stream<BusinessActivityPage>,
-          (DateTime, String)
+          (DateTime, String?)
         > {
   HomeBusinessActivitiesFamily._()
     : super(
@@ -189,7 +189,7 @@ final class HomeBusinessActivitiesFamily extends $Family
         isAutoDispose: true,
       );
 
-  HomeBusinessActivitiesProvider call(DateTime visibleMonth, String bookId) =>
+  HomeBusinessActivitiesProvider call(DateTime visibleMonth, String? bookId) =>
       HomeBusinessActivitiesProvider._(
         argument: (visibleMonth, bookId),
         from: this,
@@ -255,7 +255,7 @@ final class HomeTransactionFeedViewModelProvider
 }
 
 String _$homeTransactionFeedViewModelHash() =>
-    r'1f8cf3167871bbb64e0e311f45b23da9230de30c';
+    r'74843998136f7ddb81ce5dcc78073cb33729e527';
 
 final class HomeTransactionFeedViewModelFamily extends $Family
     with
@@ -323,7 +323,7 @@ final class HomeCashflowComparisonProvider
         $StreamProvider<CashflowComparison> {
   HomeCashflowComparisonProvider._({
     required HomeCashflowComparisonFamily super.from,
-    required (DateTime, String) super.argument,
+    required (DateTime, String?) super.argument,
   }) : super(
          retry: null,
          name: r'homeCashflowComparisonProvider',
@@ -350,7 +350,7 @@ final class HomeCashflowComparisonProvider
 
   @override
   Stream<CashflowComparison> create(Ref ref) {
-    final argument = this.argument as (DateTime, String);
+    final argument = this.argument as (DateTime, String?);
     return homeCashflowComparison(ref, argument.$1, argument.$2);
   }
 
@@ -367,13 +367,13 @@ final class HomeCashflowComparisonProvider
 }
 
 String _$homeCashflowComparisonHash() =>
-    r'c7a3df719445f76e853f7adaa6c0603207a38f08';
+    r'6e63a204c43bd7c1a5819c31c0504e7b37f94f2f';
 
 final class HomeCashflowComparisonFamily extends $Family
     with
         $FunctionalFamilyOverride<
           Stream<CashflowComparison>,
-          (DateTime, String)
+          (DateTime, String?)
         > {
   HomeCashflowComparisonFamily._()
     : super(
@@ -384,7 +384,7 @@ final class HomeCashflowComparisonFamily extends $Family
         isAutoDispose: true,
       );
 
-  HomeCashflowComparisonProvider call(DateTime visibleMonth, String bookId) =>
+  HomeCashflowComparisonProvider call(DateTime visibleMonth, String? bookId) =>
       HomeCashflowComparisonProvider._(
         argument: (visibleMonth, bookId),
         from: this,
@@ -409,7 +409,7 @@ final class HomeDailyCashflowSummariesProvider
         $StreamProvider<List<DailyCashflowSummary>> {
   HomeDailyCashflowSummariesProvider._({
     required HomeDailyCashflowSummariesFamily super.from,
-    required (DateTime, String) super.argument,
+    required (DateTime, String?) super.argument,
   }) : super(
          retry: null,
          name: r'homeDailyCashflowSummariesProvider',
@@ -436,7 +436,7 @@ final class HomeDailyCashflowSummariesProvider
 
   @override
   Stream<List<DailyCashflowSummary>> create(Ref ref) {
-    final argument = this.argument as (DateTime, String);
+    final argument = this.argument as (DateTime, String?);
     return homeDailyCashflowSummaries(ref, argument.$1, argument.$2);
   }
 
@@ -453,13 +453,13 @@ final class HomeDailyCashflowSummariesProvider
 }
 
 String _$homeDailyCashflowSummariesHash() =>
-    r'424b4db237d283d0a4ac36ada8b23fd9ebcd608e';
+    r'8abaea19ff78d75f3da78049285ed6954eb8ccd0';
 
 final class HomeDailyCashflowSummariesFamily extends $Family
     with
         $FunctionalFamilyOverride<
           Stream<List<DailyCashflowSummary>>,
-          (DateTime, String)
+          (DateTime, String?)
         > {
   HomeDailyCashflowSummariesFamily._()
     : super(
@@ -472,7 +472,7 @@ final class HomeDailyCashflowSummariesFamily extends $Family
 
   HomeDailyCashflowSummariesProvider call(
     DateTime visibleMonth,
-    String bookId,
+    String? bookId,
   ) => HomeDailyCashflowSummariesProvider._(
     argument: (visibleMonth, bookId),
     from: this,
@@ -591,7 +591,7 @@ final class HomeContentProvider
   }
 }
 
-String _$homeContentHash() => r'53260e7145aa7a71761556011427ac0e8d90e024';
+String _$homeContentHash() => r'6f31f9304046a9264185028caf31ed6c6c004271';
 
 final class HomeContentFamily extends $Family
     with $FunctionalFamilyOverride<HomeContentState, DateTime> {
