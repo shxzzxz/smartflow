@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import '../../../helper/book_selection_override.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -10,12 +12,15 @@ import 'package:smartflow/application/ledger/ledger_command_api.dart';
 import 'package:smartflow/application/ledger/ledger_query_api.dart';
 import 'package:smartflow/application/transaction_view/transaction_view_query_api.dart';
 import 'package:smartflow/core/money/money.dart';
+import 'package:smartflow/core/error/app_exception.dart';
 import 'package:smartflow/design_system/theme/app_theme.dart';
 import 'package:smartflow/design_system/widget/app_form_section.dart';
 import 'package:smartflow/design_system/widget/app_plain_form_row.dart';
+import 'package:smartflow/design_system/widget/app_surface.dart';
 import 'package:smartflow/design_system/widget/app_datetime_picker.dart';
 import 'package:smartflow/design_system/widget/app_form_field.dart';
 import 'package:smartflow/domain/orchestration/entity/advance_case.dart';
+import 'package:smartflow/domain/ledger/valobj/ledger_error_code.dart';
 import 'package:smartflow/domain/orchestration/valobj/amortization_enums.dart';
 import 'package:smartflow/feature/shared/provider/ledger_query_providers.dart';
 import 'package:smartflow/feature/shared/provider/tag_providers.dart';
@@ -193,7 +198,7 @@ void main() {
     expect(find.text('交易时间'), findsOneWidget);
     expect(find.text('入账时间'), findsOneWidget);
 
-    await tester.tap(find.byTooltip('更多'));
+    await tester.tap(find.byTooltip('删除'));
     await tester.pumpAndSettle();
     expect(find.text('此操作将删除整个交易组及其账务记录（包括退款、垫付等子交易），无法恢复。'), findsOneWidget);
     expect(find.textContaining('冲销记录'), findsNothing);
@@ -387,7 +392,7 @@ void main() {
     expect(find.text('终止'), findsOneWidget);
     expect(find.text('编辑'), findsOneWidget);
 
-    await tester.tap(find.byTooltip('更多'));
+    await tester.tap(find.byTooltip('删除'));
     await tester.pumpAndSettle();
 
     expect(find.byType(AlertDialog), findsOneWidget);
@@ -633,6 +638,111 @@ void main() {
     );
   });
 
+  for (final fails in [false, true]) {
+    testWidgets(
+      'more menu reporting switch ${fails ? 'restores its value after failure' : 'updates after saving'}',
+      (tester) async {
+        await tester.binding.setSurfaceSize(const Size(480, 1200));
+        addTearDown(() => tester.binding.setSurfaceSize(null));
+        final details = StreamController<TransactionDetailReadModel>();
+        addTearDown(details.close);
+        var detail = _detail();
+        void emitDetail() {
+          details.add(
+            TransactionDetailReadModel(
+              context: TransactionDetailContext(transaction: detail),
+            ),
+          );
+        }
+
+        emitDetail();
+        final save = Completer<void>();
+        final update = _FakeTransactionUpdateAppService(
+          onReportingFlag: (command) async {
+            await save.future;
+            if (fails) {
+              throw BusinessException(
+                LedgerErrorCode.transactionNotEditable,
+                message: '交易当前不可编辑',
+              );
+            }
+            detail = _detail(
+              isExcludedFromStats:
+                  command.isExcludedFromStats ?? detail.isExcludedFromStats,
+              isExcludedFromBudget:
+                  command.isExcludedFromBudget ?? detail.isExcludedFromBudget,
+            );
+            emitDetail();
+          },
+        );
+        await tester.pumpWidget(
+          ProviderScope(
+            overrides: [
+              bookSelectionTestOverride,
+              bookListTestOverride,
+              transactionDetailReadModelProvider(
+                'tx-1',
+              ).overrideWith((ref) => details.stream),
+              accountLookupProvider.overrideWith(
+                (ref) => Stream.value(AccountLookup(_accounts)),
+              ),
+              tagListProvider.overrideWithValue(const AsyncData([])),
+              transactionTagIdsProvider(
+                'tx-1',
+              ).overrideWithValue(const AsyncData({})),
+              transactionUpdateAppServiceProvider.overrideWithValue(update),
+            ],
+            child: MaterialApp(
+              theme: AppTheme.light(),
+              home: const TransactionDetailPage(transactionId: 'tx-1'),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        expect(find.byIcon(RemixIcons.delete_bin_line), findsOneWidget);
+        expect(find.byTooltip('更多'), findsOneWidget);
+        expect(find.text('不计入收支'), findsNothing);
+        await tester.tap(find.byTooltip('更多'));
+        await tester.pumpAndSettle();
+        expect(find.byType(AlertDialog), findsNothing);
+        final menuItem = find.widgetWithText(MenuItemButton, '不计入收支');
+        final menuSwitch = find.descendant(
+          of: menuItem,
+          matching: find.byType(Switch),
+        );
+        expect(tester.widget<Switch>(menuSwitch).value, isFalse);
+
+        await tester.tap(menuItem);
+        await tester.pumpAndSettle();
+        expect(update.reportingFlagCommands, hasLength(1));
+        final command = update.reportingFlagCommands.single;
+        expect(command.transactionId, 'tx-1');
+        expect(command.isExcludedFromStats, isTrue);
+        expect(command.isExcludedFromBudget, isNull);
+        expect(tester.widget<MenuItemButton>(menuItem).enabled, isFalse);
+        expect(tester.widget<Switch>(menuSwitch).onChanged, isNull);
+        expect(
+          tester
+              .widget<AppPlainSwitchRow>(find.byType(AppPlainSwitchRow))
+              .enabled,
+          isFalse,
+        );
+
+        save.complete();
+        await tester.pumpAndSettle();
+        expect(tester.widget<Switch>(menuSwitch).value, !fails);
+        expect(tester.widget<MenuItemButton>(menuItem).enabled, isTrue);
+        expect(find.text('不计入收支'), findsOneWidget);
+        expect(find.byType(AlertDialog), findsNothing);
+        if (fails) {
+          expect(find.textContaining('交易当前不可编辑'), findsOneWidget);
+        }
+        expect(tester.takeException(), isNull);
+      },
+    );
+  }
+
   testWidgets(
     'child reporting switches show inherited state and are disabled',
     (tester) async {
@@ -679,13 +789,25 @@ void main() {
       final rows = tester
           .widgetList<AppPlainSwitchRow>(find.byType(AppPlainSwitchRow))
           .toList();
-      expect(rows, hasLength(2));
+      expect(rows, hasLength(1));
       expect(rows.every((row) => row.value && !row.enabled), isTrue);
+      expect(find.text('不计入收支'), findsNothing);
+      await tester.tap(find.byTooltip('更多'));
+      await tester.pumpAndSettle();
+      expect(
+        tester
+            .widget<MenuItemButton>(
+              find.widgetWithText(MenuItemButton, '不计入收支'),
+            )
+            .enabled,
+        isFalse,
+      );
       expect(find.text('跟随所属交易组设置'), findsNothing);
+      expect(tester.widgetList<Switch>(find.byType(Switch)), hasLength(2));
       expect(
         tester
             .widgetList<Switch>(find.byType(Switch))
-            .every((widget) => widget.onChanged == null),
+            .every((widget) => widget.value && widget.onChanged == null),
         isTrue,
       );
     },
@@ -728,6 +850,15 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.widgetWithText(Chip, '工作'), findsOneWidget);
+    final tagCard = find.ancestor(
+      of: find.text('标签'),
+      matching: find.byType(AppSurface),
+    );
+    expect(tagCard, findsOneWidget);
+    expect(
+      find.descendant(of: tagCard, matching: find.text('不计入预算')),
+      findsOneWidget,
+    );
     await tester.tap(find.text('标签'));
     await tester.pumpAndSettle();
     expect(find.text('选择标签'), findsOneWidget);
@@ -738,6 +869,13 @@ void main() {
 
     expect(updateService.tagCommands.single.tagIds, {'tag-1', 'tag-2'});
     expect(find.text('标签已更新'), findsOneWidget);
+
+    await tester.tap(find.text('不计入预算'));
+    await tester.pumpAndSettle();
+    final reportingCommand = updateService.reportingFlagCommands.single;
+    expect(reportingCommand.transactionId, 'tx-1');
+    expect(reportingCommand.isExcludedFromBudget, isTrue);
+    expect(reportingCommand.isExcludedFromStats, isNull);
   });
 
   testWidgets('advance date and close switch reset with the form', (
@@ -1063,15 +1201,18 @@ final _accounts = <String, Account>{
   ),
 };
 
-TransactionReadModel _detail() {
+TransactionReadModel _detail({
+  bool isExcludedFromStats = false,
+  bool isExcludedFromBudget = false,
+}) {
   return TransactionReadModel.fromTransaction(
     transaction: Transaction(
       id: 'tx-1',
       businessPurpose: BusinessPurpose.dailyExpense,
       occurredAt: DateTime(2026, 1, 1, 8),
       primaryAmount: const Money(minorUnits: 10000),
-      isExcludedFromStats: false,
-      isExcludedFromBudget: false,
+      isExcludedFromStats: isExcludedFromStats,
+      isExcludedFromBudget: isExcludedFromBudget,
       sourceKind: SourceKind.manual,
     ),
     createdAt: DateTime(2026, 1, 1, 8, 1),
@@ -1378,6 +1519,11 @@ Account _account(
 }
 
 class _FakeTransactionUpdateAppService implements TransactionUpdateAppService {
+  _FakeTransactionUpdateAppService({this.onReportingFlag});
+
+  final Future<void> Function(UpdateTransactionReportingFlagCommand)?
+  onReportingFlag;
+  final reportingFlagCommands = <UpdateTransactionReportingFlagCommand>[];
   final tagCommands = <UpdateTransactionTagsCommand>[];
 
   @override
@@ -1401,8 +1547,10 @@ class _FakeTransactionUpdateAppService implements TransactionUpdateAppService {
   @override
   Future<PostedTransactionResult> updateReportingFlag(
     UpdateTransactionReportingFlagCommand command,
-  ) {
-    throw UnimplementedError();
+  ) async {
+    reportingFlagCommands.add(command);
+    await onReportingFlag?.call(command);
+    return PostedTransactionResult(transactionId: command.transactionId);
   }
 
   @override

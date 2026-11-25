@@ -67,6 +67,64 @@ void main() {
     expect(find.text('显示图例'), findsOneWidget);
   });
 
+  testWidgets(
+    'toggle options follow parent values and support disabled state',
+    (tester) async {
+      late StateSetter rebuild;
+      var enabled = true;
+      final changes = <bool>[];
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.light(),
+          home: Scaffold(
+            body: StatefulBuilder(
+              builder: (context, setState) {
+                rebuild = setState;
+                return Center(
+                  child: AppPopupMenuButton(
+                    tooltip: '页面设置',
+                    icon: RemixIcons.settings_3_line,
+                    items: [
+                      AppPopupMenuToggle(
+                        label: '显示图例',
+                        value: false,
+                        onChanged: enabled ? changes.add : null,
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
+          ),
+        ),
+      );
+
+      await tester.tap(find.byTooltip('页面设置'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('显示图例'));
+      await tester.pumpAndSettle();
+      expect(changes, [true]);
+      expect(tester.widget<Switch>(find.byType(Switch)).value, isTrue);
+
+      rebuild(() {});
+      await tester.pumpAndSettle();
+      expect(tester.widget<Switch>(find.byType(Switch)).value, isFalse);
+
+      rebuild(() => enabled = false);
+      await tester.pumpAndSettle();
+      expect(
+        tester.widget<MenuItemButton>(find.byType(MenuItemButton)).enabled,
+        isFalse,
+      );
+      expect(tester.widget<Switch>(find.byType(Switch)).onChanged, isNull);
+      await tester.tap(find.text('显示图例'));
+      await tester.pumpAndSettle();
+      expect(changes, [true]);
+      expect(tester.widget<Switch>(find.byType(Switch)).value, isFalse);
+      expect(find.text('显示图例'), findsOneWidget);
+    },
+  );
+
   testWidgets('action options invoke their command and close the menu', (
     tester,
   ) async {

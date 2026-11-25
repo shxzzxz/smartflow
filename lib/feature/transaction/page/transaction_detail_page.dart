@@ -14,6 +14,7 @@ import '../../../design_system/token/spacing.dart';
 import '../../../design_system/widget/app_datetime_picker.dart';
 import '../../../design_system/widget/app_page_header.dart';
 import '../../../design_system/widget/app_plain_form_row.dart';
+import '../../../design_system/widget/app_popup_menu_button.dart';
 import '../../../design_system/widget/app_surface.dart';
 import '../../../domain/orchestration/valobj/amortization_enums.dart';
 import 'package:smartflow/widget/business/account/account_endpoint.dart';
@@ -50,14 +51,31 @@ class TransactionDetailPage extends ConsumerWidget {
             AppPageHeader(
               title: '交易详情',
               actions: [
-                if (loaded is TransactionDetailLoaded)
+                if (loaded is TransactionDetailLoaded) ...[
                   AppHeaderIconButton(
                     onPressed: loaded.submitting
                         ? null
                         : () => _confirmDelete(context, ref),
+                    icon: RemixIcons.delete_bin_line,
+                    tooltip: '删除',
+                  ),
+                  AppPopupMenuButton(
                     icon: RemixIcons.more_2_line,
                     tooltip: '更多',
+                    items: [
+                      if (loaded.showExcludeStats)
+                        AppPopupMenuToggle(
+                          label: '不计入收支',
+                          value: loaded.excludeStats,
+                          onChanged:
+                              loaded.canEditReportingFlags && !loaded.submitting
+                              ? (next) =>
+                                    _toggleExcludeStats(context, ref, next)
+                              : null,
+                        ),
+                    ],
                   ),
+                ],
               ],
             ),
             Expanded(
@@ -79,6 +97,18 @@ class TransactionDetailPage extends ConsumerWidget {
         ),
       ),
     );
+  }
+
+  Future<void> _toggleExcludeStats(
+    BuildContext context,
+    WidgetRef ref,
+    bool next,
+  ) async {
+    final outcome = await ref
+        .read(transactionDetailViewModelProvider(transactionId).notifier)
+        .toggleExcludeStats(next);
+    if (!context.mounted) return;
+    _handleActionOutcome(context, outcome);
   }
 
   Future<void> _confirmDelete(BuildContext context, WidgetRef ref) async {
@@ -188,15 +218,10 @@ class _DetailBody extends ConsumerWidget {
                 ),
               ],
               const SizedBox(height: AppSpacing.space12),
-              _TagCard(
+              _TagBudgetCard(
                 key: const ValueKey('detail-tag-card'),
-                transactionId: state.transactionId,
-                permission: state.behavior.canEditTags,
+                state: state,
               ),
-              if (state.showExcludeStats || state.showExcludeBudget) ...[
-                const SizedBox(height: AppSpacing.space12),
-                _ExclusionCard(state: state),
-              ],
             ],
           ),
         ),
@@ -722,51 +747,51 @@ class _PrimaryMetaCard extends StatelessWidget {
   }
 }
 
-/// 标签展示卡。顶层交易支持在详情页直接修改，子交易展示所属交易组的标签。
-class _TagCard extends ConsumerWidget {
-  const _TagCard({
-    required this.transactionId,
-    required this.permission,
-    super.key,
-  });
+/// 标签与预算设置卡。子交易展示所属交易组的标签与预算设置。
+class _TagBudgetCard extends ConsumerWidget {
+  const _TagBudgetCard({required this.state, super.key});
 
-  final String transactionId;
-  final DetailEditPermission permission;
+  final TransactionDetailLoaded state;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final tagIds = ref.watch(transactionTagIdsProvider(transactionId)).value;
+    final tagIds = ref
+        .watch(transactionTagIdsProvider(state.transactionId))
+        .value;
     final tags = ref.watch(tagListProvider).value;
-    if (tagIds == null || tags == null) return const SizedBox.shrink();
-    if (tagIds.isEmpty) {
-      return _RowCard(
-        rows: [
-          AppPlainValueRow(
-            label: '标签',
-            value: '无',
-            valueColor: Theme.of(context).colorScheme.onSurfaceVariant,
-            onTap: () => _editTags(context, ref, tagIds, tags),
-          ),
-        ],
-      );
-    }
-    final nameById = {for (final tag in tags) tag.id: tag.name};
-    final names = [
-      for (final id in tagIds)
-        if (nameById.containsKey(id)) nameById[id]!,
-    ];
+    final nameById = {
+      for (final tag in tags ?? const <TagView>[]) tag.id: tag.name,
+    };
     return _RowCard(
       rows: [
-        AppPlainValueRow(
-          label: '标签',
-          child: Wrap(
-            alignment: WrapAlignment.end,
-            spacing: AppSpacing.space4,
-            runSpacing: AppSpacing.space4,
-            children: [for (final name in names) TagBadge(name: name)],
+        if (tagIds != null && tags != null)
+          AppPlainValueRow(
+            label: '标签',
+            value: tagIds.isEmpty ? '无' : null,
+            valueColor: tagIds.isEmpty
+                ? Theme.of(context).colorScheme.onSurfaceVariant
+                : null,
+            child: tagIds.isEmpty
+                ? null
+                : Wrap(
+                    alignment: WrapAlignment.end,
+                    spacing: AppSpacing.space4,
+                    runSpacing: AppSpacing.space4,
+                    children: [
+                      for (final id in tagIds)
+                        if (nameById.containsKey(id))
+                          TagBadge(name: nameById[id]!),
+                    ],
+                  ),
+            onTap: () => _editTags(context, ref, tagIds, tags),
           ),
-          onTap: () => _editTags(context, ref, tagIds, tags),
-        ),
+        if (state.showExcludeBudget)
+          AppPlainSwitchRow(
+            label: '不计入预算',
+            enabled: state.canEditReportingFlags && !state.submitting,
+            value: state.excludeBudget,
+            onChanged: (next) => _toggleExcludeBudget(context, ref, next),
+          ),
       ],
     );
   }
@@ -777,7 +802,7 @@ class _TagCard extends ConsumerWidget {
     Set<String> tagIds,
     List<TagView> tags,
   ) async {
-    switch (permission) {
+    switch (state.behavior.canEditTags) {
       case DetailEditDenied(:final reason):
         _showMessage(context, reason);
         return;
@@ -797,50 +822,10 @@ class _TagCard extends ConsumerWidget {
       return;
     }
     final outcome = await ref
-        .read(transactionDetailViewModelProvider(transactionId).notifier)
+        .read(transactionDetailViewModelProvider(state.transactionId).notifier)
         .changeTags(selectedIds);
     if (!context.mounted) return;
     _handleActionOutcome(context, outcome, successMessage: '标签已更新');
-  }
-}
-
-class _ExclusionCard extends ConsumerWidget {
-  const _ExclusionCard({required this.state});
-
-  final TransactionDetailLoaded state;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    return _RowCard(
-      rows: [
-        if (state.showExcludeStats)
-          AppPlainSwitchRow(
-            label: '不计入收支',
-            enabled: state.canEditReportingFlags && !state.submitting,
-            value: state.excludeStats,
-            onChanged: (next) => _toggleExcludeStats(context, ref, next),
-          ),
-        if (state.showExcludeBudget)
-          AppPlainSwitchRow(
-            label: '不计入预算',
-            enabled: state.canEditReportingFlags && !state.submitting,
-            value: state.excludeBudget,
-            onChanged: (next) => _toggleExcludeBudget(context, ref, next),
-          ),
-      ],
-    );
-  }
-
-  Future<void> _toggleExcludeStats(
-    BuildContext context,
-    WidgetRef ref,
-    bool next,
-  ) async {
-    final outcome = await ref
-        .read(transactionDetailViewModelProvider(state.transactionId).notifier)
-        .toggleExcludeStats(next);
-    if (!context.mounted) return;
-    _handleActionOutcome(context, outcome);
   }
 
   Future<void> _toggleExcludeBudget(

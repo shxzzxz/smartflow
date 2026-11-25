@@ -165,7 +165,7 @@ class AppPopupMenuToggle extends StatefulWidget implements AppPopupMenuEntry {
 
   final String label;
   final bool value;
-  final ValueChanged<bool> onChanged;
+  final ValueChanged<bool>? onChanged;
   final IconData? icon;
 
   @override
@@ -178,7 +178,7 @@ class _AppPopupMenuToggleState extends State<AppPopupMenuToggle> {
   @override
   void didUpdateWidget(covariant AppPopupMenuToggle oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.value != widget.value) {
+    if (_value != widget.value) {
       _value = widget.value;
     }
   }
@@ -189,12 +189,17 @@ class _AppPopupMenuToggleState extends State<AppPopupMenuToggle> {
       closeOnActivate: false,
       leadingIcon: widget.icon == null ? null : Icon(widget.icon),
       trailingIcon: IgnorePointer(
-        child: AppSwitch(value: _value, onChanged: (_) {}),
+        child: AppSwitch(
+          value: _value,
+          onChanged: widget.onChanged == null ? null : (_) {},
+        ),
       ),
-      onPressed: () {
-        setState(() => _value = !_value);
-        widget.onChanged(_value);
-      },
+      onPressed: widget.onChanged == null
+          ? null
+          : () {
+              setState(() => _value = !_value);
+              widget.onChanged!(_value);
+            },
       child: Text(widget.label),
     );
   }
