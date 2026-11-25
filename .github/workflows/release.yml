@@ -229,6 +229,14 @@ jobs:
         with:
           path: public
 
+  deploy-pages:
+    name: Deploy GitHub Pages
+    needs: android-release
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
       - name: Deploy Pages
         id: deployment
         uses: actions/deploy-pages@v5

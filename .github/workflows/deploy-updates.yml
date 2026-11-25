@@ -1,0 +1,61 @@
+name: Deploy Update Manifests
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing release tag matching the manifest artifacts.
+        required: true
+        type: string
+      run_id:
+        description: Latest Release run that uploaded APKs and manifest artifacts.
+        required: true
+        type: string
+
+permissions:
+  actions: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: release-${{ inputs.tag }}
+  cancel-in-progress: false
+
+jobs:
+  prepare-pages:
+    name: Prepare Update Manifests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download manifest artifacts
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.tag }}
+          RELEASE_RUN_ID: ${{ inputs.run_id }}
+        run: |
+          VERSION_NAME="${RELEASE_TAG#v}"
+          gh run download "$RELEASE_RUN_ID" \
+            --repo "$GITHUB_REPOSITORY" \
+            --name "smartflow-${VERSION_NAME}-manifests" \
+            --dir public
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v6
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v5
+        with:
+          path: public
+
+  deploy-pages:
+    name: Deploy GitHub Pages
+    needs: prepare-pages
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy Pages
+        id: deployment
+        uses: actions/deploy-pages@v5
+        with:
+          artifact_name: github-pages
