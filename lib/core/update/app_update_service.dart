@@ -15,6 +15,7 @@ class AppUpdateService {
   AppUpdateService({
     required this.manifestUri,
     this.expectedChannel,
+    this.requestTimeout = const Duration(seconds: 15),
     HttpClient Function()? httpClientFactory,
   }) : _httpClientFactory = httpClientFactory ?? HttpClient.new;
 
@@ -22,6 +23,7 @@ class AppUpdateService {
 
   final Uri manifestUri;
   final AppUpdateChannel? expectedChannel;
+  final Duration requestTimeout;
   final HttpClient Function() _httpClientFactory;
 
   static Uri manifestUriForChannel(
@@ -34,10 +36,10 @@ class AppUpdateService {
   Future<AppUpdateInfo> fetchUpdateInfo() async {
     final client = _httpClientFactory();
     try {
-      final request = await client.getUrl(manifestUri);
+      final request = await client.getUrl(manifestUri).timeout(requestTimeout);
       request.headers.set(HttpHeaders.acceptHeader, 'application/json');
       request.headers.set(HttpHeaders.userAgentHeader, 'SmartFlow');
-      final response = await request.close();
+      final response = await request.close().timeout(requestTimeout);
 
       if (response.statusCode < 200 || response.statusCode >= 300) {
         throw HttpException(
@@ -46,7 +48,10 @@ class AppUpdateService {
         );
       }
 
-      final body = await response.transform(utf8.decoder).join();
+      final body = await response
+          .transform(utf8.decoder)
+          .join()
+          .timeout(requestTimeout);
       final json = jsonDecode(body);
       if (json is! Map<String, Object?>) {
         throw const FormatException('Update manifest must be a JSON object.');
@@ -61,13 +66,6 @@ class AppUpdateService {
         );
       }
       return info;
-    } catch (error, stackTrace) {
-      _logger.warning(
-        'Update manifest fetch failed: $manifestUri',
-        error,
-        stackTrace,
-      );
-      rethrow;
     } finally {
       client.close(force: true);
     }
@@ -124,8 +122,9 @@ class AppUpdateService {
         );
       }
 
-      final totalBytes =
-          response.contentLength >= 0 ? response.contentLength : null;
+      final totalBytes = response.contentLength >= 0
+          ? response.contentLength
+          : null;
       var receivedBytes = 0;
       sink = file.openWrite();
 

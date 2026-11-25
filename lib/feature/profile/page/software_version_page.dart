@@ -1,22 +1,17 @@
-import 'package:logging/logging.dart';
+import 'dart:async';
+
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:remixicon/remixicon.dart';
 
-import '../../../app/provider.dart';
+import '../../../app/app_update_providers.dart';
 import '../../../core/update/app_update_channel.dart';
-import '../../../core/update/app_update_info.dart';
-import '../../../core/update/app_update_platform.dart';
-import '../../../core/update/app_update_service.dart';
 import '../../../design_system/theme/app_text_styles.dart';
 import '../../../design_system/token/radius.dart';
 import '../../../design_system/token/spacing.dart';
 import '../../../design_system/widget/app_page_header.dart';
 import '../../../design_system/widget/app_surface.dart';
 import '../../../design_system/widget/app_scaffold.dart';
-
-final _logger = Logger('feature.profile.software_version');
 
 class SoftwareVersionPage extends ConsumerStatefulWidget {
   const SoftwareVersionPage({super.key});
@@ -27,199 +22,56 @@ class SoftwareVersionPage extends ConsumerStatefulWidget {
 }
 
 class _SoftwareVersionPageState extends ConsumerState<SoftwareVersionPage> {
-  static const _manifestUrlOverride = String.fromEnvironment(
-    'SMARTFLOW_UPDATE_URL',
-    defaultValue: '',
-  );
-  static const _manifestBaseUrl = String.fromEnvironment(
-    'SMARTFLOW_UPDATE_BASE_URL',
-    defaultValue: AppUpdateService.defaultManifestBaseUrl,
-  );
-  static final _defaultUpdateChannel = AppUpdateChannel.fromCode(
-    const String.fromEnvironment(
-      'SMARTFLOW_UPDATE_CHANNEL',
-      defaultValue: 'beta',
-    ),
-  );
-
-  final _updatePlatform = const AppUpdatePlatform();
-
-  AppVersionInfo? _versionInfo;
-  AppUpdateChannel _updateChannel = _defaultUpdateChannel;
-  bool _isCheckingUpdate = false;
-  bool _hasCheckedLatest = false;
-
   @override
   void initState() {
     super.initState();
-    _loadVersionInfo();
-    _loadUpdateChannel();
-  }
-
-  Future<void> _loadVersionInfo() async {
-    try {
-      final versionInfo = await _updatePlatform.getVersionInfo();
-      if (!mounted) {
-        return;
-      }
-      setState(() => _versionInfo = versionInfo);
-    } catch (error, stackTrace) {
-      _logger.warning('Failed to load app version info.', error, stackTrace);
-      if (!mounted) {
-        return;
-      }
-      setState(
-        () => _versionInfo = const AppVersionInfo(
-          versionName: '未知版本',
-          buildNumber: 0,
-        ),
-      );
-    }
-  }
-
-  Future<void> _loadUpdateChannel() async {
-    try {
-      final code = await ref
-          .read(updateChannelStoreProvider)
-          .readUpdateChannel();
-      if (!mounted || code == null) {
-        return;
-      }
-      setState(() => _updateChannel = AppUpdateChannel.fromCode(code));
-    } catch (error, stackTrace) {
-      _logger.warning('Failed to load update channel.', error, stackTrace);
-      // Keep the compile-time default channel when local metadata is unreadable.
-    }
-  }
-
-  Future<void> _setUpdateChannel(AppUpdateChannel channel) async {
-    if (channel == _updateChannel) {
-      return;
-    }
-
-    setState(() {
-      _updateChannel = channel;
-      _hasCheckedLatest = false;
-    });
-    await ref.read(updateChannelStoreProvider).saveUpdateChannel(channel.code);
-  }
-
-  Future<void> _checkForUpdate() async {
-    if (_isCheckingUpdate) {
-      return;
-    }
-
-    var versionInfo = _versionInfo;
-    if (versionInfo == null || versionInfo.buildNumber <= 0) {
-      await _loadVersionInfo();
-      versionInfo = _versionInfo;
-    }
-
-    if (!mounted) {
-      return;
-    }
-
-    if (versionInfo == null || versionInfo.buildNumber <= 0) {
-      _showMessage('暂时无法读取当前版本');
-      return;
-    }
-
-    setState(() {
-      _isCheckingUpdate = true;
-      _hasCheckedLatest = false;
-    });
-    try {
-      final updateService = _createUpdateService();
-      final supportedAbis = await _updatePlatform.getSupportedAbis();
-      if (!mounted) {
-        return;
-      }
-
-      final updateInfo = await updateService.checkForUpdate(
-        currentAndroidVersionCode: versionInfo.buildNumber,
-        supportedAbis: supportedAbis,
-      );
-      if (!mounted) {
-        return;
-      }
-
-      if (updateInfo == null) {
-        setState(() => _hasCheckedLatest = true);
-        _showMessage('当前已是最新版本');
-        return;
-      }
-
-      await showDialog<void>(
-        context: context,
-        barrierDismissible: !updateInfo.required,
-        builder: (context) => _AppUpdateDialog(
-          updateInfo: updateInfo,
-          supportedAbis: supportedAbis,
-          updateService: updateService,
-          updatePlatform: _updatePlatform,
-        ),
-      );
-    } catch (_) {
-      if (!mounted) {
-        return;
-      }
-      _showMessage('检查更新失败，请稍后重试');
-    } finally {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
-        setState(() => _isCheckingUpdate = false);
+        unawaited(ref.read(appUpdateControllerProvider.notifier).initialize());
       }
-    }
+    });
   }
 
-  AppUpdateService _createUpdateService() {
-    final override = _manifestUrlOverride.trim();
-    if (override.isNotEmpty) {
-      return AppUpdateService(
-        manifestUri: Uri.parse(override),
-        expectedChannel: _updateChannel,
-      );
-    }
-
-    return AppUpdateService(
-      manifestUri: AppUpdateService.manifestUriForChannel(
-        _updateChannel,
-        baseUrl: _manifestBaseUrl,
-      ),
-      expectedChannel: _updateChannel,
-    );
+  String _statusLabel(AppUpdateState state) {
+    return switch (state.downloadStatus) {
+      AppUpdateDownloadStatus.downloading => '正在后台下载',
+      AppUpdateDownloadStatus.readyToInstall => '正在准备安装',
+      AppUpdateDownloadStatus.installing => '正在打开安装界面',
+      AppUpdateDownloadStatus.downloaded => '新版本已下载',
+      AppUpdateDownloadStatus.idle =>
+        state.isChecking
+            ? '正在检查更新'
+            : state.hasCheckedLatest
+            ? '当前已是最新版本'
+            : '当前软件版本',
+    };
   }
 
-  void _showMessage(String message) {
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(content: Text(message)));
+  String _versionLabel(AppUpdateState state) {
+    final version = state.versionInfo;
+    if (version == null) return '正在读取当前版本';
+    if (version.buildNumber <= 0) return version.versionName;
+    return '${version.versionName} (${version.buildNumber})';
   }
 
-  String get _statusLabel {
-    if (_isCheckingUpdate) {
-      return '正在检查更新';
-    }
-    if (_hasCheckedLatest) {
-      return '当前已是最新版本';
-    }
-    return '当前软件版本';
-  }
-
-  String get _versionLabel {
-    final versionInfo = _versionInfo;
-    if (versionInfo == null) {
-      return '正在读取当前版本';
-    }
-    if (versionInfo.buildNumber <= 0) {
-      return versionInfo.versionName;
-    }
-    return '${versionInfo.versionName} (${versionInfo.buildNumber})';
+  String _actionLabel(AppUpdateState state) {
+    if (state.isChecking) return '正在检查';
+    return switch (state.downloadStatus) {
+      AppUpdateDownloadStatus.downloading => '下载中',
+      AppUpdateDownloadStatus.installing => '正在安装',
+      AppUpdateDownloadStatus.readyToInstall ||
+      AppUpdateDownloadStatus.downloaded => '立即安装',
+      AppUpdateDownloadStatus.idle => '检查更新',
+    };
   }
 
   @override
   Widget build(BuildContext context) {
+    final state = ref.watch(appUpdateControllerProvider);
+    final controller = ref.read(appUpdateControllerProvider.notifier);
     final colors = Theme.of(context).colorScheme;
     final textStyles = context.appTextStyles;
+    final progress = state.downloadProgress?.fraction;
 
     return AppScaffold(
       backgroundColor: colors.surface,
@@ -245,23 +97,42 @@ class _SoftwareVersionPageState extends ConsumerState<SoftwareVersionPage> {
                   ),
                   const SizedBox(height: AppSpacing.space28),
                   Text(
-                    _statusLabel,
+                    _statusLabel(state),
                     textAlign: TextAlign.center,
                     style: textStyles.sectionTitleStrong,
                   ),
                   const SizedBox(height: AppSpacing.space8),
                   Text(
-                    '$_versionLabel · ${_updateChannel.shortName} 渠道',
+                    '${_versionLabel(state)} · ${state.channel.shortName} 渠道',
                     textAlign: TextAlign.center,
                     style: textStyles.detailValue.copyWith(
                       color: colors.onSurfaceVariant,
                     ),
                   ),
+                  if (state.downloadStatus ==
+                      AppUpdateDownloadStatus.downloading) ...[
+                    const SizedBox(height: AppSpacing.space16),
+                    LinearProgressIndicator(value: progress),
+                    const SizedBox(height: AppSpacing.space8),
+                    Text(
+                      progress == null
+                          ? '正在下载，可以继续使用应用'
+                          : '已下载 ${(progress * 100).round()}%，可以继续使用应用',
+                      textAlign: TextAlign.center,
+                      style: textStyles.listSupporting,
+                    ),
+                  ],
                   const SizedBox(height: AppSpacing.space24),
                   SizedBox(
                     width: double.infinity,
                     child: FilledButton(
-                      onPressed: _isCheckingUpdate ? null : _checkForUpdate,
+                      onPressed: state.isBusy || !state.isInitialized
+                          ? null
+                          : () => unawaited(
+                              state.canInstall
+                                  ? controller.installDownloadedUpdate()
+                                  : controller.checkForUpdate(),
+                            ),
                       style: FilledButton.styleFrom(
                         minimumSize: const Size.fromHeight(AppSpacing.space48),
                         shape: RoundedRectangleBorder(
@@ -270,7 +141,7 @@ class _SoftwareVersionPageState extends ConsumerState<SoftwareVersionPage> {
                           ),
                         ),
                       ),
-                      child: Text(_isCheckingUpdate ? '正在检查' : '检查更新'),
+                      child: Text(_actionLabel(state)),
                     ),
                   ),
                   const SizedBox(height: AppSpacing.space32),
@@ -283,8 +154,11 @@ class _SoftwareVersionPageState extends ConsumerState<SoftwareVersionPage> {
                         for (final channel in AppUpdateChannel.values) ...[
                           _UpdateChannelRow(
                             channel: channel,
-                            selected: channel == _updateChannel,
-                            onSelected: () => _setUpdateChannel(channel),
+                            selected: channel == state.channel,
+                            onSelected: state.isBusy || !state.isInitialized
+                                ? null
+                                : () =>
+                                      unawaited(controller.setChannel(channel)),
                           ),
                           if (channel != AppUpdateChannel.values.last)
                             const Padding(
@@ -395,7 +269,7 @@ class _UpdateChannelRow extends StatelessWidget {
 
   final AppUpdateChannel channel;
   final bool selected;
-  final VoidCallback onSelected;
+  final VoidCallback? onSelected;
 
   @override
   Widget build(BuildContext context) {
@@ -463,173 +337,6 @@ class _ChannelSelectionIndicator extends StatelessWidget {
               ),
             )
           : null,
-    );
-  }
-}
-
-class _AppUpdateDialog extends StatefulWidget {
-  const _AppUpdateDialog({
-    required this.updateInfo,
-    required this.supportedAbis,
-    required this.updateService,
-    required this.updatePlatform,
-  });
-
-  final AppUpdateInfo updateInfo;
-  final List<String> supportedAbis;
-  final AppUpdateService updateService;
-  final AppUpdatePlatform updatePlatform;
-
-  @override
-  State<_AppUpdateDialog> createState() => _AppUpdateDialogState();
-}
-
-class _AppUpdateDialogState extends State<_AppUpdateDialog> {
-  bool _isDownloading = false;
-  double? _progress;
-
-  Future<void> _downloadAndInstall() async {
-    if (_isDownloading) {
-      return;
-    }
-
-    setState(() {
-      _isDownloading = true;
-      _progress = 0;
-    });
-
-    var downloadCompleted = false;
-    try {
-      final package = widget.updateInfo.resolvePackage(widget.supportedAbis);
-      if (package == null) {
-        return;
-      }
-      final download = await widget.updatePlatform.downloadApk(
-        package,
-        versionName: widget.updateInfo.versionName,
-        onProgress: (progress) {
-          if (!mounted) {
-            return;
-          }
-          setState(() => _progress = progress.fraction);
-        },
-      );
-      try {
-        await widget.updateService.verifyDownloadedApk(download.file, package);
-      } catch (_) {
-        try {
-          await widget.updatePlatform.removeApkDownload(download.downloadId);
-        } catch (_) {
-          // The invalid package should not hide the verification failure.
-        }
-        rethrow;
-      }
-      downloadCompleted = true;
-      await widget.updatePlatform.installApk(download.file.path);
-      if (mounted && !widget.updateInfo.required) {
-        Navigator.of(context).pop();
-      }
-    } on PlatformException catch (error) {
-      if (downloadCompleted) {
-        _logger.warning('APK install failed.', error);
-      }
-      if (!mounted) {
-        return;
-      }
-      final message = error.code == 'downloadFailed' || !downloadCompleted
-          ? '下载失败，请稍后重试'
-          : '安装失败，请稍后重试';
-      ScaffoldMessenger.of(context)
-        ..hideCurrentSnackBar()
-        ..showSnackBar(SnackBar(content: Text(message)));
-    } catch (error, stackTrace) {
-      _logger.warning(
-        'APK download flow failed unexpectedly.',
-        error,
-        stackTrace,
-      );
-      if (!mounted) {
-        return;
-      }
-      ScaffoldMessenger.of(context)
-        ..hideCurrentSnackBar()
-        ..showSnackBar(
-          SnackBar(
-            content: Text(downloadCompleted ? '安装失败，请稍后重试' : '下载失败，请稍后重试'),
-          ),
-        );
-    } finally {
-      if (mounted) {
-        setState(() => _isDownloading = false);
-      }
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-    final textStyles = context.appTextStyles;
-    final progress = _progress;
-    final package = widget.updateInfo.resolvePackage(widget.supportedAbis);
-
-    return AlertDialog(
-      title: Text('发现新版本 ${widget.updateInfo.versionName}'),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (widget.updateInfo.notes.isNotEmpty)
-            Text(widget.updateInfo.notes, style: textStyles.detailValue),
-          if (widget.updateInfo.notes.isEmpty)
-            Text('有新的内测版本可用。', style: textStyles.detailValue),
-          const SizedBox(height: AppSpacing.space12),
-          if (package != null)
-            Text(
-              '安装包：${package.abi}',
-              style: textStyles.listSupporting.copyWith(
-                color: colors.onSurfaceVariant,
-              ),
-            ),
-          if (package == null)
-            Text(
-              '当前设备暂无可用安装包',
-              style: textStyles.listSupporting.copyWith(color: colors.error),
-            ),
-          if (_isDownloading) ...[
-            const SizedBox(height: AppSpacing.space16),
-            LinearProgressIndicator(value: progress),
-            const SizedBox(height: AppSpacing.space8),
-            Text(
-              progress == null ? '正在下载' : '已下载 ${(progress * 100).round()}%',
-              style: textStyles.listSupporting.copyWith(
-                color: colors.onSurfaceVariant,
-              ),
-            ),
-            const SizedBox(height: AppSpacing.space4),
-            Text(
-              '切换到其他应用后仍会继续下载',
-              style: textStyles.listSupporting.copyWith(
-                color: colors.onSurfaceVariant,
-              ),
-            ),
-          ],
-        ],
-      ),
-      actions: [
-        if (!widget.updateInfo.required)
-          TextButton(
-            onPressed: _isDownloading
-                ? null
-                : () => Navigator.of(context).pop(),
-            child: const Text('稍后'),
-          ),
-        FilledButton(
-          onPressed: _isDownloading || package == null
-              ? null
-              : _downloadAndInstall,
-          child: Text(_isDownloading ? '下载中' : '立即更新'),
-        ),
-      ],
     );
   }
 }

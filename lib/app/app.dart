@@ -12,6 +12,7 @@ import '../feature/shared/provider/current_date_time_provider.dart';
 import '../widget/business/icon/business_icon_scope.dart';
 import 'business_icon_provider.dart';
 import 'app_error_boundary.dart';
+import 'app_update_host.dart';
 import 'provider.dart';
 import 'router.dart';
 import 'capture_intake_provider.dart';
@@ -229,7 +230,10 @@ class _SmartFlowAppState extends ConsumerState<SmartFlowApp>
         ).buildErrorWidget;
         return BusinessIconScope(
           registry: iconRegistry,
-          child: child ?? const SizedBox.shrink(),
+          child: AppUpdateHost(
+            navigatorKey: appRouter.routerDelegate.navigatorKey,
+            child: child ?? const SizedBox.shrink(),
+          ),
         );
       },
       routerConfig: appRouter,

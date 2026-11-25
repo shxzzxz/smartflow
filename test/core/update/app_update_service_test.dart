@@ -1,13 +1,36 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:crypto/crypto.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:mocktail/mocktail.dart';
 import 'package:smartflow/core/update/app_update_channel.dart';
 import 'package:smartflow/core/update/app_update_info.dart';
 import 'package:smartflow/core/update/app_update_service.dart';
 
+class _HttpClient extends Mock implements HttpClient {}
+
 void main() {
   group('AppUpdateService', () {
+    test('a stalled update request times out and closes its client', () async {
+      final client = _HttpClient();
+      final uri = Uri.parse('https://example.com/update.json');
+      when(
+        () => client.getUrl(uri),
+      ).thenAnswer((_) => Completer<HttpClientRequest>().future);
+      final service = AppUpdateService(
+        manifestUri: uri,
+        httpClientFactory: () => client,
+        requestTimeout: const Duration(milliseconds: 1),
+      );
+
+      await expectLater(
+        service.fetchUpdateInfo(),
+        throwsA(isA<TimeoutException>()),
+      );
+      verify(() => client.close(force: true)).called(1);
+    });
+
     test('uses GitHub Pages as the default manifest host', () {
       final uri = AppUpdateService.manifestUriForChannel(AppUpdateChannel.beta);
 
