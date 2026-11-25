@@ -29,6 +29,8 @@ class ConsumptionInstallmentConfiguration {
 class TransactionFormState {
   TransactionFormState({
     this.bookId = Book.dailyId,
+    List<Book> bookOptions = const [],
+    this.canSelectBook = true,
     required this.initialValues,
     required this.mode,
     required this.entryMode,
@@ -60,7 +62,8 @@ class TransactionFormState {
     this.liabilityAccountId,
     List<AccountAmountAllocation> categoryAllocations = const [],
     List<AccountAmountAllocation> settlementAllocations = const [],
-  }) : expenseTree = List.unmodifiable(expenseTree),
+  }) : bookOptions = List.unmodifiable(bookOptions),
+       expenseTree = List.unmodifiable(expenseTree),
        incomeTree = List.unmodifiable(incomeTree),
        tags = List.unmodifiable(tags),
        counterparties = List.unmodifiable(counterparties),
@@ -70,6 +73,8 @@ class TransactionFormState {
 
   factory TransactionFormState.initial({
     String bookId = Book.dailyId,
+    List<Book> bookOptions = const [],
+    bool canSelectBook = true,
     TransactionFormPrefill? prefill,
     required TransactionFormMode mode,
     String? fromAccountId,
@@ -101,6 +106,8 @@ class TransactionFormState {
         : const <Account>[];
     return TransactionFormState(
       bookId: bookId,
+      bookOptions: bookOptions,
+      canSelectBook: canSelectBook,
       initialValues: prefill == null
           ? const TransactionFormInitialValues()
           : TransactionFormInitialValues(
@@ -314,6 +321,8 @@ class TransactionFormState {
   }
 
   final String bookId;
+  final List<Book> bookOptions;
+  final bool canSelectBook;
   final TransactionFormInitialValues initialValues;
   final TransactionFormMode mode;
   final TransactionEntryMode entryMode;
@@ -389,6 +398,8 @@ class TransactionFormState {
 
   TransactionFormState copyWith({
     String? bookId,
+    List<Book>? bookOptions,
+    bool? canSelectBook,
     TransactionFormInitialValues? initialValues,
     TransactionFormMode? mode,
     TransactionEntryMode? entryMode,
@@ -423,6 +434,8 @@ class TransactionFormState {
   }) {
     return TransactionFormState(
       bookId: bookId ?? this.bookId,
+      bookOptions: bookOptions ?? this.bookOptions,
+      canSelectBook: canSelectBook ?? this.canSelectBook,
       initialValues: initialValues ?? this.initialValues,
       mode: mode ?? this.mode,
       entryMode: entryMode ?? this.entryMode,

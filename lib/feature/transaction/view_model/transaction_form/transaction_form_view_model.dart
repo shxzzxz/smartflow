@@ -87,6 +87,9 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
         ? null
         : ref.watch(accountsByIdProvider);
     final bookSelectionAsync = ref.watch(bookSelectionViewModelProvider);
+    final canSelectBook =
+        bookSelectionAsync is AsyncData<BookSelectionState> &&
+        !bookSelectionAsync.value.submitting;
     final tagsAsync = ref.watch(tagListProvider);
     final counterpartiesAsync = ref.watch(counterpartyListProvider);
     final editTagIdsAsync = editTransactionId == null
@@ -97,6 +100,8 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
     if (initializedState != null) {
       final next = _refreshReferenceData(
         initializedState,
+        bookOptions: bookSelectionAsync.value?.books,
+        canSelectBook: canSelectBook,
         accountOptions: accountOptionsAsync.value,
         expenseTree: expenseTreeAsync.value,
         incomeTree: incomeTreeAsync.value,
@@ -117,6 +122,8 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
       return AsyncValue.data(
         _initializedState ??= TransactionFormState.initial(
           bookId: bookSelectionAsync.requireValue.currentBook.id,
+          bookOptions: bookSelectionAsync.requireValue.books,
+          canSelectBook: canSelectBook,
           prefill: prefill,
           mode: initialMode,
           fromAccountId: initialFromAccountId,
@@ -418,6 +425,8 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
 
   TransactionFormState _refreshReferenceData(
     TransactionFormState current, {
+    required List<Book>? bookOptions,
+    required bool canSelectBook,
     required TransactionAccountOptions? accountOptions,
     required List<CategoryNode>? expenseTree,
     required List<CategoryNode>? incomeTree,
@@ -425,6 +434,8 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
     required List<CounterpartyView>? counterparties,
   }) {
     final next = current.copyWith(
+      bookOptions: bookOptions,
+      canSelectBook: canSelectBook,
       accountOptions: accountOptions,
       expenseTree: expenseTree,
       incomeTree: incomeTree,

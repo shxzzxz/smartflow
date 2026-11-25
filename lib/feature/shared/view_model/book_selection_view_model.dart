@@ -58,6 +58,15 @@ class BookSelectionViewModel extends _$BookSelectionViewModel {
     return AsyncData(_selection(settings.requireValue, books.requireValue));
   }
 
+  void retry() {
+    final settingsFailed = ref.read(appSettingsViewModelProvider).hasError;
+    final booksFailed = ref.read(bookListProvider).hasError;
+    if (settingsFailed) {
+      ref.invalidate(appSettingsViewModelProvider, asReload: true);
+    }
+    if (booksFailed) ref.invalidate(bookListProvider, asReload: true);
+  }
+
   Future<BookSelectionState> snapshot() async {
     final loaded = state;
     if (loaded.hasValue && !loaded.isLoading && !loaded.hasError) {

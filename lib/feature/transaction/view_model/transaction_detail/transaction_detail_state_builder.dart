@@ -21,6 +21,7 @@ part 'transaction_detail_shell_builder.dart';
 TransactionDetailUiState buildTransactionDetailLoadedState({
   required TransactionDetailReadModel detail,
   required AccountLookup accountLookup,
+  List<Book> bookOptions = const [],
   String bookName = Book.dailyName,
 }) {
   final context = detail.context;
@@ -36,6 +37,7 @@ TransactionDetailUiState buildTransactionDetailLoadedState({
   final business = presentBusinessSceneDetailContent(detail);
 
   return TransactionDetailUiState.loaded(
+    bookOptions: bookOptions,
     bookName: bookName,
     transactionId: context.transaction.id,
     context: context,

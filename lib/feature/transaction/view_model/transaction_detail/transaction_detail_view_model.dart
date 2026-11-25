@@ -80,6 +80,7 @@ class TransactionDetailViewModel extends _$TransactionDetailViewModel {
     return buildTransactionDetailLoadedState(
       detail: detail,
       accountLookup: accountLookup,
+      bookOptions: books,
       bookName: books
           .firstWhere((book) => book.id == detail.context.transaction.bookId)
           .name,

@@ -212,7 +212,7 @@ class _DetailBody extends ConsumerWidget {
   ) async {
     final id = await pickBook(
       context,
-      ref,
+      books: state.bookOptions,
       selectedBookId: state.detail.bookId,
     );
     if (id == null || !context.mounted) return;

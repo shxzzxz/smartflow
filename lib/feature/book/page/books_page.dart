@@ -101,8 +101,9 @@ class _BooksPageState extends ConsumerState<BooksPage> {
                 loading: () => const Center(child: CircularProgressIndicator()),
                 error: (error, stack) => Center(
                   child: TextButton(
-                    onPressed: () =>
-                        ref.invalidate(bookSelectionViewModelProvider),
+                    onPressed: () => ref
+                        .read(bookSelectionViewModelProvider.notifier)
+                        .retry(),
                     child: const Text('加载失败，点击重试'),
                   ),
                 ),

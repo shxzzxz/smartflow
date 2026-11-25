@@ -142,11 +142,12 @@ class HomeTransactionFeedViewModel extends _$HomeTransactionFeedViewModel {
     final filter = ref.watch(
       homeViewModelProvider.select((state) => state.transactionFilter),
     );
-    final bookId = ref
-        .watch(bookSelectionViewModelProvider)
-        .value
-        ?.currentBook
-        .id;
+    final bookSelection = ref.watch(bookSelectionViewModelProvider);
+    if (bookSelection.hasError) {
+      _requestGeneration += 1;
+      return const HomeTransactionFeedState.error(message: '加载失败，请稍后重试');
+    }
+    final bookId = bookSelection.value?.currentBook.id;
     if (bookId == null) return const HomeTransactionFeedState.loading();
     if (_activeBookId != bookId) {
       _requestGeneration += 1;
@@ -348,11 +349,11 @@ HomeFilterOptionsState homeFilterOptions(Ref ref) {
 
 @riverpod
 HomeContentState homeContent(Ref ref, DateTime visibleMonth) {
-  final bookId = ref
-      .watch(bookSelectionViewModelProvider)
-      .value
-      ?.currentBook
-      .id;
+  final bookSelection = ref.watch(bookSelectionViewModelProvider);
+  if (bookSelection.hasError) {
+    return const HomeContentState.error(message: '加载失败，请稍后重试。');
+  }
+  final bookId = bookSelection.value?.currentBook.id;
   if (bookId == null) return const HomeContentState.loading();
   final transactions = ref.watch(
     homeTransactionFeedViewModelProvider(visibleMonth),

@@ -4,6 +4,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:remixicon/remixicon.dart';
 import 'package:smartflow/application/ledger/ledger_query_api.dart';
+import 'package:smartflow/app/provider.dart';
+import 'package:smartflow/application/shared/app_settings_store.dart';
 import 'package:smartflow/design_system/theme/app_theme.dart';
 import 'package:smartflow/design_system/token/component.dart';
 import 'package:smartflow/design_system/widget/app_month_picker.dart';
@@ -11,26 +13,65 @@ import 'package:smartflow/design_system/widget/app_page_header.dart';
 import 'package:smartflow/design_system/widget/app_surface.dart';
 import 'package:smartflow/feature/book/page/books_page.dart';
 import 'package:smartflow/feature/book/widget/book_picker.dart';
+import 'package:smartflow/feature/home/page/home_page.dart';
+import 'package:smartflow/feature/home/view_model/home_view_model.dart';
+import 'package:smartflow/feature/shared/provider/current_date_time_provider.dart';
 import 'package:smartflow/feature/shared/provider/book_providers.dart';
 import 'package:smartflow/feature/shared/view_model/ui_action_outcome.dart';
 
 void main() {
-  testWidgets('anchored selection leaves the global current book unchanged', (
+  for (final failure in ['books', 'settings', 'both']) {
+    testWidgets('management retries a failed $failure source', (tester) async {
+      var bookReads = 0;
+      final settingsStore = _RetrySettingsStore(
+        failFirstRead: failure != 'books',
+      );
+      final daily = Book(id: Book.dailyId, name: Book.dailyName);
+      await tester.pumpWidget(
+        ProviderScope(
+          retry: (_, _) => null,
+          overrides: [
+            appSettingsStoreProvider.overrideWithValue(settingsStore),
+            bookListProvider.overrideWith((ref) {
+              bookReads++;
+              return failure != 'settings' && bookReads == 1
+                  ? Stream<List<Book>>.error(Exception('book read failed'))
+                  : Stream.value([daily]);
+            }),
+          ],
+          child: MaterialApp(theme: AppTheme.light(), home: const BooksPage()),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('加载失败，点击重试'), findsOneWidget);
+
+      await tester.tap(find.text('加载失败，点击重试'));
+      await tester.pumpAndSettle();
+
+      expect(bookReads, failure == 'settings' ? 1 : 2);
+      expect(settingsStore.reads, failure == 'books' ? 1 : 2);
+      expect(find.text('加载失败，点击重试'), findsNothing);
+      expect(find.text(Book.dailyName), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+  }
+
+  testWidgets('anchored selection reports a choice without a provider scope', (
     tester,
   ) async {
     String? picked;
     await tester.pumpWidget(
-      ProviderScope(
-        overrides: [bookSelectionViewModelProvider.overrideWith(_Books.new)],
-        child: MaterialApp(
-          theme: AppTheme.light(),
-          home: Scaffold(
-            body: Padding(
-              padding: const EdgeInsets.all(16),
-              child: BookPickerButton(
-                bookId: 'a',
-                onChanged: (id) => picked = id,
-              ),
+      MaterialApp(
+        theme: AppTheme.light(),
+        home: Scaffold(
+          body: Padding(
+            padding: const EdgeInsets.all(16),
+            child: BookPickerButton(
+              books: _bookOptions(),
+              bookId: 'a',
+              onChanged: (id) => picked = id,
+              onCreateBook: () {},
+              onManageBooks: () {},
             ),
           ),
         ),
@@ -75,35 +116,40 @@ void main() {
     expect(picked, 'b');
     expect(find.text('新建'), findsNothing);
     expect(find.text('管理'), findsNothing);
-    final container = ProviderScope.containerOf(
-      tester.element(find.byType(BookPickerButton)),
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('disabled selection does not open or invoke actions', (
+    tester,
+  ) async {
+    var invoked = false;
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light(),
+        home: Scaffold(
+          body: BookPickerButton(
+            books: _bookOptions(),
+            bookId: 'a',
+            enabled: false,
+            onChanged: (_) => invoked = true,
+            onCreateBook: () => invoked = true,
+            onManageBooks: () => invoked = true,
+          ),
+        ),
+      ),
     );
-    expect(
-      container
-          .read(bookSelectionViewModelProvider)
-          .requireValue
-          .currentBook
-          .id,
-      'a',
-    );
+    await tester.tap(find.byType(BookPickerButton));
+    await tester.pumpAndSettle();
+    expect(find.text('新建'), findsNothing);
+    expect(find.text('管理'), findsNothing);
+    expect(invoked, isFalse);
     expect(tester.takeException(), isNull);
   });
 
   testWidgets('home menu creates and selects a book after cancelling once', (
     tester,
   ) async {
-    String? picked;
-    await tester.pumpWidget(
-      ProviderScope(
-        overrides: [bookSelectionViewModelProvider.overrideWith(_Books.new)],
-        child: MaterialApp(
-          theme: AppTheme.light(),
-          home: Scaffold(
-            body: BookPickerButton(bookId: 'a', onChanged: (id) => picked = id),
-          ),
-        ),
-      ),
-    );
+    await tester.pumpWidget(_homeApp());
     await tester.pumpAndSettle();
     await tester.tap(find.byType(BookPickerButton));
     await tester.pumpAndSettle();
@@ -113,7 +159,17 @@ void main() {
     expect(find.text('管理'), findsNothing);
     await tester.tap(find.text('取消'));
     await tester.pumpAndSettle();
-    expect(picked, isNull);
+    final container = ProviderScope.containerOf(
+      tester.element(find.byType(HomePage)),
+    );
+    expect(
+      container
+          .read(bookSelectionViewModelProvider)
+          .requireValue
+          .currentBook
+          .id,
+      'a',
+    );
 
     await tester.tap(find.byType(BookPickerButton));
     await tester.pumpAndSettle();
@@ -122,9 +178,13 @@ void main() {
     await tester.enterText(find.byType(TextField), '旅行');
     await tester.tap(find.text('确定'));
     await tester.pumpAndSettle();
-    expect(picked, 'new');
-    final container = ProviderScope.containerOf(
-      tester.element(find.byType(BookPickerButton)),
+    expect(
+      container
+          .read(bookSelectionViewModelProvider)
+          .requireValue
+          .currentBook
+          .id,
+      'new',
     );
     expect(
       container
@@ -142,25 +202,12 @@ void main() {
   ) async {
     final router = GoRouter(
       routes: [
-        GoRoute(
-          path: '/',
-          builder: (context, state) => Scaffold(
-            body: BookPickerButton(bookId: 'a', onChanged: (_) {}),
-          ),
-        ),
+        GoRoute(path: '/', builder: (context, state) => const HomePage()),
         GoRoute(path: '/books', builder: (context, state) => const BooksPage()),
       ],
     );
     addTearDown(router.dispose);
-    await tester.pumpWidget(
-      ProviderScope(
-        overrides: [bookSelectionViewModelProvider.overrideWith(_Books.new)],
-        child: MaterialApp.router(
-          theme: AppTheme.light(),
-          routerConfig: router,
-        ),
-      ),
-    );
+    await tester.pumpWidget(_homeApp(router: router));
     await tester.pumpAndSettle();
     await tester.tap(find.byType(BookPickerButton));
     await tester.pumpAndSettle();
@@ -239,7 +286,13 @@ void main() {
                   AppPageHeader.custom(
                     showBackButton: false,
                     singleRow: true,
-                    leading: BookPickerButton(bookId: 'a', onChanged: (_) {}),
+                    leading: BookPickerButton(
+                      books: _bookOptions(),
+                      bookId: 'a',
+                      onChanged: (_) {},
+                      onCreateBook: () {},
+                      onManageBooks: () {},
+                    ),
                     titleContent: AppMonthSelector(
                       visibleMonth: DateTime(2026, 1),
                       onPreviousMonth: () {},
@@ -287,20 +340,54 @@ void main() {
   });
 }
 
+Widget _homeApp({GoRouter? router}) {
+  return ProviderScope(
+    overrides: [
+      bookSelectionViewModelProvider.overrideWith(_Books.new),
+      appSettingsStoreProvider.overrideWithValue(
+        _RetrySettingsStore(failFirstRead: false),
+      ),
+      currentDateTimeProvider.overrideWith((ref) => DateTime(2026, 1, 15)),
+      homeFilterOptionsProvider.overrideWith(
+        (ref) => const HomeFilterOptionsState.loaded(
+          expenseTree: [],
+          incomeTree: [],
+          accounts: [],
+        ),
+      ),
+      homeContentProvider(
+        DateTime(2026, 1),
+      ).overrideWith((ref) => const HomeContentState.error(message: '首页内容')),
+    ],
+    child: router == null
+        ? MaterialApp(theme: AppTheme.light(), home: const HomePage())
+        : MaterialApp.router(theme: AppTheme.light(), routerConfig: router),
+  );
+}
+
+List<Book> _bookOptions() => [
+  Book(id: Book.dailyId, name: Book.dailyName),
+  Book(id: 'a', name: '一个用于验证窄屏显示的长账本名称'),
+  Book(id: 'b', name: 'B'),
+];
+
 class _Books extends BookSelectionViewModel {
   @override
   AsyncValue<BookSelectionState> build() {
-    final a = Book(id: 'a', name: '一个用于验证窄屏显示的长账本名称');
-    return AsyncData(
+    final books = _bookOptions();
+    return AsyncData(BookSelectionState(books: books, currentBook: books[1]));
+  }
+
+  @override
+  Future<UiActionOutcome<void>> selectBook(String id) async {
+    final current = state.requireValue;
+    state = AsyncData(
       BookSelectionState(
-        books: [
-          Book(id: Book.dailyId, name: Book.dailyName),
-          a,
-          Book(id: 'b', name: 'B'),
-        ],
-        currentBook: a,
+        books: current.books,
+        currentBook: current.books.firstWhere((book) => book.id == id),
       ),
     );
+    return const UiActionOutcome.success(null);
   }
 
   @override
@@ -315,4 +402,21 @@ class _Books extends BookSelectionViewModel {
     );
     return UiActionOutcome.success(book);
   }
+}
+
+class _RetrySettingsStore implements AppSettingsStore {
+  _RetrySettingsStore({required this.failFirstRead});
+
+  final bool failFirstRead;
+  int reads = 0;
+
+  @override
+  Future<AppSettings> read() async {
+    reads++;
+    if (failFirstRead && reads == 1) throw Exception('settings read failed');
+    return const AppSettings();
+  }
+
+  @override
+  Future<void> save(AppSettings settings) async {}
 }

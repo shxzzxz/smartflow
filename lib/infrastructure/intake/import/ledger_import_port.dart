@@ -490,6 +490,7 @@ class LedgerImportPort implements ImportLedgerPort {
   }) async {
     final categoryId = await _systemAccounts.resolveInterestExpense();
     return createExpense(
+      bookId: bookId,
       amount: amount,
       paidFromAccountId: paidFromAccountId,
       expenseCategoryId: categoryId,

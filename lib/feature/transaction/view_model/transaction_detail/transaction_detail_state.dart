@@ -36,6 +36,7 @@ sealed class TransactionDetailUiState with _$TransactionDetailUiState {
     required bool excludeBudget,
     required List<DetailActionButton> actionButtons,
     required bool submitting,
+    @Default(<Book>[]) List<Book> bookOptions,
     @Default(Book.dailyName) String bookName,
     String? noteText,
   }) = TransactionDetailLoaded;

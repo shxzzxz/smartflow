@@ -14,11 +14,14 @@ import 'package:smartflow/app/provider.dart';
 import 'package:smartflow/application/data_management/backup/backup_service.dart';
 import 'package:smartflow/application/ledger/ledger_command_api.dart';
 import 'package:smartflow/application/ledger/ledger_query_api.dart';
+import 'package:smartflow/application/intake/import/import_workflow_models.dart';
 import 'package:smartflow/application/orchestration/orchestration_command_api.dart';
 import 'package:smartflow/core/error/app_exception.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/core/time/month_key.dart';
 import 'package:smartflow/domain/ledger/valobj/ledger_error_code.dart';
+import 'package:smartflow/domain/intake/import/import_models.dart';
+import 'package:smartflow/domain/intake/rules/recognition_rule_catalog.dart';
 import 'package:smartflow/infrastructure/database/app_database.dart';
 import 'package:smartflow/infrastructure/database/database_provider.dart';
 import 'package:smartflow/infrastructure/database/drift_app_settings_store.dart';
@@ -63,6 +66,10 @@ void main() {
       addTearDown(subscription.close);
       final initial = await ready.future.timeout(const Duration(seconds: 10));
       expect(initial.bookId, fixture.b.id);
+      expect(
+        initial.bookOptions.map((book) => book.id),
+        containsAll([Book.dailyId, fixture.a.id, fixture.b.id, fixture.c.id]),
+      );
       fixture.container.read(form.notifier).selectBook(fixture.c.id);
       await current.selectBook(fixture.a.id);
       await fixture.container.pump();
@@ -105,6 +112,56 @@ void main() {
       );
     },
   );
+
+  test('an interest-only import retains the selected book', () async {
+    final plan = ImportParseResult(
+      source: ImportSource.yimu,
+      sourceEntities: const [
+        ImportSourceEntity(
+          source: ImportSource.yimu,
+          kind: ImportEntityKind.account,
+          sourceEntityKey: 'book-import-wallet',
+          displayName: '现金测试',
+        ),
+      ],
+      groups: [
+        ImportTransactionGroupDraft(
+          topLevel: ImportInterestExpenseDraft(
+            amount: const Money(minorUnits: 200),
+            paidFrom: const ImportAccountReference.source(
+              sourceEntityKey: 'book-import-wallet',
+              displayName: '现金测试',
+            ),
+            occurredAt: DateTime(2026, 1, 10),
+          ),
+          sourceOperationFingerprint: 'book-interest-only',
+          fingerprintVersion: 1,
+        ),
+      ],
+    );
+    final result = await fixture.container
+        .read(importWorkflowAppServiceProvider)
+        .commit(
+          ImportCommitCommand(
+            bookId: fixture.b.id,
+            plan: plan,
+            mappings: {
+              const ImportMappingKey(
+                source: ImportSource.yimu,
+                entityKind: ImportEntityKind.account,
+                sourceEntityKey: 'book-import-wallet',
+              ): fixture.cash.id,
+            },
+            selectedGroupIndexes: const {0},
+          ),
+        );
+    expect(result.batch, isNotNull);
+    final transaction = await fixture.db
+        .select(fixture.db.transactions)
+        .getSingle();
+    expect(transaction.primaryAmountMinor, 200);
+    expect(transaction.bookId, fixture.b.id);
+  });
 
   test(
     'cross-book refund keeps the activity in the origin book and splits cashflow',
@@ -436,6 +493,9 @@ class _Fixture {
     final container = ProviderContainer(
       overrides: [
         appDatabaseProvider.overrideWithValue(db),
+        builtinRecognitionRuleCatalogProvider.overrideWithValue(
+          RecognitionRuleCatalog(rules: const []),
+        ),
         amortizationPlanAppServiceProvider.overrideWith(
           (ref) => AmortizationPlanAppServiceImpl(
             repository: ref.watch(amortizationRepositoryProvider),

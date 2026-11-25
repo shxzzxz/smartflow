@@ -29,6 +29,7 @@ import '../../../widget/business/transaction/transaction_batch_tag_action_sheet.
 import '../widget/home_transaction_filter_sheet.dart';
 import '../../../widget/business/finance/cashflow_summary_card.dart';
 import '../../../widget/business/tag/tag_multi_select_sheet.dart';
+import '../../../widget/business/shared/name_dialog.dart';
 import '../../../design_system/widget/app_scaffold.dart';
 
 final _logger = Logger('feature.home');
@@ -103,10 +104,16 @@ class _HomePageState extends ConsumerState<HomePage> {
                         key: const ValueKey('home-header'),
                         singleRow: true,
                         leading: BookPickerButton(
+                          books: bookSelection.value?.books ?? const [],
                           bookId:
                               bookSelection.value?.currentBook.id ??
                               Book.dailyId,
+                          enabled:
+                              bookSelection is AsyncData<BookSelectionState> &&
+                              !bookSelection.value.submitting,
                           onChanged: _selectCurrentBook,
+                          onCreateBook: _createBook,
+                          onManageBooks: () => context.push('/books'),
                         ),
                         titleContent: AppMonthSelector(
                           visibleMonth: state.visibleMonth,
@@ -279,6 +286,21 @@ class _HomePageState extends ConsumerState<HomePage> {
     setState(() {
       _selectedTransactionIds = next;
     });
+  }
+
+  Future<void> _createBook() async {
+    final name = await promptName(context, title: '新建账本', hintText: '账本名称');
+    if (name == null || !mounted) return;
+    final outcome = await ref
+        .read(bookSelectionViewModelProvider.notifier)
+        .createBook(name);
+    if (!mounted) return;
+    switch (outcome) {
+      case UiActionSuccess<Book>(:final value):
+        await _selectCurrentBook(value.id);
+      case UiActionFailure<Book>(:final error):
+        _showMessage(error.message);
+    }
   }
 
   Future<void> _selectCurrentBook(String id) async {

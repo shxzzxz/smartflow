@@ -12,9 +12,45 @@ import 'package:smartflow/core/time/month_key.dart';
 import 'package:smartflow/domain/orchestration/valobj/amortization_enums.dart';
 import 'package:smartflow/feature/home/view_model/home_view_model.dart';
 import 'package:smartflow/feature/shared/provider/current_date_time_provider.dart';
+import 'package:smartflow/feature/shared/provider/book_providers.dart';
 
 void main() {
   group('HomeViewModel', () {
+    test('reports a failed book source in the page and feed states', () async {
+      final month = DateTime(2026, 1);
+      final container = ProviderContainer(
+        retry: (_, _) => null,
+        overrides: [
+          currentDateTimeProvider.overrideWith((ref) => DateTime(2026, 1, 15)),
+          appSettingsStoreProvider.overrideWithValue(_MemorySettingsStore()),
+          bookListProvider.overrideWith(
+            (ref) => Stream<List<Book>>.error(Exception('book read failed')),
+          ),
+        ],
+      );
+      addTearDown(container.dispose);
+      final subscription = container.listen(
+        homeContentProvider(month),
+        (_, _) {},
+      );
+      addTearDown(subscription.close);
+      await expectLater(
+        container.read(bookListProvider.future),
+        throwsException,
+      );
+      await container.pump();
+
+      expect(container.read(bookSelectionViewModelProvider).hasError, isTrue);
+      expect(
+        container.read(homeContentProvider(month)),
+        isA<HomeContentError>(),
+      );
+      expect(
+        container.read(homeTransactionFeedViewModelProvider(month)),
+        isA<HomeTransactionFeedError>(),
+      );
+    });
+
     test('combines month streams into loaded page state', () async {
       final businessService = _FakeBusinessActivityQueryService();
       final metricsService = _FakeFinancialMetricsService();

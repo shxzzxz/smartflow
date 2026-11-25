@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:remixicon/remixicon.dart';
 
+import '../../application/ledger/ledger_query_api.dart';
+import '../../feature/book/widget/book_picker.dart';
 import '../../feature/statistics/view/statistics_view_switcher.dart';
 import '../../feature/statistics/view_model/statistics_view_model.dart';
 
@@ -28,6 +30,11 @@ class _PageHeaderPreviewsState extends State<PageHeaderPreviews> {
   var _showLunar = true;
   var _tab = 0;
   var _statisticsView = StatisticsViewType.period;
+  var _bookId = Book.dailyId;
+  final _books = [
+    Book(id: Book.dailyId, name: Book.dailyName),
+    Book(id: 'travel', name: '旅行与家庭活动账本'),
+  ];
 
   void _message(String message) {
     ScaffoldMessenger.of(
@@ -115,6 +122,20 @@ class _PageHeaderPreviewsState extends State<PageHeaderPreviews> {
             ),
             _more(),
           ],
+        ),
+      ),
+      _example(
+        '账本选择与工作流回调',
+        AppPageHeader.custom(
+          singleRow: true,
+          leading: BookPickerButton(
+            books: _books,
+            bookId: _bookId,
+            onChanged: (id) => setState(() => _bookId = id),
+            onCreateBook: () => _message('新建账本'),
+            onManageBooks: () => _message('账本管理'),
+          ),
+          titleContent: const Text('首页'),
         ),
       ),
       _example(

@@ -86,7 +86,7 @@ final class BookSelectionViewModelProvider
 }
 
 String _$bookSelectionViewModelHash() =>
-    r'3b7397c3e1886e72853b7bb72f475b9800e26e09';
+    r'59ba0e905e07b80d4a610f3b6d476a6e085251c3';
 
 abstract class _$BookSelectionViewModel
     extends $Notifier<AsyncValue<BookSelectionState>> {

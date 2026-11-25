@@ -3,6 +3,8 @@ part of 'transaction_form_page.dart';
 class _TransactionOptionsPanel extends StatelessWidget {
   const _TransactionOptionsPanel({
     this.bookId,
+    this.bookOptions = const [],
+    this.canSelectBook = true,
     this.onBookChanged,
     this.requireAccountSelection = false,
     required this.mode,
@@ -36,6 +38,8 @@ class _TransactionOptionsPanel extends StatelessWidget {
   });
 
   final String? bookId;
+  final List<Book> bookOptions;
+  final bool canSelectBook;
   final ValueChanged<String>? onBookChanged;
   final TransactionFormMode mode;
   final bool requireAccountSelection;
@@ -111,7 +115,9 @@ class _TransactionOptionsPanel extends StatelessWidget {
                   if (bookId != null)
                     _BookSelectorChip(
                       key: const ValueKey('transaction-book-option'),
+                      books: bookOptions,
                       bookId: bookId!,
+                      enabled: canSelectBook,
                       onChanged: onBookChanged!,
                     ),
                   if (showPrimaryAccount)
@@ -219,31 +225,34 @@ class _TransactionOptionsPanel extends StatelessWidget {
   }
 }
 
-class _BookSelectorChip extends ConsumerWidget {
+class _BookSelectorChip extends StatelessWidget {
   const _BookSelectorChip({
+    required this.books,
     required this.bookId,
     required this.onChanged,
+    required this.enabled,
     super.key,
   });
 
+  final List<Book> books;
   final String bookId;
   final ValueChanged<String> onChanged;
+  final bool enabled;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final selection = ref.watch(bookSelectionViewModelProvider);
-    final book = selection.value?.books
-        .where((book) => book.id == bookId)
-        .firstOrNull;
+  Widget build(BuildContext context) {
+    final book = books.where((book) => book.id == bookId).firstOrNull;
     return _QuickActionChip(
       icon: RemixIcons.book_open_line,
       label: book?.name ?? '账本',
       selected: false,
-      onTap:
-          selection is AsyncData<BookSelectionState> &&
-              !selection.value.submitting
+      onTap: enabled
           ? () async {
-              final id = await pickBook(context, ref, selectedBookId: bookId);
+              final id = await pickBook(
+                context,
+                books: books,
+                selectedBookId: bookId,
+              );
               if (id != null && context.mounted) onChanged(id);
             }
           : null,

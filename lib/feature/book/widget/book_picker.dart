@@ -1,6 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import 'package:remixicon/remixicon.dart';
 
 import '../../../application/ledger/ledger_query_api.dart';
@@ -9,21 +7,14 @@ import '../../../design_system/token/component.dart';
 import '../../../design_system/token/header.dart';
 import '../../../design_system/token/radius.dart';
 import '../../../design_system/token/spacing.dart';
-import '../../../widget/business/shared/name_dialog.dart';
-import '../../shared/provider/book_providers.dart';
-import '../../shared/view_model/ui_action_outcome.dart';
 
 Future<String?> pickBook(
-  BuildContext context,
-  WidgetRef ref, {
+  BuildContext context, {
+  required List<Book> books,
   required String selectedBookId,
 }) async {
-  final selection = await ref
-      .read(bookSelectionViewModelProvider.notifier)
-      .snapshot();
-  if (!context.mounted) return null;
   Widget buildPicker(BuildContext pickerContext) => _BookPickerList(
-    books: selection.books,
+    books: books,
     selectedBookId: selectedBookId,
     onSelected: (id) => Navigator.of(pickerContext).pop(id),
   );
@@ -110,53 +101,34 @@ class _BookPickerList extends StatelessWidget {
   }
 }
 
-class BookPickerButton extends ConsumerStatefulWidget {
+class BookPickerButton extends StatefulWidget {
   const BookPickerButton({
+    required this.books,
     required this.bookId,
     required this.onChanged,
+    required this.onCreateBook,
+    required this.onManageBooks,
+    this.enabled = true,
     super.key,
   });
 
+  final List<Book> books;
   final String bookId;
   final ValueChanged<String> onChanged;
+  final VoidCallback onCreateBook;
+  final VoidCallback onManageBooks;
+  final bool enabled;
 
   @override
-  ConsumerState<BookPickerButton> createState() => _BookPickerButtonState();
+  State<BookPickerButton> createState() => _BookPickerButtonState();
 }
 
-class _BookPickerButtonState extends ConsumerState<BookPickerButton> {
+class _BookPickerButtonState extends State<BookPickerButton> {
   final _menuController = MenuController();
-
-  Future<void> _createBook() async {
-    _menuController.close();
-    final name = await promptName(context, title: '新建账本', hintText: '账本名称');
-    if (name == null || !mounted) return;
-    final outcome = await ref
-        .read(bookSelectionViewModelProvider.notifier)
-        .createBook(name);
-    if (!mounted) return;
-    switch (outcome) {
-      case UiActionSuccess<Book>(:final value):
-        widget.onChanged(value.id);
-      case UiActionFailure<Book>(:final error):
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(error.message)));
-    }
-  }
-
-  void _manageBooks() {
-    _menuController.close();
-    context.push('/books');
-  }
 
   @override
   Widget build(BuildContext context) {
-    final selection = ref.watch(bookSelectionViewModelProvider);
-    final enabled =
-        selection is AsyncData<BookSelectionState> &&
-        !selection.value.submitting;
-    final book = selection.value?.books
+    final book = widget.books
         .where((book) => book.id == widget.bookId)
         .firstOrNull;
     final colors = Theme.of(context).colorScheme;
@@ -176,7 +148,7 @@ class _BookPickerButtonState extends ConsumerState<BookPickerButton> {
         ),
       ),
       menuChildren: [
-        for (final option in selection.value?.books ?? const <Book>[])
+        for (final option in widget.books)
           MenuItemButton(
             leadingIcon: const Icon(RemixIcons.book_open_line),
             trailingIcon: option.id == widget.bookId
@@ -191,7 +163,7 @@ class _BookPickerButtonState extends ConsumerState<BookPickerButton> {
                     ),
                   )
                 : null,
-            onPressed: enabled
+            onPressed: widget.enabled
                 ? () {
                     _menuController.close();
                     widget.onChanged(option.id);
@@ -207,12 +179,22 @@ class _BookPickerButtonState extends ConsumerState<BookPickerButton> {
         const Divider(height: AppSpacing.space16),
         MenuItemButton(
           leadingIcon: const Icon(RemixIcons.add_line),
-          onPressed: enabled ? _createBook : null,
+          onPressed: widget.enabled
+              ? () {
+                  _menuController.close();
+                  widget.onCreateBook();
+                }
+              : null,
           child: const Text('新建'),
         ),
         MenuItemButton(
           leadingIcon: const Icon(RemixIcons.settings_3_line),
-          onPressed: enabled ? _manageBooks : null,
+          onPressed: widget.enabled
+              ? () {
+                  _menuController.close();
+                  widget.onManageBooks();
+                }
+              : null,
           child: const Text('管理'),
         ),
       ],
@@ -237,7 +219,7 @@ class _BookPickerButtonState extends ConsumerState<BookPickerButton> {
                 ),
               ),
             ),
-            onPressed: enabled
+            onPressed: widget.enabled
                 ? (controller.isOpen ? controller.close : controller.open)
                 : null,
             child: Text(
