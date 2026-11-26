@@ -1,3 +1,4 @@
+import '../../../application/analytics/analytics_query_api.dart';
 import '../../../application/ledger/ledger_query_api.dart';
 import '../../../core/money/money.dart';
 import '../view_model/account_view.dart';
@@ -13,80 +14,59 @@ class AccountSectionPresentation {
   final String title;
   final List<AccountView> accounts;
 
-  Money totalFor(AccountType type) {
-    return Money(
-      minorUnits: accounts.fold(0, (sum, account) {
-        return sum +
-            (account.accountType == type ? account.balance.minorUnits : 0);
-      }),
-    );
-  }
-
+  Money totalFor(AccountType type) => Money(
+    minorUnits: accounts.fold(
+      0,
+      (sum, account) =>
+          sum + (account.accountType == type ? account.balance.minorUnits : 0),
+    ),
+  );
   Money get netTotal =>
       totalFor(AccountType.asset) - totalFor(AccountType.liability);
 }
 
 List<AccountSectionPresentation> buildActiveAccountSections(
   List<AccountView> accounts,
-  List<AccountGroup> groups,
-) {
-  return _buildAccountSections(
-    accounts,
-    groups,
-    includeEmptyGroups: true,
-    includeUnknownGroupsAsUngrouped: false,
-  );
-}
+  AssetView view, {
+  bool includeEmptyGroups = true,
+}) => _buildAccountSections(accounts, view, includeEmptyGroups);
 
 List<AccountSectionPresentation> buildArchivedAccountSections(
   List<AccountView> accounts,
-  List<AccountGroup> groups,
-) {
-  return _buildAccountSections(
-    accounts,
-    groups,
-    includeEmptyGroups: false,
-    includeUnknownGroupsAsUngrouped: true,
-  );
-}
+  AssetView view,
+) => _buildAccountSections(accounts, view, false);
 
 List<AccountSectionPresentation> _buildAccountSections(
   List<AccountView> accounts,
-  List<AccountGroup> groups, {
-  required bool includeEmptyGroups,
-  required bool includeUnknownGroupsAsUngrouped,
-}) {
-  final sections = <AccountSectionPresentation>[];
-  final knownGroupIds = {for (final group in groups) group.id};
-  for (final group in groups) {
-    final groupedAccounts = [
-      for (final account in accounts)
-        if (account.groupId == group.id) account,
-    ];
-    if (includeEmptyGroups || groupedAccounts.isNotEmpty) {
-      sections.add(
+  AssetView view,
+  bool includeEmptyGroups,
+) {
+  final byId = {for (final account in accounts) account.id: account};
+  final ordered = [
+    for (final id in view.accountIds)
+      if (byId.containsKey(id)) byId[id]!,
+  ];
+  final sections = <AccountSectionPresentation>[
+    for (final group in view.groups)
+      if (includeEmptyGroups ||
+          ordered.any((account) => view.groupIdFor(account.id) == group.id))
         AccountSectionPresentation(
           id: group.id,
           title: group.name,
-          accounts: groupedAccounts,
+          accounts: ordered
+              .where((account) => view.groupIdFor(account.id) == group.id)
+              .toList(),
         ),
-      );
-    }
-  }
-
-  final ungroupedAccounts = [
-    for (final account in accounts)
-      if (account.groupId == null ||
-          (includeUnknownGroupsAsUngrouped &&
-              !knownGroupIds.contains(account.groupId)))
-        account,
   ];
-  if (ungroupedAccounts.isNotEmpty) {
+  final ungrouped = ordered
+      .where((account) => view.groupIdFor(account.id) == null)
+      .toList();
+  if (ungrouped.isNotEmpty) {
     sections.add(
       AccountSectionPresentation(
         id: 'ungrouped',
         title: '未分组',
-        accounts: ungroupedAccounts,
+        accounts: ungrouped,
       ),
     );
   }

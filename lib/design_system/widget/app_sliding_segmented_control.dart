@@ -9,8 +9,10 @@ import '../token/spacing.dart';
 import 'app_frosted_surface.dart';
 import 'app_header_appearance_scope.dart';
 import 'app_header_control_surface.dart';
+import 'app_header_select_button.dart';
+import 'app_select.dart';
 
-enum AppSegmentedControlVariant { filled, frosted, header }
+enum AppSegmentedControlVariant { filled, frosted, header, adaptiveHeader }
 
 class AppSegment<T> {
   const AppSegment({required this.value, required this.label});
@@ -40,14 +42,17 @@ class AppSlidingSegmentedControl<T> extends StatelessWidget {
   static const _slideDuration = Duration(milliseconds: 200);
   static const _slideCurve = Curves.easeOutCubic;
 
+  bool get _isHeader =>
+      variant == AppSegmentedControlVariant.header ||
+      variant == AppSegmentedControlVariant.adaptiveHeader;
+
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
-    final header = variant == AppSegmentedControlVariant.header;
     final frosted =
         variant == AppSegmentedControlVariant.frosted ||
-        (header && AppHeaderAppearanceScope.of(context).usesGlassHeader);
-    final headerTypography = header || frosted;
+        (_isHeader && AppHeaderAppearanceScope.of(context).usesGlassHeader);
+    final headerTypography = _isHeader || frosted;
     final selectedStyle =
         (textStyle ??
                 (headerTypography
@@ -67,6 +72,60 @@ class AppSlidingSegmentedControl<T> extends StatelessWidget {
                     : context.appTextStyles.quickActionLabel(selected: false)))
             .copyWith(color: colors.onSurfaceVariant);
     final cellSize = _measureCell(context, selectedStyle);
+
+    if (variant == AppSegmentedControlVariant.adaptiveHeader) {
+      return LayoutBuilder(
+        builder: (context, constraints) {
+          final width =
+              cellSize.width * segments.length + AppSpacing.space2 * 2;
+          if (width > constraints.maxWidth) {
+            final current = segments.firstWhere(
+              (segment) => segment.value == selected,
+            );
+            return AppHeaderControlSurface(
+              child: AppHeaderSelectButton<T>(
+                label: current.label,
+                tooltip: '选择：${current.label}',
+                value: selected,
+                onChanged: onChanged,
+                options: [
+                  for (final segment in segments)
+                    AppSelectOption(value: segment.value, label: segment.label),
+                ],
+                maxWidth: constraints.maxWidth,
+                showDropdownIcon: true,
+                textStyle: selectedStyle,
+              ),
+            );
+          }
+          return _buildControl(
+            context,
+            cellSize,
+            selectedStyle,
+            unselectedStyle,
+            frosted,
+          );
+        },
+      );
+    }
+    return _buildControl(
+      context,
+      cellSize,
+      selectedStyle,
+      unselectedStyle,
+      frosted,
+    );
+  }
+
+  Widget _buildControl(
+    BuildContext context,
+    Size cellSize,
+    TextStyle selectedStyle,
+    TextStyle unselectedStyle,
+    bool frosted,
+  ) {
+    final colors = Theme.of(context).colorScheme;
+    final headerTypography = _isHeader || frosted;
     final selectedIndex = segments.indexWhere(
       (segment) => segment.value == selected,
     );
@@ -127,7 +186,7 @@ class AppSlidingSegmentedControl<T> extends StatelessWidget {
       ),
     );
     if (frosted) {
-      return header
+      return _isHeader
           ? AppHeaderControlSurface(child: control)
           : AppFrostedSurface(child: control);
     }
@@ -157,8 +216,12 @@ class AppSlidingSegmentedControl<T> extends StatelessWidget {
       height = math.max(height, painter.height);
       painter.dispose();
     }
+    final horizontalPadding =
+        variant == AppSegmentedControlVariant.adaptiveHeader
+        ? AppSpacing.space6
+        : AppSpacing.space10;
     return Size(
-      width + AppSpacing.space10 * 2,
+      width + horizontalPadding * 2,
       math.max(
         variant != AppSegmentedControlVariant.filled
             ? AppSpacing.space32

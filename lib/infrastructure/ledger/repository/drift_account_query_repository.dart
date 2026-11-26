@@ -29,8 +29,8 @@ class DriftAccountQueryRepository implements AccountQueryRepository {
                 account.accountType.isInValues(types),
           )
           ..orderBy([
-            (account) => OrderingTerm.asc(account.sortOrder),
             (account) => OrderingTerm.asc(account.name),
+            (account) => OrderingTerm.asc(account.id),
           ]);
 
     return query.watch().map((rows) => rows.map(mapAccount).toList());
@@ -39,8 +39,8 @@ class DriftAccountQueryRepository implements AccountQueryRepository {
   @override
   Stream<List<Account>> watchAllAccounts() {
     final query = _database.select(_database.accounts)..orderBy([
-      (account) => OrderingTerm.asc(account.sortOrder),
       (account) => OrderingTerm.asc(account.name),
+      (account) => OrderingTerm.asc(account.id),
     ]);
 
     return query.watch().map((rows) => rows.map(mapAccount).toList());

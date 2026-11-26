@@ -59,10 +59,7 @@ class AccountBillsPage extends ConsumerWidget {
     );
   }
 
-  Future<void> _generateBill(
-    BuildContext context,
-    WidgetRef ref,
-  ) async {
+  Future<void> _generateBill(BuildContext context, WidgetRef ref) async {
     final selected = await showAppMonthPicker(
       context: context,
       initialMonth: DateTime.now(),

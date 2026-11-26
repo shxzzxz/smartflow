@@ -15,6 +15,9 @@ import '../feature/account/page/account_installments_page.dart';
 import '../feature/account/page/account_reconciliation_page.dart';
 import '../feature/account/page/account_form_page.dart';
 import '../feature/account/page/accounts_page.dart';
+import '../feature/account/page/asset_view_form_page.dart';
+import '../feature/account/page/asset_views_page.dart';
+import '../application/analytics/analytics_query_api.dart';
 import '../feature/account/page/archived_accounts_page.dart';
 import '../feature/account/presentation/account_creation_presets.dart';
 import '../feature/amortization/page/amortization_detail_page.dart';
@@ -398,8 +401,29 @@ final appRouter = GoRouter(
           AdvanceEditFormPage(transactionId: state.pathParameters['id']!),
     ),
     GoRoute(
+      path: '/assets/views',
+      builder: (context, state) => AssetViewsPage(
+        initiallyHideBalances: state.uri.queryParameters['hide'] == 'true',
+      ),
+    ),
+    GoRoute(
+      path: '/assets/views/new',
+      builder: (context, state) => AssetViewFormPage(
+        copyFrom: state.extra is AssetView ? state.extra as AssetView : null,
+        initiallyHideBalances: state.uri.queryParameters['hide'] == 'true',
+      ),
+    ),
+    GoRoute(
+      path: '/assets/views/:viewId/edit',
+      builder: (context, state) => AssetViewFormPage(
+        viewId: state.pathParameters['viewId']!,
+        initiallyHideBalances: state.uri.queryParameters['hide'] == 'true',
+      ),
+    ),
+    GoRoute(
       path: '/account/new',
       builder: (context, state) => AccountFormPage(
+        viewId: state.uri.queryParameters['view'],
         creationPreset: accountCreationPresetForId(
           state.uri.queryParameters['preset'],
         ),
@@ -407,8 +431,21 @@ final appRouter = GoRouter(
     ),
     GoRoute(
       path: '/account/archived',
-      builder: (context, state) =>
-          ArchivedAccountsPage(initiallyHideBalances: state.extra == true),
+      builder: (context, state) {
+        final args = state.extra;
+        return ArchivedAccountsPage(
+          viewId: args is ArchivedAccountsPageArguments ? args.viewId : null,
+          initiallyHideBalances: args is ArchivedAccountsPageArguments
+              ? args.initiallyHideBalances
+              : args == true,
+          accountIds: args is ArchivedAccountsPageArguments
+              ? args.accountIds
+              : null,
+          accountType: args is ArchivedAccountsPageArguments
+              ? args.accountType
+              : null,
+        );
+      },
     ),
     GoRoute(
       path: '/account/:id',

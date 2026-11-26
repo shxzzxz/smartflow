@@ -11,7 +11,6 @@ class AccountView {
     required this.balance,
     required this.iconKey,
     required this.isArchived,
-    this.groupId,
     this.note,
     this.creditLimit,
     this.billingDay,
@@ -25,7 +24,6 @@ class AccountView {
   final Money balance;
   final String? iconKey;
   final bool isArchived;
-  final String? groupId;
   final String? note;
   final Money? creditLimit;
   final int? billingDay;
@@ -60,7 +58,6 @@ AccountView buildAccountView(
     balance: account.balance,
     iconKey: account.iconKey ?? 'bank-account',
     isArchived: account.isArchived,
-    groupId: account.groupId,
     note: account.note,
     creditLimit: creditAccount?.creditLimit,
     billingDay: creditAccount?.billingDay,

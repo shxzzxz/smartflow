@@ -14,10 +14,8 @@ class AccountFactory {
     required AccountType type,
     AccountSubtype? subtype,
     String? profileKey,
-    String? groupId,
     String? iconKey,
     String? note,
-    int sortOrder = 0,
     bool isHidden = false,
   }) {
     final normalizedName = trimToNull(name);
@@ -47,11 +45,9 @@ class AccountFactory {
       type: type,
       subtype: subtype,
       profileKey: normalizedProfileKey,
-      groupId: trimToNull(groupId),
       balance: const Money(minorUnits: 0),
       iconKey: trimToNull(iconKey),
       note: trimToNull(note),
-      sortOrder: sortOrder,
       isHidden: isHidden,
     );
   }

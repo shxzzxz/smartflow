@@ -11,17 +11,13 @@ import 'entry.dart';
 class AccountProfilePatch {
   const AccountProfilePatch({
     this.name,
-    this.sortOrder,
     this.isHidden,
-    this.groupId,
     this.iconKey,
     this.note,
   });
 
   final String? name;
-  final int? sortOrder;
   final bool? isHidden;
-  final Patch<String>? groupId;
   final Patch<String>? iconKey;
   final Patch<String>? note;
 }
@@ -42,7 +38,6 @@ class Account {
     required this.balance,
     this.subtype,
     this.profileKey,
-    this.groupId,
     this.parentId,
     this.iconKey,
     this.note,
@@ -61,11 +56,12 @@ class Account {
   String name;
   final AccountSubtype? subtype;
   final String? profileKey;
-  String? groupId;
   String? parentId;
   Money balance;
   String? iconKey;
   String? note;
+
+  /// Display order for income and expense categories only.
   int sortOrder;
   bool isHidden;
   DateTime? archivedAt;
@@ -100,12 +96,6 @@ class Account {
     archivedAt = null;
   }
 
-  void moveToGroup(String? groupId, {required int sortOrder}) {
-    _ensureUserAccountEditable();
-    this.groupId = trimToNull(groupId);
-    this.sortOrder = sortOrder;
-  }
-
   /// 是否可以作为"用户账户"被编辑(通过 EditAccountCommand 修改属性)。
   /// 系统类账户(income / expense / equity)走 CategoryService 或其它路径。
   LedgerViolationReason? checkEditable() {
@@ -128,10 +118,8 @@ class Account {
       );
     }
     name = normalizedName;
-    groupId = patch.groupId.applyMappedTo(groupId, trimToNull);
     iconKey = patch.iconKey.applyMappedTo(iconKey, trimToNull);
     note = patch.note.applyMappedTo(note, trimToNull);
-    sortOrder = patch.sortOrder ?? sortOrder;
     isHidden = patch.isHidden ?? isHidden;
   }
 

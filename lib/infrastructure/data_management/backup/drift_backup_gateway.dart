@@ -53,8 +53,9 @@ class DriftBackupGateway
                 .map(_json),
         'books': (await database.select(database.books).get()).map(_json),
         'accounts': (await database.select(database.accounts).get()).map(_json),
-        'account_groups': (await database.select(database.accountGroups).get())
-            .map(_json),
+        'asset_views': (await database.select(database.assetViews).get()).map(
+          _json,
+        ),
         'account_reconciliation_snapshots':
             (await database
                     .select(database.accountReconciliationSnapshots)
@@ -204,6 +205,7 @@ class DriftBackupGateway
       // but this ordering also makes the operation work if SQLite enforcement is
       // enabled by a host application in the future.
       for (final table in [
+        'asset_views',
         'responsibility_points',
         'coverage_responsibilities',
         'commercial_insurance_insured_people',
@@ -247,7 +249,6 @@ class DriftBackupGateway
         'tags',
         'account_reconciliation_snapshots',
         'accounts',
-        'account_groups',
       ]) {
         await database.customStatement('DELETE FROM "$table"');
       }
@@ -289,10 +290,10 @@ class DriftBackupGateway
               ),
         );
         batch.insertAll(
-          database.accountGroups,
+          database.assetViews,
           snapshot
-              .rows('account_groups')
-              .map((row) => AccountGroupRow.fromJson(row).toCompanion(true)),
+              .rows('asset_views')
+              .map((row) => AssetViewRow.fromJson(row).toCompanion(true)),
         );
         batch.insertAll(
           database.accounts,
@@ -610,13 +611,11 @@ class DriftBackupGateway
   }
 
   BackupJson _json(Object row) {
+    if (row is AssetViewRow) return row.toJson().cast<String, Object?>();
     if (row is BookRow) {
       return row.toJson().cast<String, Object?>();
     }
     if (row is AccountRow) {
-      return row.toJson().cast<String, Object?>();
-    }
-    if (row is AccountGroupRow) {
       return row.toJson().cast<String, Object?>();
     }
     if (row is AccountReconciliationSnapshotRow) {

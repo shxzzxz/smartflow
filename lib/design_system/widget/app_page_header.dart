@@ -15,6 +15,8 @@ import 'app_header_appearance_scope.dart';
 import 'app_header_control_surface.dart';
 import 'app_page_header_background_scope.dart';
 
+enum AppHeaderTitleAlignment { page, remainingSpace }
+
 /// 三段页头：左侧控制、中间核心内容、右侧操作。
 ///
 /// 标题位需要放置月份选择器、周期选择器或页签等控件时使用 [AppPageHeader.custom]。
@@ -32,6 +34,7 @@ class AppPageHeader extends StatelessWidget {
     this.leading,
     this.actions = const [],
     this.singleRow = false,
+    this.singleRowTitleAlignment = AppHeaderTitleAlignment.remainingSpace,
   }) : titleContent = null;
 
   const AppPageHeader.custom({
@@ -42,6 +45,7 @@ class AppPageHeader extends StatelessWidget {
     this.leading,
     this.actions = const [],
     this.singleRow = false,
+    this.singleRowTitleAlignment = AppHeaderTitleAlignment.remainingSpace,
   }) : title = null,
        subtitle = null;
 
@@ -51,8 +55,11 @@ class AppPageHeader extends StatelessWidget {
   final bool showBackButton;
   final VoidCallback? onBack;
 
-  /// 三段始终同行，核心内容在左右控件之间的剩余宽度内布局。
+  /// 三段始终同行，核心内容按 [singleRowTitleAlignment] 选择居中基准。
   final bool singleRow;
+
+  /// 单行模式以整屏或左右控件之间的剩余空间作为居中基准。
+  final AppHeaderTitleAlignment singleRowTitleAlignment;
 
   /// 选择器或切换控件；提供时替代自动返回按钮。
   final Widget? leading;
@@ -105,7 +112,10 @@ class AppPageHeader extends StatelessWidget {
           horizontal: AppHeaderTokens.edgeInset,
           vertical: AppHeaderTokens.verticalInset,
         ),
-        child: singleRow
+        child:
+            singleRow &&
+                singleRowTitleAlignment ==
+                    AppHeaderTitleAlignment.remainingSpace
             ? Row(
                 children: [
                   leadingControl,
@@ -120,6 +130,7 @@ class AppPageHeader extends StatelessWidget {
             : _HeaderLayout(
                 textDirection: Directionality.of(context),
                 keepCenterComplete: titleContent != null,
+                forceSingleRow: singleRow,
                 leading: leadingControl,
                 center: centerContent,
                 trailing: trailingControls,
@@ -213,7 +224,7 @@ class AppHeaderIconButton extends StatelessWidget {
   final bool? selected;
   final bool showBadge;
 
-  /// 收紧水平占位，保留页头图标和触控高度，供月份切换使用。
+  /// 收紧水平占位，保留页头图标和触控高度，供空间受限的页头使用。
   final bool compact;
 
   /// 传 null 表示操作当前不可用。
@@ -357,11 +368,12 @@ class _HeaderActions extends StatelessWidget {
   }
 }
 
-/// 先测量两侧，再给中心对称留空；完整控件放不下时使用第二行。
+/// 两侧按较宽的一组对称留空；默认允许换行，单行模式由核心内容适配宽度。
 class _HeaderLayout extends MultiChildRenderObjectWidget {
   _HeaderLayout({
     required this.textDirection,
     required this.keepCenterComplete,
+    required this.forceSingleRow,
     required Widget leading,
     required Widget center,
     required Widget trailing,
@@ -369,11 +381,13 @@ class _HeaderLayout extends MultiChildRenderObjectWidget {
 
   final TextDirection textDirection;
   final bool keepCenterComplete;
+  final bool forceSingleRow;
 
   @override
   RenderObject createRenderObject(BuildContext context) => _RenderHeaderLayout(
     textDirection: textDirection,
     keepCenterComplete: keepCenterComplete,
+    forceSingleRow: forceSingleRow,
   );
 
   @override
@@ -381,7 +395,7 @@ class _HeaderLayout extends MultiChildRenderObjectWidget {
     BuildContext context,
     covariant _RenderHeaderLayout renderObject,
   ) {
-    renderObject.update(textDirection, keepCenterComplete);
+    renderObject.update(textDirection, keepCenterComplete, forceSingleRow);
   }
 }
 
@@ -394,19 +408,28 @@ class _RenderHeaderLayout extends RenderBox
   _RenderHeaderLayout({
     required TextDirection textDirection,
     required bool keepCenterComplete,
+    required bool forceSingleRow,
   }) : _textDirection = textDirection,
-       _keepCenterComplete = keepCenterComplete;
+       _keepCenterComplete = keepCenterComplete,
+       _forceSingleRow = forceSingleRow;
 
   TextDirection _textDirection;
   bool _keepCenterComplete;
+  bool _forceSingleRow;
 
-  void update(TextDirection direction, bool keepCenterComplete) {
+  void update(
+    TextDirection direction,
+    bool keepCenterComplete,
+    bool forceSingleRow,
+  ) {
     if (_textDirection == direction &&
-        _keepCenterComplete == keepCenterComplete) {
+        _keepCenterComplete == keepCenterComplete &&
+        _forceSingleRow == forceSingleRow) {
       return;
     }
     _textDirection = direction;
     _keepCenterComplete = keepCenterComplete;
+    _forceSingleRow = forceSingleRow;
     markNeedsLayout();
   }
 
@@ -432,8 +455,12 @@ class _RenderHeaderLayout extends RenderBox
     final sideWidth = math.max(left.width, right.width);
     final gap = sideWidth == 0 ? 0.0 : AppHeaderTokens.titleActionGap;
     final centerWidth = math.max(0.0, width - (sideWidth + gap) * 2);
-    var middle = layout(center, BoxConstraints(maxWidth: width));
+    var middle = layout(
+      center,
+      BoxConstraints(maxWidth: _forceSingleRow ? centerWidth : width),
+    );
     final secondRow =
+        !_forceSingleRow &&
         middle.width > centerWidth &&
         (_keepCenterComplete ||
             centerWidth < AppHeaderTokens.minimumCenterWidth);

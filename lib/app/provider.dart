@@ -1,5 +1,13 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:logging/logging.dart';
+import '../application/analytics/analytics_command_api.dart';
+import '../application/analytics/analytics_query_api.dart';
+import '../application/analytics/asset_view/port/asset_view_preferences_store.dart';
+import '../infrastructure/analytics/repository/drift_asset_view_repository.dart';
+import '../infrastructure/analytics/adapter/ledger_asset_view_references.dart';
+import '../infrastructure/analytics/adapter/financial_asset_view_accounts.dart';
+import '../infrastructure/analytics/adapter/ledger_asset_view_metrics_source.dart';
+import '../infrastructure/analytics/drift_asset_view_preferences_store.dart';
 import 'date_boundary_task.dart';
 import '../domain/ledger/port/book_repository.dart';
 import '../infrastructure/ledger/repository/drift_book_repository.dart';
@@ -31,7 +39,6 @@ import '../infrastructure/intake/import/yimu/yimu_file_reader.dart';
 import '../infrastructure/ledger/repository/drift_account_query_repository.dart';
 import '../infrastructure/ledger/repository/drift_account_reconciliation_repository.dart';
 import '../infrastructure/ledger/repository/drift_account_repository.dart';
-import '../infrastructure/ledger/repository/drift_account_group_repository.dart';
 import '../infrastructure/ledger/repository/drift_budget_query_source.dart';
 import '../infrastructure/ledger/repository/drift_budget_repository.dart';
 import '../infrastructure/ledger/repository/drift_ledger_metrics_source.dart';
@@ -105,7 +112,6 @@ import '../application/credit/repayment/query/repayment_owner_query.dart';
 import '../application/credit/task/installment_repricing_task.dart';
 import '../infrastructure/credit/adapter/installment_plan_change_adapter.dart';
 import '../domain/ledger/port/account_repository.dart';
-import '../domain/ledger/port/account_group_repository.dart';
 import '../domain/ledger/port/budget_repository.dart';
 import '../domain/intake/import/port/import_batch_repository.dart';
 import '../domain/intake/import/port/import_ledger_port.dart';
@@ -354,11 +360,6 @@ AccountRepository accountRepository(Ref ref) {
 }
 
 @Riverpod(keepAlive: true)
-AccountGroupRepository accountGroupRepository(Ref ref) {
-  return DriftAccountGroupRepository(ref.watch(appDatabaseProvider));
-}
-
-@Riverpod(keepAlive: true)
 BudgetRepository budgetRepository(Ref ref) {
   return DriftBudgetRepository(ref.watch(appDatabaseProvider));
 }
@@ -392,13 +393,6 @@ AccountQueryRepository accountQueryRepository(Ref ref) {
 AccountQueryService accountQueryService(Ref ref) {
   return AccountQueryServiceImpl(
     accounts: ref.watch(accountQueryRepositoryProvider),
-  );
-}
-
-@Riverpod(keepAlive: true)
-AccountGroupQueryService accountGroupQueryService(Ref ref) {
-  return AccountGroupQueryServiceImpl(
-    ref.watch(accountGroupRepositoryProvider),
   );
 }
 
@@ -523,7 +517,6 @@ AccountAppServiceImpl _buildAccountAppService(Ref ref) {
     ledgerPostingService: ref.watch(ledgerPostingServiceProvider),
     transactionRepository: ref.watch(ledgerRepositoryProvider),
     idGenerator: ref.watch(idGeneratorProvider),
-    accountGroups: ref.watch(accountGroupRepositoryProvider),
     reconciliationSnapshots: ref.watch(accountReconciliationRepositoryProvider),
   );
 }
@@ -546,16 +539,6 @@ AccountReconciliationAppService accountReconciliationAppService(Ref ref) {
     accounts: ref.watch(accountRepositoryProvider),
     snapshots: ref.watch(accountReconciliationRepositoryProvider),
     transactionRunner: ref.watch(transactionRunnerProvider),
-  );
-}
-
-@Riverpod(keepAlive: true)
-AccountGroupAppService accountGroupAppService(Ref ref) {
-  return AccountGroupAppServiceImpl(
-    groups: ref.watch(accountGroupRepositoryProvider),
-    accounts: ref.watch(accountRepositoryProvider),
-    transactionRunner: ref.watch(transactionRunnerProvider),
-    idGenerator: ref.watch(idGeneratorProvider),
   );
 }
 
@@ -854,6 +837,44 @@ FinancialMetricsService financialMetricsService(Ref ref) {
     tagRepository: ref.watch(transactionTagRepositoryProvider),
   );
 }
+
+final _assetViewStorageProvider = Provider<DriftAssetViewRepository>(
+  (ref) => DriftAssetViewRepository(ref.watch(appDatabaseProvider)),
+);
+
+@Riverpod(keepAlive: true)
+AssetViewAppService assetViewAppService(Ref ref) => AssetViewAppServiceImpl(
+  views: ref.watch(_assetViewStorageProvider),
+  references: LedgerAssetViewReferences(
+    accounts: ref.watch(accountQueryServiceProvider),
+  ),
+  transactionRunner: ref.watch(transactionRunnerProvider),
+  ids: ref.watch(idGeneratorProvider),
+);
+
+@Riverpod(keepAlive: true)
+AssetViewAccountAppService assetViewAccountAppService(Ref ref) =>
+    AssetViewAccountAppServiceImpl(
+      views: ref.watch(_assetViewStorageProvider),
+      accounts: FinancialAssetViewAccounts(
+        ledger: ref.watch(accountAppServiceProvider),
+        credit: ref.watch(creditAccountAppServiceProvider),
+      ),
+      transactionRunner: ref.watch(transactionRunnerProvider),
+    );
+
+@Riverpod(keepAlive: true)
+AssetViewQueryService assetViewQueryService(Ref ref) =>
+    AssetViewQueryServiceImpl(
+      views: ref.watch(_assetViewStorageProvider),
+      metrics: LedgerAssetViewMetricsSource(
+        ref.watch(financialMetricsServiceProvider),
+      ),
+    );
+
+@Riverpod(keepAlive: true)
+AssetViewPreferencesStore assetViewPreferencesStore(Ref ref) =>
+    DriftAssetViewPreferencesStore(ref.watch(appDatabaseProvider));
 
 @Riverpod(keepAlive: true)
 CreditAccountRepository creditAccountRepository(Ref ref) {

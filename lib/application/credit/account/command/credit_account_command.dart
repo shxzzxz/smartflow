@@ -14,8 +14,6 @@ class CreateCreditLiabilityAccountCommand {
     this.billingDayToNext = true,
     this.iconKey,
     this.note,
-    this.groupId,
-    this.sortOrder = 0,
     this.isHidden = false,
   });
 
@@ -29,8 +27,6 @@ class CreateCreditLiabilityAccountCommand {
   final bool billingDayToNext;
   final String? iconKey;
   final String? note;
-  final String? groupId;
-  final int sortOrder;
   final bool isHidden;
 }
 
@@ -41,7 +37,6 @@ class EditCreditLiabilityAccountCommand {
     this.name,
     this.iconKey,
     this.note,
-    this.groupId,
     this.creditLimit,
     this.billingDay,
     this.repaymentDay,
@@ -54,7 +49,6 @@ class EditCreditLiabilityAccountCommand {
   final String? name;
   final Patch<String>? iconKey;
   final Patch<String>? note;
-  final Patch<String>? groupId;
   final Patch<Money>? creditLimit;
   final Patch<int>? billingDay;
   final Patch<int>? repaymentDay;

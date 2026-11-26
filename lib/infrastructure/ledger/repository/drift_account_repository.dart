@@ -54,23 +54,6 @@ class DriftAccountRepository implements AccountRepository {
   }
 
   @override
-  Future<List<Account>> findByGroupId(String? groupId) async {
-    final query = _database.select(_database.accounts);
-    if (groupId == null) {
-      query.where((account) => account.groupId.isNull());
-    } else {
-      query.where((account) => account.groupId.equals(groupId));
-    }
-    query.orderBy([
-      (account) => OrderingTerm.asc(account.sortOrder),
-      (account) => OrderingTerm.asc(account.name),
-      (account) => OrderingTerm.asc(account.id),
-    ]);
-    final rows = await query.get();
-    return rows.map(mapAccount).toList();
-  }
-
-  @override
   Future<void> delete(String id) async {
     await (_database.delete(
       _database.accounts,
@@ -107,7 +90,6 @@ class DriftAccountRepository implements AccountRepository {
             accountType: account.type,
             accountSubtype: Value(account.subtype),
             accountProfileKey: Value(account.profileKey),
-            groupId: Value(account.groupId),
             parentId: Value(account.parentId),
             balanceMinor: const Value(0),
             iconKey: Value(account.iconKey),
@@ -148,7 +130,6 @@ class DriftAccountRepository implements AccountRepository {
                 name: Value(account.name),
                 accountSubtype: Value(account.subtype),
                 accountProfileKey: Value(account.profileKey),
-                groupId: Value(account.groupId),
                 parentId: Value(account.parentId),
                 balanceMinor: Value(account.balance.minorUnits),
                 iconKey: Value(account.iconKey),

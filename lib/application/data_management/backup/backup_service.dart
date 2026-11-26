@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'migration/asset_view_organization_v20.dart';
 import 'dart:typed_data';
 
 import 'package:crypto/crypto.dart';
@@ -8,6 +9,8 @@ import '../../../domain/credit/valobj/installment_enums.dart';
 import '../../../domain/insurance/valobj/insurance_enums.dart';
 
 import '../../../domain/ledger/entity/book.dart';
+import '../../../core/error/app_exception.dart';
+import '../../../domain/analytics/entity/asset_view.dart';
 import 'backup_models.dart';
 
 abstract interface class BackupSnapshotGateway {
@@ -237,8 +240,12 @@ class BackupService {
       },
       _ => BackupTables.all,
     };
-    for (final table in requiredTables) {
+    for (final table in [
+      ...requiredTables,
+      if (manifest.backupSchemaVersion < 20) 'account_groups',
+    ]) {
       if (table == 'books' && manifest.backupSchemaVersion < 18) continue;
+      if (table == 'asset_views' && manifest.backupSchemaVersion < 19) continue;
       if (!tables.containsKey(table)) {
         throw BackupValidationException('备份缺少业务表文件: $table');
       }
@@ -277,6 +284,8 @@ class BackupService {
         15 => _upgradeBackupV15ToV16(upgraded),
         16 => _upgradeBackupV16ToV17(upgraded),
         17 => _upgradeBackupV17ToV18(upgraded),
+        18 => _upgradeBackupV18ToV19(upgraded),
+        19 => _upgradeBackupV19ToV20(upgraded),
         _ => throw BackupValidationException(
           '备份 backupSchemaVersion $version 到当前 '
           '${BackupManifest.currentBackupSchemaVersion} 的迁移尚未实现。',
@@ -303,6 +312,25 @@ class BackupService {
     ];
     return snapshot.copyWith(tables: tables);
   }
+
+  static BackupSnapshot _upgradeBackupV18ToV19(BackupSnapshot snapshot) =>
+      snapshot.copyWith(
+        tables: {
+          ...snapshot.tables,
+          'asset_views': [
+            {
+              'id': 'builtin-asset-view-all',
+              'name': '所有账户',
+              'accountIdsJson': '[]',
+              'blocksJson': '[]',
+              'sortOrder': 0,
+              'version': 0,
+              'createdAt': 0,
+              'updatedAt': 0,
+            },
+          ],
+        },
+      );
 
   static BackupSnapshot _upgradeBackupV9ToV10(BackupSnapshot snapshot) {
     final tables = {...snapshot.tables};
@@ -587,7 +615,98 @@ class BackupService {
     );
   }
 
+  static BackupSnapshot _upgradeBackupV19ToV20(BackupSnapshot snapshot) {
+    try {
+      final converted = upgradeAssetViewOrganizationV20(
+        accounts: snapshot.rows('accounts'),
+        groups: snapshot.rows('account_groups'),
+        views: snapshot.rows('asset_views'),
+      );
+      return snapshot.copyWith(
+        tables: {
+          ...snapshot.tables,
+          'accounts': converted.accounts,
+          'asset_views': converted.views,
+        }..remove('account_groups'),
+      );
+    } on FormatException {
+      throw const BackupValidationException('旧资产视图配置无法升级。');
+    }
+  }
+
+  static void _validateAssetViews(BackupSnapshot snapshot) {
+    final names = <String>{};
+    var hasBuiltin = false;
+    final accounts = _index(snapshot.rows('accounts'));
+    for (final row in snapshot.rows('asset_views')) {
+      if (row['id'] is! String ||
+          row['name'] is! String ||
+          row['accountIdsJson'] is! String ||
+          row['groupsJson'] is! String ||
+          row['accountGroupIdsJson'] is! String ||
+          row['sortOrder'] is! int ||
+          row['version'] is! int) {
+        throw const BackupValidationException('资产视图配置字段不完整。');
+      }
+      try {
+        final ids = jsonDecode(row['accountIdsJson'] as String);
+        final groups = jsonDecode(row['groupsJson'] as String);
+        final assignments = jsonDecode(row['accountGroupIdsJson'] as String);
+        if (ids is! List ||
+            ids.any((id) => id is! String) ||
+            ids.toSet().length != ids.length ||
+            groups is! List ||
+            assignments is! Map ||
+            assignments.keys.any((id) => id is! String) ||
+            assignments.values.any((id) => id is! String)) {
+          throw const BackupValidationException('资产视图账户范围或分组不合法。');
+        }
+        final parsedGroups = <AssetViewGroup>[];
+        for (final group in groups) {
+          if (group is! Map ||
+              group['id'] is! String ||
+              group['name'] is! String) {
+            throw const BackupValidationException('资产视图分组配置不合法。');
+          }
+          parsedGroups.add(
+            AssetViewGroup(
+              id: group['id'] as String,
+              name: group['name'] as String,
+            ),
+          );
+        }
+        final view = AssetView(
+          id: row['id'] as String,
+          name: row['name'] as String,
+          accountIds: ids.cast<String>(),
+          groups: parsedGroups,
+          accountGroupIds: assignments.cast<String, String>(),
+          sortOrder: row['sortOrder'] as int,
+          version: row['version'] as int,
+        );
+        if (!names.add(view.name)) {
+          throw const BackupValidationException('资产视图名称重复。');
+        }
+        for (final id in view.accountIds) {
+          final type = accounts[id]?['accountType'];
+          if (accounts.containsKey(id) &&
+              type != 'asset' &&
+              type != 'liability') {
+            throw const BackupValidationException('资产视图只能包含资产或负债账户。');
+          }
+        }
+        hasBuiltin = hasBuiltin || view.isBuiltin;
+      } on FormatException {
+        throw const BackupValidationException('资产视图配置无法解析。');
+      } on AppException {
+        throw const BackupValidationException('资产视图配置不合法。');
+      }
+    }
+    if (!hasBuiltin) throw const BackupValidationException('备份缺少默认视图。');
+  }
+
   static void validateSnapshot(BackupSnapshot snapshot) {
+    _validateAssetViews(snapshot);
     _validateWireCodes(snapshot);
     for (final table in BackupTables.all) {
       _indexByIdentity(snapshot.rows(table), table);
@@ -606,7 +725,6 @@ class BackupService {
       }
     }
     final accounts = _index(snapshot.rows('accounts'));
-    final groups = _index(snapshot.rows('account_groups'));
     final transactions = _index(snapshot.rows('transactions'));
     final advanceCases = _index(snapshot.rows('advance_cases'));
     final amortizationPlans = _index(snapshot.rows('amortization_plans'));
@@ -629,7 +747,6 @@ class BackupService {
     final importBatches = _index(snapshot.rows('import_batches'));
 
     for (final row in snapshot.rows('accounts')) {
-      _optionalReference(row, 'groupId', groups, 'accounts.groupId');
       _optionalReference(row, 'parentId', accounts, 'accounts.parentId');
     }
     final accountParents = <String, String>{};

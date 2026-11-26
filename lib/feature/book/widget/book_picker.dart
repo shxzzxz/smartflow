@@ -4,9 +4,11 @@ import 'package:remixicon/remixicon.dart';
 import '../../../application/ledger/ledger_query_api.dart';
 import '../../../design_system/theme/app_text_styles.dart';
 import '../../../design_system/token/component.dart';
-import '../../../design_system/token/header.dart';
 import '../../../design_system/token/radius.dart';
 import '../../../design_system/token/spacing.dart';
+import '../../../design_system/widget/app_header_select_button.dart';
+import '../../../design_system/widget/app_popup_menu_button.dart';
+import '../../../design_system/widget/app_select.dart';
 
 Future<String?> pickBook(
   BuildContext context, {
@@ -101,7 +103,7 @@ class _BookPickerList extends StatelessWidget {
   }
 }
 
-class BookPickerButton extends StatefulWidget {
+class BookPickerButton extends StatelessWidget {
   const BookPickerButton({
     required this.books,
     required this.bookId,
@@ -120,117 +122,39 @@ class BookPickerButton extends StatefulWidget {
   final bool enabled;
 
   @override
-  State<BookPickerButton> createState() => _BookPickerButtonState();
-}
-
-class _BookPickerButtonState extends State<BookPickerButton> {
-  final _menuController = MenuController();
-
-  @override
   Widget build(BuildContext context) {
-    final book = widget.books
-        .where((book) => book.id == widget.bookId)
-        .firstOrNull;
-    final name = widget.bookId == null ? '全部账本' : book?.name ?? '账本';
-    final options = <({String? id, String name})>[
-      (id: null, name: '全部账本'),
-      for (final book in widget.books) (id: book.id, name: book.name),
-    ];
-    final colors = Theme.of(context).colorScheme;
-    return MenuAnchor(
-      controller: _menuController,
-      useRootOverlay: true,
-      crossAxisUnconstrained: false,
-      consumeOutsideTap: true,
-      alignmentOffset: const Offset(0, AppSpacing.space4),
-      style: const MenuStyle(
-        alignment: AlignmentDirectional.bottomStart,
-        minimumSize: WidgetStatePropertyAll(
-          Size(AppComponentTokens.menuMinWidth, 0),
+    final book = books.where((book) => book.id == bookId).firstOrNull;
+    final name = bookId == null ? '全部账本' : book?.name ?? '账本';
+    return AppHeaderSelectButton<String?>(
+      label: name,
+      tooltip: '切换账本：$name',
+      value: bookId,
+      onChanged: enabled ? onChanged : null,
+      options: [
+        const AppSelectOption(
+          value: null,
+          label: '全部账本',
+          icon: RemixIcons.book_open_line,
         ),
-        maximumSize: WidgetStatePropertyAll(
-          Size(AppComponentTokens.selectionMenuMaxWidth, double.infinity),
-        ),
-      ),
-      menuChildren: [
-        for (final option in options)
-          MenuItemButton(
-            leadingIcon: const Icon(RemixIcons.book_open_line),
-            trailingIcon: option.id == widget.bookId
-                ? Icon(RemixIcons.check_line, color: colors.primary)
-                : null,
-            style: option.id == widget.bookId
-                ? ButtonStyle(
-                    backgroundColor: WidgetStatePropertyAll(
-                      colors.primary.withValues(
-                        alpha: AppComponentTokens.selectedContainerOpacity,
-                      ),
-                    ),
-                  )
-                : null,
-            onPressed: widget.enabled
-                ? () {
-                    _menuController.close();
-                    widget.onChanged(option.id);
-                  }
-                : null,
-            child: Text(
-              option.name,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: context.appTextStyles.listTitle,
-            ),
+        for (final book in books)
+          AppSelectOption(
+            value: book.id,
+            label: book.name,
+            icon: RemixIcons.book_open_line,
           ),
-        const Divider(height: AppSpacing.space16),
-        MenuItemButton(
-          leadingIcon: const Icon(RemixIcons.add_line),
-          onPressed: widget.enabled
-              ? () {
-                  _menuController.close();
-                  widget.onCreateBook();
-                }
-              : null,
-          child: const Text('新建'),
+      ],
+      actions: [
+        AppPopupMenuAction(
+          label: '新建',
+          icon: RemixIcons.add_line,
+          onPressed: enabled ? onCreateBook : null,
         ),
-        MenuItemButton(
-          leadingIcon: const Icon(RemixIcons.settings_3_line),
-          onPressed: widget.enabled
-              ? () {
-                  _menuController.close();
-                  widget.onManageBooks();
-                }
-              : null,
-          child: const Text('管理'),
+        AppPopupMenuAction(
+          label: '管理',
+          icon: RemixIcons.settings_3_line,
+          onPressed: enabled ? onManageBooks : null,
         ),
       ],
-      builder: (context, controller, child) => Tooltip(
-        message: '切换账本：$name',
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(
-            maxWidth: AppHeaderTokens.selectorMaxWidth,
-          ),
-          child: TextButton(
-            style: TextButton.styleFrom(
-              foregroundColor: Theme.of(context).colorScheme.onSurface,
-              minimumSize: const Size(0, AppHeaderTokens.iconButtonSize),
-              padding: const EdgeInsets.symmetric(
-                horizontal: AppSpacing.space4,
-              ),
-              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              visualDensity: VisualDensity.standard,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(
-                  AppHeaderTokens.controlRadius,
-                ),
-              ),
-            ),
-            onPressed: widget.enabled
-                ? (controller.isOpen ? controller.close : controller.open)
-                : null,
-            child: Text(name, maxLines: 1, overflow: TextOverflow.ellipsis),
-          ),
-        ),
-      ),
     );
   }
 }

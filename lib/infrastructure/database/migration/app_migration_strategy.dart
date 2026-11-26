@@ -2,6 +2,7 @@ import 'package:drift/drift.dart';
 import 'package:logging/logging.dart';
 
 import '../../../core/persistence/persistence_baseline.dart';
+import '../../../application/data_management/backup/migration/asset_view_organization_v20.dart';
 import '../app_database.dart';
 import '../builtin_data.dart';
 import 'current_schema.dart';
@@ -254,6 +255,69 @@ END
           'CREATE INDEX transactions_book_occurred_idx '
           'ON transactions (book_id, occurred_at DESC, id DESC)',
         );
+      },
+      from68To69: (migration, schema) async {
+        await migration.createTable(schema.assetViews);
+        await migration.database.customStatement(
+          "INSERT INTO asset_views (id, name) VALUES ('builtin-asset-view-all', '所有账户')",
+        );
+      },
+      from69To70: (migration, schema) async {
+        final accounts = await migration.database
+            .customSelect(
+              'SELECT id, name, account_type AS accountType, group_id AS groupId, '
+              'sort_order AS sortOrder FROM accounts',
+            )
+            .get();
+        final groups = await migration.database
+            .customSelect(
+              'SELECT id, name, sort_order AS sortOrder FROM account_groups',
+            )
+            .get();
+        final views = await migration.database
+            .customSelect(
+              'SELECT id, name, account_ids_json AS accountIdsJson, '
+              'sort_order AS sortOrder, version, created_at AS createdAt, '
+              'updated_at AS updatedAt FROM asset_views',
+            )
+            .get();
+        final converted = upgradeAssetViewOrganizationV20(
+          accounts: accounts.map((row) => row.data),
+          groups: groups.map((row) => row.data),
+          views: views.map((row) => row.data),
+        );
+        await migration.alterTable(
+          TableMigration(
+            schema.assetViews,
+            newColumns: [
+              schema.assetViews.groupsJson,
+              schema.assetViews.accountGroupIdsJson,
+            ],
+          ),
+        );
+        for (final view in converted.views) {
+          await migration.database.customStatement(
+            'INSERT OR REPLACE INTO asset_views '
+            '(id, name, account_ids_json, groups_json, account_group_ids_json, '
+            'sort_order, version, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+            [
+              view['id'],
+              view['name'],
+              view['accountIdsJson'],
+              view['groupsJson'],
+              view['accountGroupIdsJson'],
+              view['sortOrder'],
+              view['version'],
+              view['createdAt'],
+              view['updatedAt'],
+            ],
+          );
+        }
+        await migration.alterTable(TableMigration(schema.accounts));
+        await migration.database.customStatement(
+          "UPDATE accounts SET sort_order = 0 WHERE account_type IN ('asset', 'liability')",
+        );
+        await migration.deleteTable('account_groups');
       },
     )(migrator, from, to);
   });

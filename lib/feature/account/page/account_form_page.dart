@@ -11,24 +11,29 @@ import '../../../design_system/widget/app_form_section.dart';
 import '../../../design_system/widget/app_page_header.dart';
 import '../../../design_system/widget/app_plain_form_field.dart';
 import '../../../design_system/widget/app_plain_form_row.dart';
-import '../../../application/ledger/ledger_query_api.dart';
+import '../../../application/analytics/analytics_query_api.dart';
 import '../../../shared/account_profile/account_profile_kind.dart';
-import '../../../shared/account_group/initial_account_groups.dart';
+import '../view_model/asset_views_provider.dart';
 import 'package:smartflow/widget/business/finance/money_input.dart';
 import 'package:smartflow/widget/business/form/plain_transaction_fields.dart';
 import 'package:smartflow/widget/business/icon/business_icon.dart';
 import 'package:smartflow/widget/business/icon/icon_catalog_picker.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
-import '../../shared/provider/ledger_query_providers.dart';
 import '../presentation/account_creation_presets.dart';
 import '../view_model/account_form_view_model.dart';
 import '../../../design_system/widget/app_scaffold.dart';
 
 class AccountFormPage extends ConsumerStatefulWidget {
-  const AccountFormPage({this.accountId, this.creationPreset, super.key});
+  const AccountFormPage({
+    this.accountId,
+    this.viewId,
+    this.creationPreset,
+    super.key,
+  });
 
   final String? accountId;
   final AccountCreationPreset? creationPreset;
+  final String? viewId;
 
   @override
   ConsumerState<AccountFormPage> createState() => _AccountFormPageState();
@@ -43,7 +48,12 @@ class _AccountFormPageState extends ConsumerState<AccountFormPage> {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
         ref
-            .read(accountFormViewModelProvider(null).notifier)
+            .read(
+              accountFormViewModelProvider(
+                null,
+                viewId: widget.viewId,
+              ).notifier,
+            )
             .initializeNewAccount(kind: preset.kind, iconKey: preset.iconKey);
       });
     }
@@ -52,7 +62,9 @@ class _AccountFormPageState extends ConsumerState<AccountFormPage> {
   @override
   Widget build(BuildContext context) {
     final accountId = widget.accountId;
-    final asyncState = ref.watch(accountFormViewModelProvider(accountId));
+    final asyncState = ref.watch(
+      accountFormViewModelProvider(accountId, viewId: widget.viewId),
+    );
     return switch (asyncState) {
       AsyncData(value: final formState) when formState != null =>
         _AccountFormContent(
@@ -61,6 +73,7 @@ class _AccountFormPageState extends ConsumerState<AccountFormPage> {
           ),
           accountId: accountId,
           initialState: formState,
+          viewId: widget.viewId,
           creationPreset: widget.creationPreset,
         ),
       AsyncData(value: null) => const _AccountFormStatusPage(
@@ -105,11 +118,13 @@ class _AccountFormContent extends ConsumerStatefulWidget {
     required this.accountId,
     required this.initialState,
     required this.creationPreset,
+    this.viewId,
     super.key,
   });
 
   final String? accountId;
   final AccountFormState initialState;
+  final String? viewId;
   final AccountCreationPreset? creationPreset;
 
   @override
@@ -164,17 +179,18 @@ class _AccountFormContentState extends ConsumerState<_AccountFormContent> {
   Widget _buildFormScaffold(BuildContext context, AccountFormState formState) {
     final colors = Theme.of(context).colorScheme;
     final notifier = ref.read(
-      accountFormViewModelProvider(widget.accountId).notifier,
+      accountFormViewModelProvider(
+        widget.accountId,
+        viewId: widget.viewId,
+      ).notifier,
     );
-    final groupsAsync = ref.watch(accountGroupsProvider);
-    final groups = groupsAsync.value ?? const <AccountGroup>[];
+    final groupsAsync = ref.watch(assetViewGroupsProvider(formState.viewId));
+    final groups = groupsAsync.value ?? const <AssetViewGroup>[];
     final selectedGroup = groups
         .where((group) => group.id == formState.groupId)
         .firstOrNull;
     final selectedGroupName =
-        selectedGroup?.name ??
-        initialAccountGroupNameForId(formState.groupId) ??
-        (groupsAsync.isLoading ? '分组加载中' : '未分组');
+        selectedGroup?.name ?? (groupsAsync.isLoading ? '分组加载中' : '未分组');
 
     return AppScaffold(
       backgroundColor: colors.surface,
@@ -239,17 +255,21 @@ class _AccountFormContentState extends ConsumerState<_AccountFormContent> {
                             ),
                             validator: validateNonNegativeMoneyText,
                           ),
-                        AppPlainSelectFormRow<String>(
-                          label: '账户分组',
-                          value: formState.groupId,
-                          valueText: formState.groupId == null
-                              ? null
-                              : selectedGroupName,
-                          placeholder: '未分组',
-                          onTap: (onSelected) =>
-                              _showGroupSheet(groups, onSelected),
-                          onChanged: notifier.setGroupId,
-                        ),
+                        if (!_isEditMode || formState.isInView)
+                          AppPlainSelectFormRow<String>(
+                            label: '账户分组',
+                            value: formState.groupId,
+                            valueText: formState.groupId == null
+                                ? null
+                                : selectedGroupName,
+                            placeholder: '未分组',
+                            supportingText: _isEditMode
+                                ? '仅修改当前视图内的分组'
+                                : '账户将加入当前视图',
+                            onTap: (onSelected) =>
+                                _showGroupSheet(groups, onSelected),
+                            onChanged: notifier.setGroupId,
+                          ),
                         AppPlainTextFormRow(
                           label: '备注',
                           controller: _noteController,
@@ -305,7 +325,7 @@ class _AccountFormContentState extends ConsumerState<_AccountFormContent> {
   }
 
   Future<void> _showGroupSheet(
-    List<AccountGroup> groups,
+    List<AssetViewGroup> groups,
     ValueChanged<String?> onSelected,
   ) async {
     final selected = await showModalBottomSheet<String>(
@@ -349,7 +369,12 @@ class _AccountFormContentState extends ConsumerState<_AccountFormContent> {
 
   void _setKind(AccountProfileKind kind) {
     ref
-        .read(accountFormViewModelProvider(widget.accountId).notifier)
+        .read(
+          accountFormViewModelProvider(
+            widget.accountId,
+            viewId: widget.viewId,
+          ).notifier,
+        )
         .setKind(kind);
     if (!isLiabilityAccountKind(kind)) {
       syncTextControllerText(_creditLimitController, '');
@@ -359,14 +384,21 @@ class _AccountFormContentState extends ConsumerState<_AccountFormContent> {
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
     final formState = ref
-        .read(accountFormViewModelProvider(widget.accountId))
+        .read(
+          accountFormViewModelProvider(widget.accountId, viewId: widget.viewId),
+        )
         .requireValue!;
     final iconRef = BusinessIconScope.of(
       context,
     ).canonicalizeIconRef(formState.iconKey, BusinessIconType.account);
 
     final outcome = await ref
-        .read(accountFormViewModelProvider(widget.accountId).notifier)
+        .read(
+          accountFormViewModelProvider(
+            widget.accountId,
+            viewId: widget.viewId,
+          ).notifier,
+        )
         .submit(
           nameText: _nameController.text,
           openingBalanceText: _openingBalanceController.text,

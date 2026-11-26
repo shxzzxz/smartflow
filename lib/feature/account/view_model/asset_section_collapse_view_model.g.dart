@@ -35,7 +35,7 @@ final class AssetSectionCollapseViewModelProvider
 }
 
 String _$assetSectionCollapseViewModelHash() =>
-    r'7ccfede1232065e1778ecead2e979a06bf097827';
+    r'3ccf0d3368fc2141e2fa0f75f7892f7450b95214';
 
 abstract class _$AssetSectionCollapseViewModel
     extends $AsyncNotifier<Set<String>> {

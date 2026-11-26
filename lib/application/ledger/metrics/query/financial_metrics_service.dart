@@ -323,20 +323,46 @@ class FinancialMetricsServiceImpl implements FinancialMetricsService {
     BalanceSheetComparisonQuery query,
   ) async {
     final currentCutoff = query.asOfExclusive ?? query.month.nextMonthStart;
-    final currentFuture = _aggregate.aggregateByAccountType(
-      accountTypes: _balanceTypes,
-      scope: TransactionScopeFilter.assetLiability,
-      window: DateTimeWindow(until: currentCutoff),
-    );
-    final previousFuture = _aggregate.aggregateByAccountType(
-      accountTypes: _balanceTypes,
-      scope: TransactionScopeFilter.assetLiability,
-      window: DateTimeWindow(until: query.month.start),
+    final currentFuture = _aggregateBalances(currentCutoff, query.accountIds);
+    final previousFuture = _aggregateBalances(
+      query.month.start,
+      query.accountIds,
     );
     return BalanceSheetComparison(
       current: _toBalanceSnapshot(await currentFuture),
       previous: _toBalanceSnapshot(await previousFuture),
     );
+  }
+
+  Future<Map<AccountType, int>> _aggregateBalances(
+    DateTime until,
+    Set<String>? accountIds,
+  ) async {
+    final window = DateTimeWindow(until: until);
+    if (accountIds == null) {
+      return _aggregate.aggregateByAccountType(
+        accountTypes: _balanceTypes,
+        scope: TransactionScopeFilter.assetLiability,
+        window: window,
+      );
+    }
+    if (accountIds.isEmpty) return const {};
+    final accounts = await _aggregate.aggregateByAccount(
+      accountTypes: _balanceTypes,
+      scope: TransactionScopeFilter.assetLiability,
+      window: window,
+    );
+    final result = <AccountType, int>{};
+    for (final account in accounts) {
+      if (accountIds.contains(account.accountId)) {
+        result.update(
+          account.accountType,
+          (value) => value + account.amountMinor,
+          ifAbsent: () => account.amountMinor,
+        );
+      }
+    }
+    return result;
   }
 
   Future<List<NetAssetTrendPoint>> _loadNetAssetTrend(

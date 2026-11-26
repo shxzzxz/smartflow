@@ -3,7 +3,6 @@ import 'package:smartflow/application/shared/transaction_runner.dart';
 import 'package:smartflow/core/error/app_exception.dart';
 import 'package:smartflow/core/id/id_generator.dart';
 import 'package:smartflow/domain/ledger/entity/account.dart';
-import 'package:smartflow/domain/ledger/port/account_group_repository.dart';
 import 'package:smartflow/domain/ledger/port/account_repository.dart';
 import 'package:smartflow/domain/ledger/port/transaction_repository.dart';
 import 'package:smartflow/domain/ledger/service/account/account_factory.dart';
@@ -41,7 +40,6 @@ class AccountAppServiceImpl
     required BookRepository bookRepository,
     required IdGenerator idGenerator,
     AccountFactory accountFactory = const AccountFactory(),
-    AccountGroupRepository? accountGroups,
     AccountReconciliationRepository? reconciliationSnapshots,
   }) : _runner = transactionRunner,
        _ledgerPostingService = ledgerPostingService,
@@ -49,7 +47,6 @@ class AccountAppServiceImpl
        _books = bookRepository,
        _idGenerator = idGenerator,
        _accountFactory = accountFactory,
-       _accountGroups = accountGroups,
        _reconciliationSnapshots = reconciliationSnapshots;
 
   final AccountRepository _repository;
@@ -59,7 +56,6 @@ class AccountAppServiceImpl
   final TransactionRunner _runner;
   final IdGenerator _idGenerator;
   final AccountFactory _accountFactory;
-  final AccountGroupRepository? _accountGroups;
   final AccountReconciliationRepository? _reconciliationSnapshots;
 
   @override
@@ -74,17 +70,14 @@ class AccountAppServiceImpl
         message: 'Account profile does not match account type and subtype.',
       );
     }
-    final groupId = await _availableGroupId(command.groupId);
     final account = _accountFactory.createUserAccount(
       id: _idGenerator.newId(),
       name: command.name,
       type: command.type,
       subtype: command.subtype,
       profileKey: command.profileKey,
-      groupId: groupId,
       iconKey: command.iconKey,
       note: command.note,
-      sortOrder: command.sortOrder,
       isHidden: command.isHidden,
     );
 
@@ -120,11 +113,6 @@ class AccountAppServiceImpl
     }
   }
 
-  Future<String?> _availableGroupId(String? groupId) async {
-    if (groupId == null || _accountGroups == null) return groupId;
-    return await _accountGroups.findById(groupId) == null ? null : groupId;
-  }
-
   @override
   Future<void> editAccount(EditAccountCommand command) async {
     final account = await _repository.findById(command.id);
@@ -135,9 +123,7 @@ class AccountAppServiceImpl
     account.changeProfile(
       AccountProfilePatch(
         name: command.name,
-        sortOrder: command.sortOrder,
         isHidden: command.isHidden,
-        groupId: command.groupId,
         iconKey: command.iconKey,
         note: command.note,
       ),

@@ -194,8 +194,6 @@ class CreditLedgerCreateLiabilityAccountCommand {
     required this.openingBalance,
     this.iconKey,
     this.note,
-    this.groupId,
-    this.sortOrder = 0,
     this.isHidden = false,
   });
 
@@ -205,8 +203,6 @@ class CreditLedgerCreateLiabilityAccountCommand {
   final Money openingBalance;
   final String? iconKey;
   final String? note;
-  final String? groupId;
-  final int sortOrder;
   final bool isHidden;
 }
 
@@ -217,7 +213,6 @@ class CreditLedgerEditLiabilityAccountCommand {
     this.name,
     this.iconKey,
     this.note,
-    this.groupId,
     this.targetBalance,
   });
 
@@ -226,7 +221,6 @@ class CreditLedgerEditLiabilityAccountCommand {
   final String? name;
   final Patch<String>? iconKey;
   final Patch<String>? note;
-  final Patch<String>? groupId;
   final Money? targetBalance;
 }
 

@@ -17,7 +17,7 @@ final class AccountFormViewModelProvider
         $NotifierProvider<AccountFormViewModel, AsyncValue<AccountFormState?>> {
   AccountFormViewModelProvider._({
     required AccountFormViewModelFamily super.from,
-    required String? super.argument,
+    required (String?, {String? viewId}) super.argument,
   }) : super(
          retry: null,
          name: r'accountFormViewModelProvider',
@@ -33,7 +33,7 @@ final class AccountFormViewModelProvider
   String toString() {
     return r'accountFormViewModelProvider'
         ''
-        '($argument)';
+        '$argument';
   }
 
   @$internal
@@ -62,7 +62,7 @@ final class AccountFormViewModelProvider
 }
 
 String _$accountFormViewModelHash() =>
-    r'bfb1c2e49509dfaeb8f8a0d84a046d2aeab6c327';
+    r'cfe226b7b76f12f1855420e85ac0d470b1f64477';
 
 final class AccountFormViewModelFamily extends $Family
     with
@@ -71,7 +71,7 @@ final class AccountFormViewModelFamily extends $Family
           AsyncValue<AccountFormState?>,
           AsyncValue<AccountFormState?>,
           AsyncValue<AccountFormState?>,
-          String?
+          (String?, {String? viewId})
         > {
   AccountFormViewModelFamily._()
     : super(
@@ -82,8 +82,11 @@ final class AccountFormViewModelFamily extends $Family
         isAutoDispose: true,
       );
 
-  AccountFormViewModelProvider call(String? accountId) =>
-      AccountFormViewModelProvider._(argument: accountId, from: this);
+  AccountFormViewModelProvider call(String? accountId, {String? viewId}) =>
+      AccountFormViewModelProvider._(
+        argument: (accountId, viewId: viewId),
+        from: this,
+      );
 
   @override
   String toString() => r'accountFormViewModelProvider';
@@ -91,10 +94,11 @@ final class AccountFormViewModelFamily extends $Family
 
 abstract class _$AccountFormViewModel
     extends $Notifier<AsyncValue<AccountFormState?>> {
-  late final _$args = ref.$arg as String?;
-  String? get accountId => _$args;
+  late final _$args = ref.$arg as (String?, {String? viewId});
+  String? get accountId => _$args.$1;
+  String? get viewId => _$args.viewId;
 
-  AsyncValue<AccountFormState?> build(String? accountId);
+  AsyncValue<AccountFormState?> build(String? accountId, {String? viewId});
   @$mustCallSuper
   @override
   WhenComplete runBuild() {
@@ -115,6 +119,9 @@ abstract class _$AccountFormViewModel
               Object?,
               Object?
             >;
-    return element.handleCreate(ref, () => build(_$args));
+    return element.handleCreate(
+      ref,
+      () => build(_$args.$1, viewId: _$args.viewId),
+    );
   }
 }

@@ -589,6 +589,80 @@ void main() {
     });
   }
 
+  for (final direction in TextDirection.values) {
+    testWidgets(
+      'centered single row adapts without moving the screen center in $direction',
+      (tester) async {
+        await tester.binding.setSurfaceSize(const Size(430, 800));
+        addTearDown(() => tester.binding.setSurfaceSize(null));
+        const leadingKey = ValueKey('centered-row-leading');
+        await tester.pumpWidget(
+          wrap(
+            Directionality(
+              textDirection: direction,
+              child: AppPageHeader.custom(
+                singleRow: true,
+                singleRowTitleAlignment: AppHeaderTitleAlignment.page,
+                leading: const SizedBox(key: leadingKey, width: 68, height: 36),
+                titleContent: AppSlidingSegmentedControl<int>(
+                  variant: AppSegmentedControlVariant.adaptiveHeader,
+                  segments: const [
+                    AppSegment(value: 0, label: '全部'),
+                    AppSegment(value: 1, label: '资产'),
+                    AppSegment(value: 2, label: '负债'),
+                  ],
+                  selected: 0,
+                  onChanged: (_) {},
+                ),
+                actions: [
+                  AppHeaderIconButton(
+                    icon: RemixIcons.contract_up_down_line,
+                    tooltip: '折叠',
+                    onPressed: () {},
+                  ),
+                  AppHeaderIconButton(
+                    icon: RemixIcons.add_line,
+                    tooltip: '新建',
+                    onPressed: () {},
+                  ),
+                  AppPopupMenuButton(
+                    icon: RemixIcons.more_2_fill,
+                    tooltip: '更多',
+                    items: const [],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+        for (final width in [430.0, 390.0, 360.0, 320.0]) {
+          await tester.binding.setSurfaceSize(Size(width, 800));
+          await tester.pumpAndSettle();
+          final core = tester.getRect(
+            find.byType(AppSlidingSegmentedControl<int>),
+          );
+          final leading = tester.getRect(find.byKey(leadingKey));
+          final action = tester.getRect(find.byTooltip('折叠'));
+          expect(core.center.dx, moreOrLessEquals(width / 2));
+          expect(core.center.dy, moreOrLessEquals(leading.center.dy));
+          expect(core.center.dy, moreOrLessEquals(action.center.dy));
+          expect(
+            find.byTooltip('选择：全部'),
+            width < 430 ? findsOneWidget : findsNothing,
+          );
+          if (direction == TextDirection.ltr) {
+            expect(core.left, greaterThan(leading.right));
+            expect(core.right, lessThan(action.left));
+          } else {
+            expect(core.left, greaterThan(action.right));
+            expect(core.right, lessThan(leading.left));
+          }
+          expect(tester.takeException(), isNull);
+        }
+      },
+    );
+  }
+
   testWidgets('RTL mirrors the sides and preserves the centered title', (
     tester,
   ) async {

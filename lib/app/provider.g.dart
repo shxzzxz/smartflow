@@ -1325,54 +1325,6 @@ final class AccountRepositoryProvider
 
 String _$accountRepositoryHash() => r'd18c6b65455a5da1e8787472648c66c231ce9741';
 
-@ProviderFor(accountGroupRepository)
-final accountGroupRepositoryProvider = AccountGroupRepositoryProvider._();
-
-final class AccountGroupRepositoryProvider
-    extends
-        $FunctionalProvider<
-          AccountGroupRepository,
-          AccountGroupRepository,
-          AccountGroupRepository
-        >
-    with $Provider<AccountGroupRepository> {
-  AccountGroupRepositoryProvider._()
-    : super(
-        from: null,
-        argument: null,
-        retry: null,
-        name: r'accountGroupRepositoryProvider',
-        isAutoDispose: false,
-        dependencies: null,
-        $allTransitiveDependencies: null,
-      );
-
-  @override
-  String debugGetCreateSourceHash() => _$accountGroupRepositoryHash();
-
-  @$internal
-  @override
-  $ProviderElement<AccountGroupRepository> $createElement(
-    $ProviderPointer pointer,
-  ) => $ProviderElement(pointer);
-
-  @override
-  AccountGroupRepository create(Ref ref) {
-    return accountGroupRepository(ref);
-  }
-
-  /// {@macro riverpod.override_with_value}
-  Override overrideWithValue(AccountGroupRepository value) {
-    return $ProviderOverride(
-      origin: this,
-      providerOverride: $SyncValueProvider<AccountGroupRepository>(value),
-    );
-  }
-}
-
-String _$accountGroupRepositoryHash() =>
-    r'7cc548d126442975801eb97511fff97fce75c00e';
-
 @ProviderFor(budgetRepository)
 final budgetRepositoryProvider = BudgetRepositoryProvider._();
 
@@ -1655,54 +1607,6 @@ final class AccountQueryServiceProvider
 
 String _$accountQueryServiceHash() =>
     r'906e4ed354b09e6f55d4ad7c2c08e5f3418a7fb3';
-
-@ProviderFor(accountGroupQueryService)
-final accountGroupQueryServiceProvider = AccountGroupQueryServiceProvider._();
-
-final class AccountGroupQueryServiceProvider
-    extends
-        $FunctionalProvider<
-          AccountGroupQueryService,
-          AccountGroupQueryService,
-          AccountGroupQueryService
-        >
-    with $Provider<AccountGroupQueryService> {
-  AccountGroupQueryServiceProvider._()
-    : super(
-        from: null,
-        argument: null,
-        retry: null,
-        name: r'accountGroupQueryServiceProvider',
-        isAutoDispose: false,
-        dependencies: null,
-        $allTransitiveDependencies: null,
-      );
-
-  @override
-  String debugGetCreateSourceHash() => _$accountGroupQueryServiceHash();
-
-  @$internal
-  @override
-  $ProviderElement<AccountGroupQueryService> $createElement(
-    $ProviderPointer pointer,
-  ) => $ProviderElement(pointer);
-
-  @override
-  AccountGroupQueryService create(Ref ref) {
-    return accountGroupQueryService(ref);
-  }
-
-  /// {@macro riverpod.override_with_value}
-  Override overrideWithValue(AccountGroupQueryService value) {
-    return $ProviderOverride(
-      origin: this,
-      providerOverride: $SyncValueProvider<AccountGroupQueryService>(value),
-    );
-  }
-}
-
-String _$accountGroupQueryServiceHash() =>
-    r'aa5064aa55eca1a071a7d31ed09630755e9d192d';
 
 @ProviderFor(ledgerRepository)
 final ledgerRepositoryProvider = LedgerRepositoryProvider._();
@@ -2577,54 +2481,6 @@ final class AccountReconciliationAppServiceProvider
 
 String _$accountReconciliationAppServiceHash() =>
     r'8e0764705e7c500401a66f4459003c6673a03d46';
-
-@ProviderFor(accountGroupAppService)
-final accountGroupAppServiceProvider = AccountGroupAppServiceProvider._();
-
-final class AccountGroupAppServiceProvider
-    extends
-        $FunctionalProvider<
-          AccountGroupAppService,
-          AccountGroupAppService,
-          AccountGroupAppService
-        >
-    with $Provider<AccountGroupAppService> {
-  AccountGroupAppServiceProvider._()
-    : super(
-        from: null,
-        argument: null,
-        retry: null,
-        name: r'accountGroupAppServiceProvider',
-        isAutoDispose: false,
-        dependencies: null,
-        $allTransitiveDependencies: null,
-      );
-
-  @override
-  String debugGetCreateSourceHash() => _$accountGroupAppServiceHash();
-
-  @$internal
-  @override
-  $ProviderElement<AccountGroupAppService> $createElement(
-    $ProviderPointer pointer,
-  ) => $ProviderElement(pointer);
-
-  @override
-  AccountGroupAppService create(Ref ref) {
-    return accountGroupAppService(ref);
-  }
-
-  /// {@macro riverpod.override_with_value}
-  Override overrideWithValue(AccountGroupAppService value) {
-    return $ProviderOverride(
-      origin: this,
-      providerOverride: $SyncValueProvider<AccountGroupAppService>(value),
-    );
-  }
-}
-
-String _$accountGroupAppServiceHash() =>
-    r'1e00f17ce9ed8071bd652dacadb9f06dce0d7a5c';
 
 @ProviderFor(categoryAppService)
 final categoryAppServiceProvider = CategoryAppServiceProvider._();
@@ -4054,6 +3910,199 @@ final class FinancialMetricsServiceProvider
 
 String _$financialMetricsServiceHash() =>
     r'9be42565e4dc9becb91bf377ba6e39bc1f76f5dd';
+
+@ProviderFor(assetViewAppService)
+final assetViewAppServiceProvider = AssetViewAppServiceProvider._();
+
+final class AssetViewAppServiceProvider
+    extends
+        $FunctionalProvider<
+          AssetViewAppService,
+          AssetViewAppService,
+          AssetViewAppService
+        >
+    with $Provider<AssetViewAppService> {
+  AssetViewAppServiceProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'assetViewAppServiceProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$assetViewAppServiceHash();
+
+  @$internal
+  @override
+  $ProviderElement<AssetViewAppService> $createElement(
+    $ProviderPointer pointer,
+  ) => $ProviderElement(pointer);
+
+  @override
+  AssetViewAppService create(Ref ref) {
+    return assetViewAppService(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(AssetViewAppService value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<AssetViewAppService>(value),
+    );
+  }
+}
+
+String _$assetViewAppServiceHash() =>
+    r'1991042f9692ceec2625752d0ffea4e0f4f2f56d';
+
+@ProviderFor(assetViewAccountAppService)
+final assetViewAccountAppServiceProvider =
+    AssetViewAccountAppServiceProvider._();
+
+final class AssetViewAccountAppServiceProvider
+    extends
+        $FunctionalProvider<
+          AssetViewAccountAppService,
+          AssetViewAccountAppService,
+          AssetViewAccountAppService
+        >
+    with $Provider<AssetViewAccountAppService> {
+  AssetViewAccountAppServiceProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'assetViewAccountAppServiceProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$assetViewAccountAppServiceHash();
+
+  @$internal
+  @override
+  $ProviderElement<AssetViewAccountAppService> $createElement(
+    $ProviderPointer pointer,
+  ) => $ProviderElement(pointer);
+
+  @override
+  AssetViewAccountAppService create(Ref ref) {
+    return assetViewAccountAppService(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(AssetViewAccountAppService value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<AssetViewAccountAppService>(value),
+    );
+  }
+}
+
+String _$assetViewAccountAppServiceHash() =>
+    r'0f6323fbe7cf659a0cc9bb4132871fdb61cb034c';
+
+@ProviderFor(assetViewQueryService)
+final assetViewQueryServiceProvider = AssetViewQueryServiceProvider._();
+
+final class AssetViewQueryServiceProvider
+    extends
+        $FunctionalProvider<
+          AssetViewQueryService,
+          AssetViewQueryService,
+          AssetViewQueryService
+        >
+    with $Provider<AssetViewQueryService> {
+  AssetViewQueryServiceProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'assetViewQueryServiceProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$assetViewQueryServiceHash();
+
+  @$internal
+  @override
+  $ProviderElement<AssetViewQueryService> $createElement(
+    $ProviderPointer pointer,
+  ) => $ProviderElement(pointer);
+
+  @override
+  AssetViewQueryService create(Ref ref) {
+    return assetViewQueryService(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(AssetViewQueryService value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<AssetViewQueryService>(value),
+    );
+  }
+}
+
+String _$assetViewQueryServiceHash() =>
+    r'db83815f58fd4612e9551cde72d628641ffbd894';
+
+@ProviderFor(assetViewPreferencesStore)
+final assetViewPreferencesStoreProvider = AssetViewPreferencesStoreProvider._();
+
+final class AssetViewPreferencesStoreProvider
+    extends
+        $FunctionalProvider<
+          AssetViewPreferencesStore,
+          AssetViewPreferencesStore,
+          AssetViewPreferencesStore
+        >
+    with $Provider<AssetViewPreferencesStore> {
+  AssetViewPreferencesStoreProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'assetViewPreferencesStoreProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$assetViewPreferencesStoreHash();
+
+  @$internal
+  @override
+  $ProviderElement<AssetViewPreferencesStore> $createElement(
+    $ProviderPointer pointer,
+  ) => $ProviderElement(pointer);
+
+  @override
+  AssetViewPreferencesStore create(Ref ref) {
+    return assetViewPreferencesStore(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(AssetViewPreferencesStore value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<AssetViewPreferencesStore>(value),
+    );
+  }
+}
+
+String _$assetViewPreferencesStoreHash() =>
+    r'5f43577227e62e5cc7d7954ac213e073318b5e8f';
 
 @ProviderFor(creditAccountRepository)
 final creditAccountRepositoryProvider = CreditAccountRepositoryProvider._();

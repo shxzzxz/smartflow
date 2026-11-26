@@ -10,10 +10,12 @@ import '../theme/app_text_styles.dart';
 import '../token/radius.dart';
 import '../token/spacing.dart';
 import '../widget/app_month_picker.dart';
+import '../widget/app_header_select_button.dart';
 import '../widget/app_page_background.dart';
 import '../widget/app_page_header.dart';
 import '../widget/app_page_header_background_scope.dart';
 import '../widget/app_popup_menu_button.dart';
+import '../widget/app_select.dart';
 import '../widget/app_sliding_segmented_control.dart';
 import '../widget/app_tab_swipe_region.dart';
 
@@ -29,6 +31,8 @@ class _PageHeaderPreviewsState extends State<PageHeaderPreviews> {
   var _month = DateTime(2026, 11);
   var _showLunar = true;
   var _tab = 0;
+  var _accountFilter = 0;
+  var _assetViewId = 'daily';
   var _statisticsView = StatisticsViewType.period;
   String? _bookId = Book.dailyId;
   final _books = [
@@ -168,6 +172,59 @@ class _PageHeaderPreviewsState extends State<PageHeaderPreviews> {
               tooltip: '本月统计',
               onPressed: () => _message('本月统计'),
             ),
+          ],
+        ),
+      ),
+      _example(
+        '整屏居中与自适应账户筛选',
+        AppPageHeader.custom(
+          showBackButton: false,
+          singleRow: true,
+          singleRowTitleAlignment: AppHeaderTitleAlignment.page,
+          leading: AppHeaderSelectButton<String>(
+            label: _assetViewId == 'default' ? '默认' : '日常收支与长期规划',
+            tooltip: '切换视图',
+            value: _assetViewId,
+            onChanged: (id) => setState(() => _assetViewId = id),
+            options: const [
+              AppSelectOption(value: 'default', label: '默认'),
+              AppSelectOption(value: 'daily', label: '日常收支与长期规划'),
+            ],
+            actions: [
+              AppPopupMenuAction(
+                label: '新建',
+                onPressed: () => _message('新建视图'),
+              ),
+              AppPopupMenuAction(
+                label: '管理',
+                onPressed: () => _message('管理视图'),
+              ),
+            ],
+          ),
+          titleContent: AppSlidingSegmentedControl<int>(
+            variant: AppSegmentedControlVariant.adaptiveHeader,
+            segments: const [
+              AppSegment(value: 0, label: '全部'),
+              AppSegment(value: 1, label: '资产'),
+              AppSegment(value: 2, label: '负债'),
+            ],
+            selected: _accountFilter,
+            onChanged: (value) => setState(() => _accountFilter = value),
+          ),
+          actions: [
+            AppHeaderIconButton(
+              icon: RemixIcons.contract_up_down_line,
+              tooltip: '折叠分组',
+              compact: true,
+              onPressed: () => _message('折叠分组'),
+            ),
+            AppHeaderIconButton(
+              icon: RemixIcons.add_line,
+              tooltip: '新建账户',
+              compact: true,
+              onPressed: () => _message('新建账户'),
+            ),
+            _more(),
           ],
         ),
       ),

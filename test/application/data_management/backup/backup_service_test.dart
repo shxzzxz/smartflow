@@ -1050,8 +1050,14 @@ Future<void> _rewriteBackupSchemaVersion(
   int version,
 ) async {
   final file = File('${directory.path}/manifest.json');
-  final manifest =
-      jsonDecode(await file.readAsString()) as Map<String, Object?>;
+  var manifest = jsonDecode(await file.readAsString()) as Map<String, Object?>;
+  if (version < 20 &&
+      !(manifest['requiredFiles'] as List).any(
+        (entry) => entry['table'] == 'account_groups',
+      )) {
+    await _addBackupTable(directory, 'account_groups', []);
+    manifest = jsonDecode(await file.readAsString()) as Map<String, Object?>;
+  }
   manifest['backupSchemaVersion'] = version;
   await file.writeAsString(jsonEncode(manifest));
 }

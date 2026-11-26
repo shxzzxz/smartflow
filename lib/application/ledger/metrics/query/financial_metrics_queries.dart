@@ -48,12 +48,19 @@ class StatisticsRangeReportQuery {
 }
 
 class BalanceSheetComparisonQuery {
-  const BalanceSheetComparisonQuery({required this.month, this.asOfExclusive});
+  const BalanceSheetComparisonQuery({
+    required this.month,
+    this.asOfExclusive,
+    this.accountIds,
+  });
 
   final MonthKey month;
 
   /// 不包含上界。当前月页面可传入 DateTime.now()，历史月默认用下月月初。
   final DateTime? asOfExclusive;
+
+  /// null includes every active asset/liability account; an empty set includes none.
+  final Set<String>? accountIds;
 }
 
 class BalanceReportQuery {

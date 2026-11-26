@@ -3,15 +3,17 @@ import 'package:uuid/uuid.dart';
 
 import '../../domain/ledger/valobj/ledger_enum.dart';
 import '../../domain/ledger/entity/book.dart';
+import '../../domain/analytics/entity/asset_view.dart';
 import '../../domain/credit/entity/installment_product.dart';
-import '../../shared/account_group/initial_account_groups.dart';
+import 'dart:convert';
+import '../../domain/analytics/valobj/initial_asset_view_groups.dart';
 import '../../shared/account_profile/account_profile_kind.dart';
 import '../credit/initial_installment_products.dart';
 import '../credit/repository/drift_installment_product_repository.dart';
 import 'app_database.dart';
 
 const builtinDataVersionKey = 'builtin_data_version';
-const currentBuiltinDataVersion = 18;
+const currentBuiltinDataVersion = 20;
 
 const _accountIconStyleSettingKey = 'settings.account_icon_style';
 const _categoryIconStyleSettingKey = 'settings.category_icon_style';
@@ -52,11 +54,7 @@ Future<void> ensureBuiltinData(AppDatabase database) async {
     if (version < 7) {
       await _renameOpeningBalanceAccount(database);
     }
-    if (version < 9) {
-      await _seedInitialAccountGroups(database);
-    }
     if (version < 10) {
-      await _seedInitialAccountGroups(database);
       await _seedReceivableAndPayableCategories(database);
     }
 
@@ -102,8 +100,6 @@ Future<void> ensureBuiltinData(AppDatabase database) async {
       await _renameAdvanceCompensationIncome(database);
     }
     if (version < 14) {
-      await _ensureInitialAccountGroups(database);
-      await _assignInitialAmortizationAccountGroups(database);
       await _seedDefaultAmortizationAccounts(database);
     }
     if (version < 15) {
@@ -133,8 +129,77 @@ Future<void> ensureBuiltinData(AppDatabase database) async {
             mode: InsertMode.insertOrIgnore,
           );
     }
+    if (version < 20) {
+      final columns = await database
+          .customSelect("PRAGMA table_info('asset_views')")
+          .get();
+      if (columns.isEmpty) {
+        await _writeBuiltinDataVersion(database, 18);
+        return;
+      }
+      if (!columns.any(
+        (column) => column.read<String>('name') == 'groups_json',
+      )) {
+        await database.customStatement(
+          "INSERT OR IGNORE INTO asset_views (id, name) VALUES ('builtin-asset-view-all', '所有账户')",
+        );
+        await _writeBuiltinDataVersion(database, 19);
+        return;
+      }
+      await _seedDefaultAssetView(database);
+    }
     await _writeBuiltinDataVersion(database, currentBuiltinDataVersion);
   });
+}
+
+Future<void> _seedDefaultAssetView(AppDatabase database) async {
+  final existing = await (database.select(
+    database.assetViews,
+  )..where((row) => row.id.equals(AssetView.defaultId))).getSingleOrNull();
+  if (existing != null) return;
+  final accounts =
+      await (database.select(database.accounts)
+            ..where(
+              (row) => row.accountType.isInValues({
+                AccountType.asset,
+                AccountType.liability,
+              }),
+            )
+            ..orderBy([
+              (row) => OrderingTerm.asc(row.name),
+              (row) => OrderingTerm.asc(row.id),
+            ]))
+          .get();
+  final view = configureAssetViewAccounts(
+    id: AssetView.defaultId,
+    name: AssetView.defaultName,
+    accountIds: accounts.map((account) => account.id),
+    profiles: {
+      for (final account in accounts)
+        account.id: accountProfileKindForAccountType(
+          type: account.accountType,
+          subtype: account.accountSubtype,
+          profileKey: account.accountProfileKey,
+        ),
+    },
+  );
+  await database
+      .into(database.assetViews)
+      .insert(
+        AssetViewsCompanion.insert(
+          id: view.id,
+          name: view.name,
+          accountIdsJson: Value(jsonEncode(view.accountIds)),
+          groupsJson: Value(
+            jsonEncode([
+              for (final group in view.groups)
+                {'id': group.id, 'name': group.name},
+            ]),
+          ),
+          accountGroupIdsJson: Value(jsonEncode(view.accountGroupIds)),
+        ),
+        mode: InsertMode.insertOrIgnore,
+      );
 }
 
 Future<void> _seedHaircutAndBeautyCategories(AppDatabase database) async {
@@ -228,70 +293,6 @@ Future<void> _seedReceivableAndPayableCategories(AppDatabase database) async {
   );
 }
 
-Future<void> _seedInitialAccountGroups(AppDatabase database) async {
-  await _ensureInitialAccountGroups(database);
-
-  await database.customStatement(
-    "UPDATE accounts SET group_id = '${initialAccountGroupIdForProfile(AccountProfileKind.credit)}' "
-    "WHERE group_id IS NULL AND account_profile_key = 'credit.credit'",
-  );
-  await database.customStatement(
-    "UPDATE accounts SET group_id = '${initialAccountGroupIdForProfile(AccountProfileKind.loan)}' "
-    "WHERE group_id IS NULL AND account_profile_key = 'credit.loan'",
-  );
-  await database.customStatement(
-    "UPDATE accounts SET group_id = '${initialAccountGroupIdForProfile(AccountProfileKind.reimbursement)}' "
-    "WHERE group_id IS NULL AND account_profile_key = 'ledger.reimbursement'",
-  );
-  await database.customStatement(
-    "UPDATE accounts SET group_id = '${initialAccountGroupIdForProfile(AccountProfileKind.receivable)}' "
-    "WHERE group_id IS NULL AND account_profile_key = 'ledger.receivable'",
-  );
-  await database.customStatement(
-    "UPDATE accounts SET group_id = '${initialAccountGroupIdForProfile(AccountProfileKind.payable)}' "
-    "WHERE group_id IS NULL AND account_profile_key = 'ledger.payable'",
-  );
-  await database.customStatement(
-    "UPDATE accounts SET group_id = '${initialAccountGroupIdForProfile(AccountProfileKind.fund)}' "
-    "WHERE group_id IS NULL AND account_type IN ('asset', 'liability')",
-  );
-  await database.customStatement('''
-WITH ranked AS (
-  SELECT id,
-    ROW_NUMBER() OVER (
-      PARTITION BY group_id
-      ORDER BY sort_order, name, id
-    ) - 1 AS next_sort_order
-  FROM accounts
-  WHERE group_id IS NOT NULL
-    AND account_type IN ('asset', 'liability')
-)
-UPDATE accounts
-SET sort_order = (
-  SELECT next_sort_order FROM ranked WHERE ranked.id = accounts.id
-)
-WHERE id IN (SELECT id FROM ranked)
-''');
-}
-
-Future<void> _ensureInitialAccountGroups(AppDatabase database) async {
-  final now = DateTime.now();
-  for (final group in initialAccountGroups) {
-    await database
-        .into(database.accountGroups)
-        .insert(
-          AccountGroupsCompanion.insert(
-            id: group.id,
-            name: group.name,
-            sortOrder: Value(group.sortOrder),
-            createdAt: Value(now),
-            updatedAt: Value(now),
-          ),
-          mode: InsertMode.insertOrIgnore,
-        );
-  }
-}
-
 Future<void> _seedDefaultAmortizationAccounts(AppDatabase database) async {
   const definitions = [
     (
@@ -316,10 +317,6 @@ Future<void> _seedDefaultAmortizationAccounts(AppDatabase database) async {
             .getSingleOrNull();
     if (existing != null) continue;
 
-    final groupId = initialAccountGroupIdForProfile(profile);
-    if (groupId == null) {
-      throw StateError('Missing initial account group for ${profile.key}.');
-    }
     final now = DateTime.now();
     await database
         .into(database.accounts)
@@ -330,7 +327,6 @@ Future<void> _seedDefaultAmortizationAccounts(AppDatabase database) async {
             accountType: profile.accountType,
             accountSubtype: Value(profile.accountSubtype),
             accountProfileKey: Value(profile.key),
-            groupId: Value(groupId),
             iconKey: Value(profile.iconKey),
             source: const Value(AccountSource.builtin),
             createdAt: Value(now),
@@ -338,24 +334,6 @@ Future<void> _seedDefaultAmortizationAccounts(AppDatabase database) async {
           ),
           mode: InsertMode.insertOrIgnore,
         );
-  }
-}
-
-Future<void> _assignInitialAmortizationAccountGroups(
-  AppDatabase database,
-) async {
-  for (final profile in const [
-    AccountProfileKind.prepaidExpense,
-    AccountProfileKind.deferredIncome,
-  ]) {
-    final groupId = initialAccountGroupIdForProfile(profile);
-    if (groupId == null) continue;
-    await (database.update(database.accounts)..where(
-          (account) =>
-              account.accountProfileKey.equals(profile.key) &
-              account.groupId.isNull(),
-        ))
-        .write(AccountsCompanion(groupId: Value(groupId)));
   }
 }
 

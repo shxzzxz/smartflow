@@ -8,35 +8,36 @@ part of 'account_organization_view_model.dart';
 
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // ignore_for_file: type=lint, type=warning
-/// 资产页的账户展示组织命令入口。
-///
-/// 分组和排序都是展示组织，不改变账户画像或账务余额。
+/// All organization commands apply to one saved asset view.
 
 @ProviderFor(AccountOrganizationViewModel)
 final accountOrganizationViewModelProvider =
-    AccountOrganizationViewModelProvider._();
+    AccountOrganizationViewModelFamily._();
 
-/// 资产页的账户展示组织命令入口。
-///
-/// 分组和排序都是展示组织，不改变账户画像或账务余额。
+/// All organization commands apply to one saved asset view.
 final class AccountOrganizationViewModelProvider
     extends $NotifierProvider<AccountOrganizationViewModel, void> {
-  /// 资产页的账户展示组织命令入口。
-  ///
-  /// 分组和排序都是展示组织，不改变账户画像或账务余额。
-  AccountOrganizationViewModelProvider._()
-    : super(
-        from: null,
-        argument: null,
-        retry: null,
-        name: r'accountOrganizationViewModelProvider',
-        isAutoDispose: true,
-        dependencies: null,
-        $allTransitiveDependencies: null,
-      );
+  /// All organization commands apply to one saved asset view.
+  AccountOrganizationViewModelProvider._({
+    required AccountOrganizationViewModelFamily super.from,
+    required String super.argument,
+  }) : super(
+         retry: null,
+         name: r'accountOrganizationViewModelProvider',
+         isAutoDispose: true,
+         dependencies: null,
+         $allTransitiveDependencies: null,
+       );
 
   @override
   String debugGetCreateSourceHash() => _$accountOrganizationViewModelHash();
+
+  @override
+  String toString() {
+    return r'accountOrganizationViewModelProvider'
+        ''
+        '($argument)';
+  }
 
   @$internal
   @override
@@ -49,17 +50,58 @@ final class AccountOrganizationViewModelProvider
       providerOverride: $SyncValueProvider<void>(value),
     );
   }
+
+  @override
+  bool operator ==(Object other) {
+    return other is AccountOrganizationViewModelProvider &&
+        other.argument == argument;
+  }
+
+  @override
+  int get hashCode {
+    return argument.hashCode;
+  }
 }
 
 String _$accountOrganizationViewModelHash() =>
-    r'c1a878e557c22f52c3a58776ed0629652a028f35';
+    r'0540d5bdd413778ba9a8b2a07c6a64f19a18d963';
 
-/// 资产页的账户展示组织命令入口。
-///
-/// 分组和排序都是展示组织，不改变账户画像或账务余额。
+/// All organization commands apply to one saved asset view.
+
+final class AccountOrganizationViewModelFamily extends $Family
+    with
+        $ClassFamilyOverride<
+          AccountOrganizationViewModel,
+          void,
+          void,
+          void,
+          String
+        > {
+  AccountOrganizationViewModelFamily._()
+    : super(
+        retry: null,
+        name: r'accountOrganizationViewModelProvider',
+        dependencies: null,
+        $allTransitiveDependencies: null,
+        isAutoDispose: true,
+      );
+
+  /// All organization commands apply to one saved asset view.
+
+  AccountOrganizationViewModelProvider call(String viewId) =>
+      AccountOrganizationViewModelProvider._(argument: viewId, from: this);
+
+  @override
+  String toString() => r'accountOrganizationViewModelProvider';
+}
+
+/// All organization commands apply to one saved asset view.
 
 abstract class _$AccountOrganizationViewModel extends $Notifier<void> {
-  void build();
+  late final _$args = ref.$arg as String;
+  String get viewId => _$args;
+
+  void build(String viewId);
   @$mustCallSuper
   @override
   WhenComplete runBuild() {
@@ -72,6 +114,6 @@ abstract class _$AccountOrganizationViewModel extends $Notifier<void> {
               Object?,
               Object?
             >;
-    return element.handleCreate(ref, build);
+    return element.handleCreate(ref, () => build(_$args));
   }
 }

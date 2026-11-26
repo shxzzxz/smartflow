@@ -33,8 +33,6 @@ abstract interface class AccountRepository {
     required String? parentId,
   });
 
-  Future<List<Account>> findByGroupId(String? groupId);
-
   Future<void> create(Account account);
 
   Future<void> save(Account account);

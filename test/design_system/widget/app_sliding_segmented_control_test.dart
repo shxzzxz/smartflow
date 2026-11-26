@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/design_system/theme/app_theme.dart';
+import 'package:smartflow/design_system/widget/app_header_select_button.dart';
 import 'package:smartflow/design_system/widget/app_sliding_segmented_control.dart';
 
 void main() {
@@ -11,6 +12,8 @@ void main() {
     ValueChanged<int>? onChanged,
     TextScaler? textScaler,
     bool enabled = true,
+    double? width,
+    AppSegmentedControlVariant variant = AppSegmentedControlVariant.filled,
   }) async {
     await tester.pumpWidget(
       MaterialApp(
@@ -23,14 +26,18 @@ void main() {
               ),
         home: Scaffold(
           body: Center(
-            child: AppSlidingSegmentedControl<int>(
-              segments: const [
-                AppSegment(value: 0, label: '支出'),
-                AppSegment(value: 1, label: '收入'),
-                AppSegment(value: 2, label: '对比'),
-              ],
-              selected: selected,
-              onChanged: enabled ? onChanged ?? (_) {} : null,
+            child: SizedBox(
+              width: width,
+              child: AppSlidingSegmentedControl<int>(
+                variant: variant,
+                segments: const [
+                  AppSegment(value: 0, label: '支出'),
+                  AppSegment(value: 1, label: '收入'),
+                  AppSegment(value: 2, label: '对比'),
+                ],
+                selected: selected,
+                onChanged: enabled ? onChanged ?? (_) {} : null,
+              ),
             ),
           ),
         ),
@@ -175,5 +182,52 @@ void main() {
     );
     await tester.tap(find.text('错误'));
     expect(selected, 4);
+  });
+
+  testWidgets('adaptive header uses the available width and text size', (
+    tester,
+  ) async {
+    int? picked;
+    await pumpControl(
+      tester,
+      selected: 1,
+      width: 150,
+      variant: AppSegmentedControlVariant.adaptiveHeader,
+    );
+    expect(find.byType(AppHeaderSelectButton<int>), findsNothing);
+    expect(find.text('支出'), findsOneWidget);
+
+    await pumpControl(
+      tester,
+      selected: 1,
+      width: 150,
+      textScaler: const TextScaler.linear(2),
+      variant: AppSegmentedControlVariant.adaptiveHeader,
+      onChanged: (value) => picked = value,
+    );
+    expect(find.byType(AppHeaderSelectButton<int>), findsOneWidget);
+    expect(find.text('支出'), findsNothing);
+    await tester.tap(find.byType(AppHeaderSelectButton<int>));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('对比'));
+    await tester.pumpAndSettle();
+    expect(picked, 2);
+    expect(find.byType(MenuItemButton), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('disabled adaptive dropdown does not open', (tester) async {
+    await pumpControl(
+      tester,
+      selected: 1,
+      width: 90,
+      enabled: false,
+      variant: AppSegmentedControlVariant.adaptiveHeader,
+    );
+    expect(find.byType(AppHeaderSelectButton<int>), findsOneWidget);
+    await tester.tap(find.byType(AppHeaderSelectButton<int>));
+    await tester.pumpAndSettle();
+    expect(find.byType(MenuItemButton), findsNothing);
+    expect(tester.takeException(), isNull);
   });
 }

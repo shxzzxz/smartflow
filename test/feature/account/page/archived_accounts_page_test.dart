@@ -6,11 +6,11 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/design_system/theme/app_theme.dart';
-import 'package:smartflow/domain/ledger/entity/account_group.dart';
+import 'package:smartflow/application/analytics/analytics_query_api.dart';
+import 'package:smartflow/feature/account/view_model/asset_views_provider.dart';
 import 'package:smartflow/feature/account/page/archived_accounts_page.dart';
 import 'package:smartflow/feature/account/view_model/account_view.dart';
 import 'package:smartflow/feature/account/view_model/account_views_provider.dart';
-import 'package:smartflow/feature/shared/provider/ledger_query_providers.dart';
 import 'package:smartflow/shared/account_profile/account_profile_kind.dart';
 
 void main() {
@@ -107,7 +107,6 @@ Widget _buildArchivedAccountsPage({
           balance: Money(minorUnits: 5000),
           iconKey: null,
           isArchived: true,
-          groupId: 'credit',
           billingDay: 1,
           repaymentDay: 15,
         ),
@@ -115,11 +114,19 @@ Widget _buildArchivedAccountsPage({
   return ProviderScope(
     overrides: [
       archivedAccountViewsProvider.overrideWith((ref) => archivedAccountValue),
-      accountGroupsProvider.overrideWith(
-        (ref) => Stream.value([
-          AccountGroup(id: 'fund', name: '资金'),
-          AccountGroup(id: 'credit', name: '信用'),
-        ]),
+      selectedAssetViewProvider.overrideWithValue(
+        AsyncData(
+          AssetView(
+            id: AssetView.defaultId,
+            name: AssetView.defaultName,
+            accountIds: ['archived-credit-1'],
+            groups: [
+              AssetViewGroup(id: 'fund', name: '资金'),
+              AssetViewGroup(id: 'credit', name: '信用'),
+            ],
+            accountGroupIds: {'archived-credit-1': 'credit'},
+          ),
+        ),
       ),
     ],
     child: router == null

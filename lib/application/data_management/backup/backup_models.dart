@@ -10,7 +10,7 @@ class BackupTables {
   static const all = <String>[
     'books',
     'accounts',
-    'account_groups',
+    'asset_views',
     'account_reconciliation_snapshots',
     'transactions',
     'transaction_lines',
@@ -81,10 +81,12 @@ class BackupTables {
 
   static bool accepts(String table) =>
       table == 'preferences' ||
+      table == 'account_groups' ||
       all.contains(table) ||
       insuranceV9.contains(table);
 
   static String sectionFor(String table) {
+    if (table == 'asset_views') return 'analytics';
     if (const {
       'books',
       'accounts',
@@ -177,7 +179,7 @@ class BackupSnapshot {
   }) : tables = {
          for (final table in BackupTables.all)
            table: List.unmodifiable(tables[table] ?? const <BackupJson>[]),
-         for (final table in BackupTables.insuranceV9)
+         for (final table in [...BackupTables.insuranceV9, 'account_groups'])
            if (tables.containsKey(table))
              table: List.unmodifiable(tables[table] ?? const <BackupJson>[]),
        },
@@ -318,7 +320,7 @@ class BackupManifest {
   ///
   /// This is independent from the database schema version and only changes
   /// when exported tables, fields or wire codes change.
-  static const currentBackupSchemaVersion = 18;
+  static const currentBackupSchemaVersion = 20;
   static const minimumSupportedBackupSchemaVersion =
       PersistenceBaseline.backupSchemaVersion;
 
@@ -493,6 +495,7 @@ class BackupDiff {
         return '交易组';
       }
       if (table == 'budgets') return '预算';
+      if (table == 'asset_views') return '分析视图';
       if (table == 'business_icons') return '用户图标';
       if (table == 'account_reconciliation_snapshots') return '对账快照';
       if (BackupTables.insurance.contains(table)) return '保险';

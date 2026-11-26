@@ -8,11 +8,16 @@ Future<String?> promptName(
   required String title,
   required String hintText,
   String initialText = '',
+  int maxLength = 20,
 }) {
   return showDialog<String>(
     context: context,
-    builder: (context) =>
-        _NameDialog(title: title, hintText: hintText, initialText: initialText),
+    builder: (context) => _NameDialog(
+      title: title,
+      hintText: hintText,
+      initialText: initialText,
+      maxLength: maxLength,
+    ),
   );
 }
 
@@ -21,11 +26,13 @@ class _NameDialog extends StatefulWidget {
     required this.title,
     required this.hintText,
     required this.initialText,
+    required this.maxLength,
   });
 
   final String title;
   final String hintText;
   final String initialText;
+  final int maxLength;
 
   @override
   State<_NameDialog> createState() => _NameDialogState();
@@ -49,7 +56,7 @@ class _NameDialogState extends State<_NameDialog> {
       content: TextField(
         controller: _controller,
         autofocus: true,
-        maxLength: 20,
+        maxLength: widget.maxLength,
         style: context.appTextStyles.inputText,
         decoration: InputDecoration(
           hintText: widget.hintText,

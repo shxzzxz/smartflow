@@ -24,11 +24,6 @@ Stream<List<Account>> accountList(Ref ref) {
 }
 
 @Riverpod(keepAlive: true)
-Stream<List<AccountGroup>> accountGroups(Ref ref) {
-  return ref.watch(accountGroupQueryServiceProvider).watchGroups();
-}
-
-@Riverpod(keepAlive: true)
 Stream<Map<String, CreditLiabilityAccountReadModel>>
 creditLiabilityAccountsByAccountId(Ref ref) {
   return ref

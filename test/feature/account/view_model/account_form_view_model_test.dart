@@ -3,6 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/app/provider.dart';
 import 'package:smartflow/application/credit/credit_command_api.dart';
+import 'package:smartflow/application/analytics/analytics_command_api.dart';
+import 'package:smartflow/feature/account/view_model/asset_views_provider.dart';
+import 'package:smartflow/infrastructure/analytics/adapter/financial_asset_view_accounts.dart';
 import 'package:smartflow/application/ledger/ledger_command_api.dart';
 import 'package:smartflow/core/error/app_exception.dart';
 import 'package:smartflow/core/money/money.dart';
@@ -116,6 +119,7 @@ void main() {
         );
         final container = ProviderContainer(
           overrides: [
+            ..._viewOverrides(),
             bookSelectionTestOverride,
             bookListTestOverride,
             accountViewProvider(
@@ -164,6 +168,16 @@ void main() {
       );
       final command = service.createCommands.single;
       expect(command.name, 'Cash');
+      final placement =
+          (container.read(assetViewAccountAppServiceProvider)
+                  as _ViewAccountService)
+              .created
+              .single;
+      expect(placement.viewId, AssetView.defaultId);
+      expect(
+        placement.groupId,
+        initialAssetViewGroupIdForProfile(AccountProfileKind.fund),
+      );
       expect(command.type, AccountType.asset);
       expect(command.openingBalance, const Money(minorUnits: 1234));
       expect(command.note, 'daily account');
@@ -405,6 +419,36 @@ void main() {
   });
 }
 
+final _view = AssetView(
+  id: AssetView.defaultId,
+  name: AssetView.defaultName,
+  accountIds: ['account-1', 'credit-1'],
+  groups: initialAssetViewGroups(),
+);
+
+dynamic _viewOverrides() => [
+  assetViewsProvider.overrideWithValue(AsyncData([_view])),
+  selectedAssetViewProvider.overrideWithValue(AsyncData(_view)),
+];
+
+class _ViewAccountService implements AssetViewAccountAppService {
+  _ViewAccountService({
+    required AccountAppService ledger,
+    required CreditAccountAppService credit,
+  }) : accounts = FinancialAssetViewAccounts(ledger: ledger, credit: credit);
+  final FinancialAssetViewAccounts accounts;
+  final created = <CreateAssetViewAccountCommand>[];
+  @override
+  Future<String> createAccount(CreateAssetViewAccountCommand command) {
+    created.add(command);
+    return accounts.createAccount(command.account);
+  }
+
+  @override
+  Future<void> editAccount(EditAssetViewAccountCommand command) =>
+      accounts.editAccount(command.account);
+}
+
 ProviderContainer _container(
   _FakeAccountAppService service, {
   _FakeCreditAccountAppService? creditAppService,
@@ -413,9 +457,16 @@ ProviderContainer _container(
 }) {
   final container = ProviderContainer(
     overrides: [
+      ..._viewOverrides(),
       bookSelectionTestOverride,
       bookListTestOverride,
       accountAppServiceProvider.overrideWith((ref) => service),
+      assetViewAccountAppServiceProvider.overrideWithValue(
+        _ViewAccountService(
+          ledger: service,
+          credit: creditAppService ?? _FakeCreditAccountAppService(),
+        ),
+      ),
       creditAccountAppServiceProvider.overrideWith(
         (ref) => creditAppService ?? _FakeCreditAccountAppService(),
       ),

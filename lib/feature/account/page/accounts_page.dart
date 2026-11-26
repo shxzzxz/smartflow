@@ -2,632 +2,179 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:remixicon/remixicon.dart';
-
-import '../../../core/money/money.dart';
-import '../../../core/money/money_formatter.dart';
 import '../../../design_system/theme/app_text_styles.dart';
-import '../../../design_system/token/radius.dart';
 import '../../../design_system/token/spacing.dart';
 import '../../../design_system/widget/app_bottom_navigation_layout_scope.dart';
 import '../../../design_system/widget/app_empty_state.dart';
+import '../../../design_system/widget/app_header_select_button.dart';
 import '../../../design_system/widget/app_page_header.dart';
 import '../../../design_system/widget/app_popup_menu_button.dart';
+import '../../../design_system/widget/app_scaffold.dart';
+import '../../../design_system/widget/app_select.dart';
+import '../../../design_system/widget/app_sliding_segmented_control.dart';
 import '../../../design_system/widget/app_surface.dart';
-import '../../../application/ledger/ledger_query_api.dart';
-import 'package:smartflow/widget/business/finance/adaptive_money_text.dart';
-import 'package:smartflow/widget/business/finance/money_text.dart';
-import '../../shared/provider/ledger_query_providers.dart';
-import '../presentation/account_section_presentation.dart';
-import '../view_model/account_view.dart';
-import '../view_model/account_organization_view_model.dart';
-import '../view_model/account_views_provider.dart';
+import '../../../design_system/widget/app_tab_swipe_region.dart';
+import '../../shared/view_model/ui_action_outcome.dart';
+import '../presentation/asset_view_presentation.dart';
+import '../view_model/asset_page_view_model.dart';
 import '../view_model/asset_section_collapse_view_model.dart';
 import '../widget/account_creation_sheet.dart';
-import '../widget/account_list_row.dart';
-import '../../shared/view_model/ui_action_outcome.dart';
-import '../../../design_system/widget/app_scaffold.dart';
+import '../widget/account_group_manager_sheet.dart';
+import '../widget/asset_account_sections.dart';
+import '../widget/asset_summary_card.dart';
+import 'archived_accounts_page.dart';
 
 class AccountsPage extends ConsumerStatefulWidget {
   const AccountsPage({super.key});
-
   @override
   ConsumerState<AccountsPage> createState() => _AccountsPageState();
 }
 
 class _AccountsPageState extends ConsumerState<AccountsPage> {
   bool _hideBalances = false;
-
   @override
   Widget build(BuildContext context) {
-    final accountsAsync = ref.watch(accountViewsProvider);
-    final archivedAccountsAsync = ref.watch(archivedAccountViewsProvider);
-    final groupsAsync = ref.watch(accountGroupsProvider);
-    final balanceSheetAsync = ref.watch(balanceSheetComparisonProvider);
-    final colors = Theme.of(context).colorScheme;
-
-    return AppScaffold(
-      backgroundColor: colors.surface,
-      body: SafeArea(
-        child: switch ((
-          accountsAsync,
-          archivedAccountsAsync,
-          groupsAsync,
-          balanceSheetAsync,
-        )) {
-          (
-            AsyncData(value: final accounts),
-            AsyncData(value: final archivedAccounts),
-            AsyncData(value: final groups),
-            AsyncData(value: final balanceSheet),
-          ) =>
-            _AccountsContent(
-              accounts: accounts,
-              archivedAccounts: archivedAccounts,
-              groups: groups,
-              balanceSheet: balanceSheet,
-              hideBalances: _hideBalances,
-              onToggleHide: () =>
-                  setState(() => _hideBalances = !_hideBalances),
-            ),
-          (AsyncError(:final error), _, _, _) ||
-          (_, AsyncError(:final error), _, _) ||
-          (_, _, AsyncError(:final error), _) ||
-          (
-            _,
-            _,
-            _,
-            AsyncError(:final error),
-          ) => _AccountsErrorView(error: error),
-          _ => const Center(child: CircularProgressIndicator()),
-        },
-      ),
-    );
-  }
-}
-
-class _AccountsContent extends ConsumerWidget {
-  const _AccountsContent({
-    required this.accounts,
-    required this.archivedAccounts,
-    required this.groups,
-    required this.balanceSheet,
-    required this.hideBalances,
-    required this.onToggleHide,
-  });
-
-  final List<AccountView> accounts;
-  final List<AccountView> archivedAccounts;
-  final List<AccountGroup> groups;
-  final BalanceSheetComparison balanceSheet;
-  final bool hideBalances;
-  final VoidCallback onToggleHide;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final contentInset = AppBottomNavigationLayoutScope.of(
-      context,
-    ).contentInset;
-    final sections = buildActiveAccountSections(accounts, groups);
-    final collapsedKeys =
+    final page = ref.watch(assetPageStateProvider);
+    final filter = ref.watch(assetPageViewModelProvider);
+    final collapsed =
         ref.watch(assetSectionCollapseViewModelProvider).value ??
         const <String>{};
+    final state = page.value;
+    final content = state?.content;
+    final viewName = content?.view.name ?? '资产视图';
+    final sections = content?.layout.sections ?? [];
     final allCollapsed =
+        content != null &&
         sections.isNotEmpty &&
-        sections.every((section) => collapsedKeys.contains(section.id));
-
-    return Column(
-      children: [
-        _AssetsHeader(
-          hideBalances: hideBalances,
-          onToggleHide: onToggleHide,
-          allCollapsed: sections.isEmpty ? null : allCollapsed,
-          onToggleCollapseAll: () {
-            final viewModel = ref.read(
-              assetSectionCollapseViewModelProvider.notifier,
-            );
-            if (allCollapsed) {
-              viewModel.expandAll();
-            } else {
-              viewModel.collapseAll([
-                for (final section in sections) section.id,
-              ]);
-            }
-          },
-          onAddAccount: () => _openAccountCreation(context),
-          onManageGroups: () => _showAccountGroupManagerSheet(context, ref),
-        ),
-        Expanded(
-          child: ReorderableListView.builder(
-            padding: EdgeInsets.fromLTRB(
-              AppSpacing.space16,
-              AppSpacing.space8,
-              AppSpacing.space16,
-              AppSpacing.space48 + AppSpacing.space48 + contentInset,
-            ),
-            buildDefaultDragHandles: false,
-            header: Column(
-              children: [
-                _NetAssetCard(
-                  comparison: balanceSheet,
-                  hideBalances: hideBalances,
-                ),
-                if (sections.isEmpty) ...[
-                  const SizedBox(height: AppSpacing.space24),
-                  const AppSurface(
-                    child: AppEmptyState(
-                      layout: AppEmptyStateLayout.inline,
-                      icon: Icon(RemixIcons.wallet_3_line),
-                      title: '还没有账户，点击右上角"+"新建',
+        sections.every(
+          (section) => collapsed.contains(
+            assetSectionCollapseKey(content.view, section.id),
+          ),
+        );
+    return AppScaffold(
+      body: SafeArea(
+        child: Column(
+          children: [
+            AppPageHeader.custom(
+              showBackButton: false,
+              singleRow: true,
+              singleRowTitleAlignment: AppHeaderTitleAlignment.page,
+              leading: AppHeaderSelectButton<String>(
+                label: viewName,
+                tooltip: '切换视图：$viewName',
+                value: content?.view.id ?? '',
+                onChanged: state == null ? null : _selectView,
+                options: [
+                  for (final view in state?.views ?? [])
+                    AppSelectOption(
+                      value: view.id,
+                      label: view.name,
+                      icon: RemixIcons.wallet_3_line,
                     ),
+                ],
+                actions: [
+                  AppPopupMenuAction(
+                    label: '新建',
+                    icon: RemixIcons.add_line,
+                    onPressed: state == null ? null : _createView,
+                  ),
+                  AppPopupMenuAction(
+                    label: '管理',
+                    icon: RemixIcons.settings_3_line,
+                    onPressed: state == null ? null : _manageViews,
                   ),
                 ],
-              ],
-            ),
-            footer: archivedAccounts.isNotEmpty
-                ? Padding(
-                    padding: const EdgeInsets.only(top: AppSpacing.space20),
-                    child: _ArchivedAccountsEntry(
-                      count: archivedAccounts.length,
-                      onTap: () => context.push(
-                        '/account/archived',
-                        extra: hideBalances,
-                      ),
-                    ),
-                  )
-                : null,
-            itemCount: sections.length,
-            onReorderItem: (oldIndex, newIndex) => _reorderSections(
-              context,
-              ref,
-              sections: sections,
-              groups: groups,
-              oldIndex: oldIndex,
-              newIndex: newIndex,
-            ),
-            itemBuilder: (context, index) {
-              final section = sections[index];
-              return Padding(
-                key: ValueKey(section.id),
-                padding: EdgeInsets.only(
-                  top: index == 0 ? AppSpacing.space28 : AppSpacing.space20,
+              ),
+              titleContent: AppSlidingSegmentedControl<AssetAccountFilter>(
+                variant: AppSegmentedControlVariant.adaptiveHeader,
+                selected: filter,
+                onChanged: (value) => ref
+                    .read(assetPageViewModelProvider.notifier)
+                    .selectType(value),
+                segments: [
+                  for (final value in AssetAccountFilter.values)
+                    AppSegment(value: value, label: value.label),
+                ],
+              ),
+              actions: [
+                if (sections.isNotEmpty)
+                  AppHeaderIconButton(
+                    icon: allCollapsed
+                        ? RemixIcons.expand_up_down_line
+                        : RemixIcons.contract_up_down_line,
+                    tooltip: allCollapsed ? '展开全部分组' : '折叠全部分组',
+                    onPressed: () {
+                      final controller = ref.read(
+                        assetSectionCollapseViewModelProvider.notifier,
+                      );
+                      final keys = sections.map(
+                        (section) =>
+                            assetSectionCollapseKey(content!.view, section.id),
+                      );
+                      if (allCollapsed) {
+                        controller.expandSections(keys);
+                      } else {
+                        controller.collapseAll(keys);
+                      }
+                    },
+                  ),
+                AppHeaderIconButton(
+                  icon: RemixIcons.add_line,
+                  tooltip: '新建账户',
+                  onPressed: content == null ? null : _addAccount,
                 ),
-                child: _AccountSection(
-                  section: section,
-                  groupIndex: index,
-                  reorderEnabled: section.id != 'ungrouped',
-                  hideBalances: hideBalances,
-                  collapsed: collapsedKeys.contains(section.id),
-                  onToggleCollapsed: () => ref
-                      .read(assetSectionCollapseViewModelProvider.notifier)
-                      .toggle(section.id),
-                  onAccountReorder: (oldAccountIndex, newAccountIndex) {
-                    _moveAccount(
-                      context,
-                      ref,
-                      account: section.accounts[oldAccountIndex],
-                      section: section,
-                      insertAt: newAccountIndex,
-                    );
-                  },
-                ),
-              );
-            },
-          ),
-        ),
-      ],
-    );
-  }
-
-  Future<void> _openAccountCreation(BuildContext context) async {
-    final preset = await showAccountCreationSheet(context: context);
-    if (preset == null || !context.mounted) return;
-    context.push(preset.routeLocation);
-  }
-}
-
-Future<void> _moveAccount(
-  BuildContext context,
-  WidgetRef ref, {
-  required AccountView account,
-  required AccountSectionPresentation section,
-  required int insertAt,
-}) async {
-  final outcome = await ref
-      .read(accountOrganizationViewModelProvider.notifier)
-      .moveAccount(
-        accountId: account.id,
-        targetGroupId: section.id == 'ungrouped' ? null : section.id,
-        targetAccountIds: [for (final item in section.accounts) item.id],
-        insertAt: insertAt,
-      );
-  if (!context.mounted || outcome is UiActionSuccess<void>) return;
-  final failure = outcome as UiActionFailure<void>;
-  ScaffoldMessenger.of(
-    context,
-  ).showSnackBar(SnackBar(content: Text(failure.error.message)));
-}
-
-Future<void> _reorderSections(
-  BuildContext context,
-  WidgetRef ref, {
-  required List<AccountGroup> groups,
-  required List<AccountSectionPresentation> sections,
-  required int oldIndex,
-  required int newIndex,
-}) async {
-  if (oldIndex < 0 || oldIndex >= sections.length) return;
-  final dragged = sections[oldIndex];
-  if (dragged.id == 'ungrouped') return;
-  final reorderedSections = [...sections]..removeAt(oldIndex);
-  reorderedSections.insert(
-    newIndex.clamp(0, reorderedSections.length),
-    dragged,
-  );
-  final orderedIds = [
-    for (final section in reorderedSections)
-      if (section.id != 'ungrouped') section.id,
-  ];
-  final knownGroupIds = {for (final group in groups) group.id};
-  if (orderedIds.length != knownGroupIds.length) return;
-  final outcome = await ref
-      .read(accountOrganizationViewModelProvider.notifier)
-      .reorderGroups(orderedIds);
-  if (!context.mounted || outcome is UiActionSuccess<void>) return;
-  final failure = outcome as UiActionFailure<void>;
-  ScaffoldMessenger.of(
-    context,
-  ).showSnackBar(SnackBar(content: Text(failure.error.message)));
-}
-
-class _AssetsHeader extends StatelessWidget {
-  const _AssetsHeader({
-    required this.hideBalances,
-    required this.onToggleHide,
-    required this.allCollapsed,
-    required this.onToggleCollapseAll,
-    required this.onAddAccount,
-    required this.onManageGroups,
-  });
-
-  final bool hideBalances;
-  final VoidCallback onToggleHide;
-  final VoidCallback onAddAccount;
-
-  /// null 表示没有可折叠的分组，不显示折叠按钮。
-  final bool? allCollapsed;
-  final VoidCallback onToggleCollapseAll;
-  final VoidCallback onManageGroups;
-
-  @override
-  Widget build(BuildContext context) {
-    final allCollapsed = this.allCollapsed;
-    return AppPageHeader(
-      title: '资产',
-      actions: [
-        if (allCollapsed != null)
-          AppHeaderIconButton(
-            onPressed: onToggleCollapseAll,
-            icon: allCollapsed
-                ? RemixIcons.expand_up_down_line
-                : RemixIcons.contract_up_down_line,
-            tooltip: allCollapsed ? '展开全部分组' : '折叠全部分组',
-          ),
-        AppHeaderIconButton(
-          onPressed: onAddAccount,
-          icon: RemixIcons.add_line,
-          tooltip: '新建账户',
-        ),
-        AppPopupMenuButton(
-          tooltip: '更多操作',
-          icon: RemixIcons.more_2_fill,
-          items: [
-            AppPopupMenuAction(
-              label: '管理分组',
-              icon: RemixIcons.folder_settings_line,
-              onPressed: onManageGroups,
-            ),
-            AppPopupMenuAction(
-              label: hideBalances ? '显示余额' : '隐藏余额',
-              icon: hideBalances
-                  ? RemixIcons.eye_line
-                  : RemixIcons.eye_off_line,
-              onPressed: onToggleHide,
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-}
-
-class _NetAssetCard extends StatelessWidget {
-  const _NetAssetCard({required this.comparison, required this.hideBalances});
-
-  final BalanceSheetComparison comparison;
-  final bool hideBalances;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-    final textStyles = context.appTextStyles;
-    final assets = comparison.current.assets;
-    final liabilities = comparison.current.liabilities;
-    final assetMinor = assets.minorUnits;
-    final liabilityMinor = liabilities.minorUnits;
-    final netMinor = assetMinor - liabilityMinor;
-    final totalForRatio = (assetMinor.abs() + liabilityMinor.abs()).clamp(
-      1,
-      1 << 62,
-    );
-    final assetRatio = assetMinor.abs() / totalForRatio;
-    final liabilityRatio = liabilityMinor.abs() / totalForRatio;
-
-    return Container(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(AppRadius.radiusXl),
-        gradient: LinearGradient(
-          colors: [colors.primary.withValues(alpha: 0.92), colors.primary],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: colors.primary.withValues(alpha: 0.24),
-            blurRadius: 18,
-            offset: const Offset(0, 10),
-          ),
-        ],
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.space20),
-        child: Row(
-          children: [
-            Expanded(
-              child: DefaultTextStyle(
-                style: context.appTextStyles.onPrimaryLabel,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Text('净资产（元）', style: textStyles.onPrimaryLabel),
-                        const SizedBox(width: AppSpacing.space6),
-                        Icon(
-                          RemixIcons.eye_line,
-                          size: 16,
-                          color: colors.onPrimary.withValues(alpha: 0.8),
-                        ),
-                      ],
+                AppPopupMenuButton(
+                  tooltip: '更多操作',
+                  icon: RemixIcons.more_2_fill,
+                  items: [
+                    AppPopupMenuAction(
+                      label: '管理视图',
+                      icon: RemixIcons.settings_3_line,
+                      onPressed: _manageViews,
                     ),
-                    const SizedBox(height: AppSpacing.space14),
-                    Text(
-                      hideBalances ? '¥ **,***.**' : _formatMoney(netMinor),
-                      style: textStyles.amountDisplay.copyWith(
-                        color: colors.onPrimary,
-                      ),
-                    ),
-                    const SizedBox(height: AppSpacing.space12),
-                    Text(
-                      hideBalances
-                          ? '较上月 ****'
-                          : _formatNetAssetComparison(
-                              comparison.netAssetChange,
+                    AppPopupMenuAction(
+                      label: '管理分组',
+                      icon: RemixIcons.folder_settings_line,
+                      onPressed: content == null
+                          ? null
+                          : () => showAccountGroupManagerSheet(
+                              context,
+                              viewId: content.view.id,
                             ),
-                      style: textStyles.onPrimarySupporting,
+                    ),
+                    AppPopupMenuAction(
+                      label: _hideBalances ? '显示余额' : '隐藏余额',
+                      icon: _hideBalances
+                          ? RemixIcons.eye_line
+                          : RemixIcons.eye_off_line,
+                      onPressed: () =>
+                          setState(() => _hideBalances = !_hideBalances),
                     ),
                   ],
                 ),
-              ),
+              ],
             ),
-            SizedBox(
-              width: 142,
-              child: Column(
-                children: [
-                  SizedBox(
-                    width: 78,
-                    height: 78,
-                    child: CustomPaint(
-                      painter: _AssetDonutPainter(
-                        assetRatio: assetRatio,
-                        liabilityRatio: liabilityRatio,
-                        baseColor: colors.onPrimary,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: AppSpacing.space10),
-                  _LegendRow(
-                    key: const ValueKey('asset-balance-legend'),
-                    label: '资产',
-                    money: assets,
-                    hideBalance: hideBalances,
-                    color: colors.onPrimary.withValues(alpha: 0.72),
-                  ),
-                  const SizedBox(height: AppSpacing.space6),
-                  _LegendRow(
-                    key: const ValueKey('liability-balance-legend'),
-                    label: '负债',
-                    money: liabilities,
-                    hideBalance: hideBalances,
-                    color: colors.onPrimary.withValues(alpha: 0.42),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _AssetDonutPainter extends CustomPainter {
-  const _AssetDonutPainter({
-    required this.assetRatio,
-    required this.liabilityRatio,
-    required this.baseColor,
-  });
-
-  final double assetRatio;
-  final double liabilityRatio;
-  final Color baseColor;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final rect = Offset.zero & size;
-    final strokeWidth = size.width * 0.22;
-    final paint = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = strokeWidth
-      ..strokeCap = StrokeCap.butt;
-    paint.color = baseColor.withValues(alpha: 0.22);
-    canvas.drawArc(rect.deflate(strokeWidth / 2), 0, 6.283, false, paint);
-    paint.color = baseColor.withValues(alpha: 0.72);
-    canvas.drawArc(
-      rect.deflate(strokeWidth / 2),
-      -1.57,
-      6.283 * assetRatio,
-      false,
-      paint,
-    );
-    paint.color = baseColor.withValues(alpha: 0.42);
-    canvas.drawArc(
-      rect.deflate(strokeWidth / 2),
-      -1.57 + 6.283 * assetRatio,
-      6.283 * liabilityRatio,
-      false,
-      paint,
-    );
-  }
-
-  @override
-  bool shouldRepaint(covariant _AssetDonutPainter oldDelegate) {
-    return oldDelegate.assetRatio != assetRatio ||
-        oldDelegate.liabilityRatio != liabilityRatio ||
-        oldDelegate.baseColor != baseColor;
-  }
-}
-
-class _LegendRow extends StatelessWidget {
-  const _LegendRow({
-    required this.label,
-    required this.money,
-    required this.hideBalance,
-    required this.color,
-    super.key,
-  });
-
-  final String label;
-  final Money money;
-  final bool hideBalance;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    final textStyles = context.appTextStyles;
-    return Row(
-      children: [
-        Container(
-          width: 8,
-          height: 8,
-          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-        ),
-        const SizedBox(width: AppSpacing.space6),
-        Expanded(flex: 1, child: Text(label, style: textStyles.onPrimaryTiny)),
-        const SizedBox(width: AppSpacing.space4),
-        Expanded(
-          flex: 3,
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              final hiddenText = '¥ ****';
-              return AdaptiveMoneyText(
-                preciseText: hideBalance ? hiddenText : money.format(),
-                compactText: hideBalance
-                    ? hiddenText
-                    : formatMoney(money, style: MoneyFormatStyle.compact),
-                style: textStyles.onPrimaryTinyStrong,
-                maxWidth: constraints.maxWidth,
-              );
-            },
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _AccountSection extends StatelessWidget {
-  const _AccountSection({
-    required this.section,
-    required this.groupIndex,
-    required this.reorderEnabled,
-    required this.hideBalances,
-    required this.collapsed,
-    required this.onToggleCollapsed,
-    required this.onAccountReorder,
-  });
-
-  final AccountSectionPresentation section;
-  final int groupIndex;
-  final bool reorderEnabled;
-  final bool hideBalances;
-  final bool collapsed;
-  final VoidCallback onToggleCollapsed;
-  final ReorderCallback onAccountReorder;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-    final textStyles = context.appTextStyles;
-    final accounts = section.accounts;
-    return AppSurface(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(
-          horizontal: AppSpacing.space16,
-          vertical: AppSpacing.space4,
-        ),
-        child: Column(
-          children: [
-            ReorderableDelayedDragStartListener(
-              index: groupIndex,
-              enabled: reorderEnabled,
-              child: Material(
-                type: MaterialType.transparency,
-                child: InkWell(
-                  borderRadius: BorderRadius.circular(AppRadius.radiusMd),
-                  onTap: onToggleCollapsed,
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(
-                      minHeight: AppSpacing.space48,
-                    ),
-                    child: Row(
+            Expanded(
+              child: AppTabSwipeRegion<AssetAccountFilter>(
+                values: AssetAccountFilter.values,
+                selected: filter,
+                onChanged: (value) => ref
+                    .read(assetPageViewModelProvider.notifier)
+                    .selectType(value),
+                child: page.when(
+                  data: (state) => _content(state, collapsed, filter),
+                  loading: () =>
+                      const Center(child: CircularProgressIndicator()),
+                  error: (error, stackTrace) => Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
                       children: [
-                        Expanded(
-                          child: Text(
-                            section.title,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: textStyles.groupTitle,
-                          ),
-                        ),
-                        const SizedBox(width: AppSpacing.space12),
-                        AccountAmountText(
-                          money: section.netTotal,
-                          semantic: MoneySemantic.neutral,
-                          hidden: hideBalances,
-                          showSign: true,
-                        ),
-                        const SizedBox(width: AppSpacing.space4),
-                        SizedBox.square(
-                          dimension: AppSpacing.space24,
-                          child: AnimatedRotation(
-                            turns: collapsed ? -0.25 : 0,
-                            duration: const Duration(milliseconds: 150),
-                            child: Icon(
-                              RemixIcons.arrow_down_s_line,
-                              size: AppSpacing.space18,
-                              color: colors.onSurfaceVariant,
-                            ),
-                          ),
+                        const Text('资产视图加载失败，请稍后重试。'),
+                        TextButton(
+                          onPressed: () => ref
+                              .read(assetPageViewModelProvider.notifier)
+                              .retry(),
+                          child: const Text('重试'),
                         ),
                       ],
                     ),
@@ -635,76 +182,163 @@ class _AccountSection extends StatelessWidget {
                 ),
               ),
             ),
-            if (!collapsed) ...[
-              const SizedBox(height: AppSpacing.space4),
-              if (accounts.isEmpty)
-                Padding(
-                  padding: const EdgeInsets.only(
-                    left: AppSpacing.space8,
-                    top: AppSpacing.space16,
-                    bottom: AppSpacing.space16,
-                  ),
-                  child: Align(
-                    alignment: Alignment.centerLeft,
-                    child: Text('暂无账户', style: textStyles.listSupporting),
-                  ),
-                )
-              else
-                ReorderableListView.builder(
-                  shrinkWrap: true,
-                  primary: false,
-                  physics: const NeverScrollableScrollPhysics(),
-                  buildDefaultDragHandles: false,
-                  itemCount: accounts.length,
-                  onReorderItem: onAccountReorder,
-                  itemBuilder: (context, index) => Padding(
-                    key: ValueKey(accounts[index].id),
-                    padding: const EdgeInsets.only(bottom: AppSpacing.space4),
-                    child: ReorderableDelayedDragStartListener(
-                      index: index,
-                      child: _AccountRow(
-                        model: accounts[index],
-                        hideBalance: hideBalances,
-                      ),
-                    ),
-                  ),
-                ),
-            ],
           ],
         ),
       ),
     );
   }
-}
 
-class _AccountRow extends StatelessWidget {
-  const _AccountRow({required this.model, required this.hideBalance});
-
-  final AccountView model;
-  final bool hideBalance;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-    final semantic = model.accountType == AccountType.asset
-        ? MoneySemantic.asset
-        : MoneySemantic.liability;
-
-    final row = AccountListRow(
-      account: model,
-      amountSemantic: semantic,
-      hideBalance: hideBalance,
-      onTap: () => context.push('/account/${model.id}'),
-      trailing: SizedBox.square(
-        dimension: AppSpacing.space24,
-        child: Icon(
-          RemixIcons.arrow_right_s_line,
-          size: AppSpacing.space18,
-          color: colors.onSurfaceVariant,
-        ),
+  Widget _content(
+    AssetPageState state,
+    Set<String> collapsed,
+    AssetAccountFilter filter,
+  ) {
+    final content = state.content;
+    final view = content.view;
+    final inset = AppBottomNavigationLayoutScope.of(context).contentInset;
+    return ReorderableListView.builder(
+      buildDefaultDragHandles: false,
+      padding: EdgeInsets.fromLTRB(
+        AppSpacing.space16,
+        AppSpacing.space8,
+        AppSpacing.space16,
+        AppSpacing.space48 * 2 + inset,
       ),
+      header: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          AssetSummaryCard(
+            statistics: content.statistics,
+            hideBalances: _hideBalances,
+          ),
+          if (content.layout.isEmpty) ...[
+            const SizedBox(height: AppSpacing.space24),
+            AppSurface(
+              child: AppEmptyState(
+                layout: AppEmptyStateLayout.inline,
+                icon: const Icon(RemixIcons.wallet_3_line),
+                title: content.accounts.isEmpty
+                    ? '还没有账户，点击右上角“＋”新建'
+                    : filter == AssetAccountFilter.all
+                    ? '当前视图暂无可展示账户'
+                    : '当前视图没有${filter.label}账户',
+              ),
+            ),
+          ],
+        ],
+      ),
+      footer: content.archivedAccounts.isEmpty
+          ? null
+          : Padding(
+              padding: const EdgeInsets.only(top: AppSpacing.space20),
+              child: _ArchivedAccountsEntry(
+                count: content.archivedAccounts.length,
+                onTap: () => context.push(
+                  '/account/archived',
+                  extra: ArchivedAccountsPageArguments(
+                    initiallyHideBalances: _hideBalances,
+                    viewId: view.id,
+                    accountIds: view.accountIds.toSet(),
+                    accountType: filter.accountType,
+                  ),
+                ),
+              ),
+            ),
+      itemCount: content.layout.sections.length,
+      onReorderItem: (oldIndex, newIndex) async => _showOutcome(
+        await ref
+            .read(assetPageViewModelProvider.notifier)
+            .reorderGroups(view, content.layout.sections, oldIndex, newIndex),
+      ),
+      itemBuilder: (context, index) {
+        final section = content.layout.sections[index];
+        final key = assetSectionCollapseKey(view, section.id);
+        return Padding(
+          key: ValueKey(key),
+          padding: EdgeInsets.only(
+            top: index == 0 ? AppSpacing.space24 : AppSpacing.space20,
+          ),
+          child: AccountSectionCard(
+            section: section,
+            reorderIndex: index,
+            collapsed: collapsed.contains(key),
+            hideBalances: _hideBalances,
+            onToggleCollapsed: () => ref
+                .read(assetSectionCollapseViewModelProvider.notifier)
+                .toggle(key),
+            onAccountReorder: (oldIndex, newIndex) async => _showOutcome(
+              await ref
+                  .read(assetPageViewModelProvider.notifier)
+                  .reorderAccounts(view, section, oldIndex, newIndex),
+            ),
+          ),
+        );
+      },
     );
-    return row;
+  }
+
+  Future<void> _addAccount() async {
+    final viewId = ref
+        .read(assetPageStateProvider)
+        .requireValue
+        .content
+        .view
+        .id;
+    final preset = await showAccountCreationSheet(context: context);
+    if (preset != null && mounted) {
+      final location = Uri.parse(preset.routeLocation);
+      context.push(
+        location
+            .replace(
+              queryParameters: {...location.queryParameters, 'view': viewId},
+            )
+            .toString(),
+      );
+    }
+  }
+
+  Future<void> _selectView(String id) async => _showOutcome(
+    await ref.read(assetViewSelectionViewModelProvider.notifier).selectView(id),
+  );
+
+  Future<void> _createView() async {
+    final saved = await context.push<String>(
+      '/assets/views/new?hide=$_hideBalances',
+    );
+    if (saved == null || !mounted) return;
+    ref.invalidate(assetViewsProvider, asReload: true);
+    ref
+        .read(assetPageViewModelProvider.notifier)
+        .selectType(AssetAccountFilter.all);
+    _showOutcome(
+      await ref
+          .read(assetViewSelectionViewModelProvider.notifier)
+          .selectView(saved),
+    );
+  }
+
+  Future<void> _manageViews() async {
+    final saved = await context.push<String>(
+      '/assets/views?hide=$_hideBalances',
+    );
+    if (saved == null || !mounted) return;
+    ref.invalidate(assetViewsProvider, asReload: true);
+    ref
+        .read(assetPageViewModelProvider.notifier)
+        .selectType(AssetAccountFilter.all);
+    _showOutcome(
+      await ref
+          .read(assetViewSelectionViewModelProvider.notifier)
+          .selectView(saved),
+    );
+  }
+
+  void _showOutcome(UiActionOutcome<void> outcome) {
+    if (outcome case UiActionFailure<void>(:final error) when mounted) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(error.message)));
+    }
   }
 }
 
@@ -748,297 +382,4 @@ class _ArchivedAccountsEntry extends StatelessWidget {
       ),
     );
   }
-}
-
-Future<void> _showAccountGroupManagerSheet(
-  BuildContext context,
-  WidgetRef ref,
-) {
-  return showModalBottomSheet<void>(
-    context: context,
-    useRootNavigator: true,
-    showDragHandle: true,
-    isScrollControlled: true,
-    builder: (_) => const _AccountGroupManagerSheet(),
-  );
-}
-
-class _AccountGroupManagerSheet extends ConsumerWidget {
-  const _AccountGroupManagerSheet();
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final groupsAsync = ref.watch(accountGroupsProvider);
-    return SafeArea(
-      child: SizedBox(
-        height: MediaQuery.of(context).size.height * 0.7,
-        child: switch (groupsAsync) {
-          AsyncData(value: final groups) => Column(
-            children: [
-              Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: AppSpacing.space20,
-                  vertical: AppSpacing.space8,
-                ),
-                child: Row(
-                  children: [
-                    Text(
-                      '管理账户分组',
-                      style: context.appTextStyles.sectionTitleStrong,
-                    ),
-                    const Spacer(),
-                    TextButton.icon(
-                      onPressed: () => _createGroup(context, ref),
-                      icon: const Icon(RemixIcons.add_line),
-                      label: const Text('新建分组'),
-                    ),
-                  ],
-                ),
-              ),
-              const Padding(
-                padding: EdgeInsets.symmetric(horizontal: AppSpacing.space20),
-                child: Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text('长按并拖动可调整分组顺序'),
-                ),
-              ),
-              const SizedBox(height: AppSpacing.space8),
-              Expanded(
-                child: ReorderableListView.builder(
-                  itemCount: groups.length,
-                  onReorderItem: (oldIndex, newIndex) =>
-                      _reorderGroups(context, ref, groups, oldIndex, newIndex),
-                  itemBuilder: (context, index) {
-                    final group = groups[index];
-                    return ListTile(
-                      key: ValueKey(group.id),
-                      leading: ReorderableDelayedDragStartListener(
-                        index: index,
-                        child: const Icon(RemixIcons.draggable),
-                      ),
-                      title: Text(group.name),
-                      trailing: PopupMenuButton<_AccountGroupAction>(
-                        position: PopupMenuPosition.under,
-                        onSelected: (action) => _handleAction(
-                          context,
-                          ref,
-                          group: group,
-                          action: action,
-                        ),
-                        itemBuilder: (context) => const [
-                          PopupMenuItem(
-                            value: _AccountGroupAction.rename,
-                            child: Text('重命名'),
-                          ),
-                          PopupMenuItem(
-                            value: _AccountGroupAction.delete,
-                            child: Text('删除'),
-                          ),
-                        ],
-                      ),
-                    );
-                  },
-                ),
-              ),
-            ],
-          ),
-          AsyncError() => const Center(child: Text('分组加载失败，请稍后重试')),
-          _ => const Center(child: CircularProgressIndicator()),
-        },
-      ),
-    );
-  }
-
-  Future<void> _createGroup(BuildContext context, WidgetRef ref) async {
-    final name = await _requestGroupName(context, title: '新建分组');
-    if (name == null || !context.mounted) return;
-    final outcome = await ref
-        .read(accountOrganizationViewModelProvider.notifier)
-        .createGroup(name);
-    if (!context.mounted) return;
-    _showGroupOutcome(context, outcome, successMessage: '分组已创建');
-  }
-
-  Future<void> _handleAction(
-    BuildContext context,
-    WidgetRef ref, {
-    required AccountGroup group,
-    required _AccountGroupAction action,
-  }) async {
-    switch (action) {
-      case _AccountGroupAction.rename:
-        final name = await _requestGroupName(
-          context,
-          title: '重命名分组',
-          initialValue: group.name,
-        );
-        if (name == null || !context.mounted) return;
-        final outcome = await ref
-            .read(accountOrganizationViewModelProvider.notifier)
-            .renameGroup(group.id, name);
-        if (!context.mounted) return;
-        _showGroupOutcome(context, outcome, successMessage: '分组已重命名');
-      case _AccountGroupAction.delete:
-        final confirmed = await showDialog<bool>(
-          context: context,
-          builder: (dialogContext) => AlertDialog(
-            title: Text('删除“${group.name}”？'),
-            content: const Text('该分组中的账户会变为未分组，账户本身不会被删除。'),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(dialogContext).pop(false),
-                child: const Text('取消'),
-              ),
-              TextButton(
-                onPressed: () => Navigator.of(dialogContext).pop(true),
-                child: const Text('删除'),
-              ),
-            ],
-          ),
-        );
-        if (confirmed != true || !context.mounted) return;
-        final outcome = await ref
-            .read(accountOrganizationViewModelProvider.notifier)
-            .deleteGroup(group.id);
-        if (!context.mounted) return;
-        _showGroupOutcome(context, outcome, successMessage: '分组已删除');
-    }
-  }
-
-  Future<void> _reorderGroups(
-    BuildContext context,
-    WidgetRef ref,
-    List<AccountGroup> groups,
-    int oldIndex,
-    int newIndex,
-  ) async {
-    final ordered = [...groups];
-    final moved = ordered.removeAt(oldIndex);
-    ordered.insert(newIndex, moved);
-    final outcome = await ref
-        .read(accountOrganizationViewModelProvider.notifier)
-        .reorderGroups([for (final group in ordered) group.id]);
-    if (!context.mounted) return;
-    _showGroupOutcome(context, outcome, successMessage: '分组顺序已更新');
-  }
-}
-
-enum _AccountGroupAction { rename, delete }
-
-Future<String?> _requestGroupName(
-  BuildContext context, {
-  required String title,
-  String initialValue = '',
-}) async {
-  return showDialog<String>(
-    context: context,
-    builder: (_) =>
-        _AccountGroupNameDialog(title: title, initialValue: initialValue),
-  );
-}
-
-class _AccountGroupNameDialog extends StatefulWidget {
-  const _AccountGroupNameDialog({
-    required this.title,
-    required this.initialValue,
-  });
-
-  final String title;
-  final String initialValue;
-
-  @override
-  State<_AccountGroupNameDialog> createState() =>
-      _AccountGroupNameDialogState();
-}
-
-class _AccountGroupNameDialogState extends State<_AccountGroupNameDialog> {
-  late final TextEditingController _controller = TextEditingController(
-    text: widget.initialValue,
-  );
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AlertDialog(
-      title: Text(widget.title),
-      content: TextField(
-        controller: _controller,
-        autofocus: true,
-        style: context.appTextStyles.inputText,
-        decoration: InputDecoration(
-          hintText: '请输入分组名称',
-          hintStyle: context.appTextStyles.inputText.copyWith(
-            color: Theme.of(context).colorScheme.onSurfaceVariant,
-          ),
-        ),
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: const Text('取消'),
-        ),
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(_controller.text),
-          child: const Text('确定'),
-        ),
-      ],
-    );
-  }
-}
-
-void _showGroupOutcome(
-  BuildContext context,
-  UiActionOutcome<void> outcome, {
-  required String successMessage,
-}) {
-  if (!context.mounted) return;
-  final message = switch (outcome) {
-    UiActionSuccess() => successMessage,
-    UiActionFailure(:final error) => error.message,
-  };
-  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
-}
-
-class _AccountsErrorView extends StatelessWidget {
-  const _AccountsErrorView({required this.error});
-
-  final Object error;
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.space24),
-        child: const Text('账户加载失败，请稍后重试。'),
-      ),
-    );
-  }
-}
-
-String _formatMoney(int minor) {
-  final money = Money(minorUnits: minor);
-  return money.format();
-}
-
-String _formatSignedMoney(int minor) {
-  final sign = minor >= 0 ? '+' : '-';
-  return '$sign¥${Money(minorUnits: minor.abs()).format()}';
-}
-
-String _formatNetAssetComparison(PeriodChange change) {
-  final delta = _formatSignedMoney(change.delta.minorUnits);
-  final ratio = change.ratio;
-  if (change.isFlat) {
-    return '与上月持平';
-  }
-  if (change.isNewValue || ratio == null) {
-    return '较上月 $delta';
-  }
-  final sign = ratio >= 0 ? '+' : '-';
-  return '较上月 $delta ($sign${(ratio.abs() * 100).toStringAsFixed(2)}%)';
 }

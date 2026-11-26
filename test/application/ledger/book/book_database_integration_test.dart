@@ -518,6 +518,17 @@ void main() {
     await dataFile.writeAsBytes(bytes);
     transactionsFile['byteCount'] = bytes.length;
     transactionsFile['sha256'] = sha256.convert(bytes).toString();
+    final legacyGroupFile = File(
+      '${directory.path}/ledger/account_groups.ndjson',
+    );
+    await legacyGroupFile.writeAsString('');
+    files.add({
+      'path': 'ledger/account_groups.ndjson',
+      'table': 'account_groups',
+      'rowCount': 0,
+      'byteCount': 0,
+      'sha256': sha256.convert(const <int>[]).toString(),
+    });
     manifest['backupSchemaVersion'] = 17;
     await manifestFile.writeAsString(jsonEncode(manifest));
     final inspected = await service.inspect(directory);

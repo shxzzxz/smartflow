@@ -327,9 +327,6 @@ class _MemoryAccountRepository implements AccountRepository {
   }) async => const [];
 
   @override
-  Future<List<Account>> findByGroupId(String? groupId) async => const [];
-
-  @override
   Future<void> create(Account account) async => _items[account.id] = account;
 
   @override

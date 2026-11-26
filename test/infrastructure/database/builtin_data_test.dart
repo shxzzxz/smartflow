@@ -3,7 +3,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/domain/ledger/valobj/ledger_enum.dart';
 import 'package:smartflow/infrastructure/database/app_database.dart';
 import 'package:smartflow/infrastructure/database/builtin_data.dart';
-import 'package:smartflow/shared/account_group/initial_account_groups.dart';
+import 'package:smartflow/domain/analytics/entity/asset_view.dart';
+import 'package:smartflow/domain/analytics/valobj/initial_asset_view_groups.dart';
+import 'package:smartflow/infrastructure/analytics/repository/drift_asset_view_repository.dart';
 import 'package:smartflow/shared/account_profile/account_profile_kind.dart';
 import 'package:smartflow/infrastructure/credit/repository/drift_installment_product_repository.dart';
 import 'package:smartflow/domain/credit/entity/installment_product.dart';
@@ -151,12 +153,16 @@ void main() {
             ))
             .getSingle();
 
+    final view = (await DriftAssetViewRepository(
+      database,
+    ).findView(AssetView.defaultId))!;
+    expect(view.accountIds, containsAll([prepaid.id, deferred.id]));
     expect(prepaid.name, '通用预付');
     expect(prepaid.accountType, AccountType.asset);
     expect(prepaid.accountSubtype, AccountSubtype.prepaidExpense);
     expect(
-      prepaid.groupId,
-      initialAccountGroupIdForProfile(AccountProfileKind.prepaidExpense),
+      view.groupIdFor(prepaid.id),
+      initialAssetViewGroupIdForProfile(AccountProfileKind.prepaidExpense),
     );
     expect(prepaid.source, AccountSource.builtin);
 
@@ -164,62 +170,66 @@ void main() {
     expect(deferred.accountType, AccountType.liability);
     expect(deferred.accountSubtype, AccountSubtype.deferredIncome);
     expect(
-      deferred.groupId,
-      initialAccountGroupIdForProfile(AccountProfileKind.deferredIncome),
+      view.groupIdFor(deferred.id),
+      initialAssetViewGroupIdForProfile(AccountProfileKind.deferredIncome),
     );
     expect(deferred.source, AccountSource.builtin);
   });
 
   test(
-    'v13 upgrade adds missing default accounts without overwriting groups',
+    'v13 upgrade adds missing default accounts and preserves view configuration',
     () async {
       final database = createTestDatabase();
       addTearDown(database.close);
-      final profileKeys = [
-        AccountProfileKind.prepaidExpense.key,
-        AccountProfileKind.deferredIncome.key,
-      ];
-      const prepaidGroupId = 'builtin-account-group-prepaid-expense';
-      const deferredGroupId = 'builtin-account-group-deferred-income';
-
-      await (database.delete(
-        database.accounts,
-      )..where((row) => row.accountProfileKey.isIn(profileKeys))).go();
-      await (database.delete(
-        database.accountGroups,
-      )..where((row) => row.id.equals(deferredGroupId))).go();
-      await (database.update(database.accountGroups)
-            ..where((row) => row.id.equals(prepaidGroupId)))
-          .write(const AccountGroupsCompanion(name: Value('我的预付')));
+      final repository = DriftAssetViewRepository(database);
+      final original = (await repository.findView(AssetView.defaultId))!;
+      final prepaidGroupId = initialAssetViewGroupIdForProfile(
+        AccountProfileKind.prepaidExpense,
+      );
+      final deferredGroupId = initialAssetViewGroupIdForProfile(
+        AccountProfileKind.deferredIncome,
+      );
+      await repository.save(
+        original
+            .renameGroup(prepaidGroupId, '我的预付')
+            .deleteGroup(deferredGroupId),
+      );
+      await (database.delete(database.accounts)..where(
+            (row) => row.accountProfileKey.isIn([
+              AccountProfileKind.prepaidExpense.key,
+              AccountProfileKind.deferredIncome.key,
+            ]),
+          ))
+          .go();
       await (database.update(database.appMetadata)
             ..where((row) => row.key.equals(builtinDataVersionKey)))
           .write(const AppMetadataCompanion(value: Value('13')));
-
       await ensureBuiltinData(database);
-
-      final groups = await (database.select(
-        database.accountGroups,
-      )..where((row) => row.id.isIn([prepaidGroupId, deferredGroupId]))).get();
+      final view = (await repository.findView(AssetView.defaultId))!;
       expect(
-        {for (final group in groups) group.id: group.name},
-        {prepaidGroupId: '我的预付', deferredGroupId: '预收'},
+        view.groups.firstWhere((group) => group.id == prepaidGroupId).name,
+        '我的预付',
       );
-
+      expect(view.groups.any((group) => group.id == deferredGroupId), isFalse);
+      expect(view.accountIds, original.accountIds);
       final accounts =
           await (database.select(database.accounts)
-                ..where((row) => row.accountProfileKey.isIn(profileKeys))
+                ..where(
+                  (row) => row.accountProfileKey.isIn([
+                    AccountProfileKind.prepaidExpense.key,
+                    AccountProfileKind.deferredIncome.key,
+                  ]),
+                )
                 ..orderBy([(row) => OrderingTerm.asc(row.name)]))
               .get();
       expect(accounts.map((account) => account.name), ['通用预付', '通用预收']);
-      expect(accounts.map((account) => account.groupId), [
-        prepaidGroupId,
-        deferredGroupId,
-      ]);
+      expect(view.groupIdFor(accounts.first.id), prepaidGroupId);
+      expect(view.groupIdFor(accounts.last.id), isNull);
     },
   );
 
   test(
-    'v13 upgrade groups existing deferral accounts without duplicating them',
+    'v13 upgrade reuses existing deferral accounts when creating the default view',
     () async {
       final database = createTestDatabase();
       addTearDown(database.close);
@@ -247,9 +257,7 @@ void main() {
               accountProfileKey: Value(AccountProfileKind.prepaidExpense.key),
             ),
           );
-      await (database.delete(
-        database.accountGroups,
-      )..where((row) => row.id.isIn([prepaidGroupId, deferredGroupId]))).go();
+      await database.delete(database.assetViews).go();
       await (database.update(database.appMetadata)
             ..where((row) => row.key.equals(builtinDataVersionKey)))
           .write(const AppMetadataCompanion(value: Value('13')));
@@ -265,7 +273,10 @@ void main() {
               .get();
       expect(prepaidAccounts, hasLength(1));
       expect(prepaidAccounts.single.id, 'existing-prepaid');
-      expect(prepaidAccounts.single.groupId, prepaidGroupId);
+      final view = (await DriftAssetViewRepository(
+        database,
+      ).findView(AssetView.defaultId))!;
+      expect(view.groupIdFor(prepaidAccounts.single.id), prepaidGroupId);
 
       final deferred =
           await (database.select(database.accounts)..where(
@@ -275,7 +286,7 @@ void main() {
               ))
               .getSingle();
       expect(deferred.name, '通用预收');
-      expect(deferred.groupId, deferredGroupId);
+      expect(view.groupIdFor(deferred.id), deferredGroupId);
     },
   );
 
@@ -360,53 +371,61 @@ void main() {
       expect(await repository.list(), hasLength(4));
     },
   );
-  test('builtin data assigns receivable and payable profile groups', () async {
-    final database = createTestDatabase();
-    addTearDown(database.close);
-    await database
-        .into(database.accounts)
-        .insert(
-          AccountsCompanion.insert(
-            id: 'receivable',
-            name: 'Receivable',
-            accountType: AccountType.asset,
-            accountSubtype: const Value(AccountSubtype.receivable),
-            accountProfileKey: const Value('ledger.receivable'),
-          ),
-        );
-    await database
-        .into(database.accounts)
-        .insert(
-          AccountsCompanion.insert(
-            id: 'payable',
-            name: 'Payable',
-            accountType: AccountType.liability,
-            accountSubtype: const Value(AccountSubtype.payable),
-            accountProfileKey: const Value('ledger.payable'),
-          ),
-        );
-    await (database.update(database.appMetadata)
-          ..where((row) => row.key.equals(builtinDataVersionKey)))
-        .write(const AppMetadataCompanion(value: Value('9')));
+  test(
+    'default view initializes existing receivable and payable profile groups',
+    () async {
+      final database = createTestDatabase();
+      addTearDown(database.close);
+      await database
+          .into(database.accounts)
+          .insert(
+            AccountsCompanion.insert(
+              id: 'receivable',
+              name: 'Receivable',
+              accountType: AccountType.asset,
+              accountSubtype: const Value(AccountSubtype.receivable),
+              accountProfileKey: const Value('ledger.receivable'),
+            ),
+          );
+      await database
+          .into(database.accounts)
+          .insert(
+            AccountsCompanion.insert(
+              id: 'payable',
+              name: 'Payable',
+              accountType: AccountType.liability,
+              accountSubtype: const Value(AccountSubtype.payable),
+              accountProfileKey: const Value('ledger.payable'),
+            ),
+          );
+      await (database.update(database.appMetadata)
+            ..where((row) => row.key.equals(builtinDataVersionKey)))
+          .write(const AppMetadataCompanion(value: Value('9')));
 
-    await ensureBuiltinData(database);
-    await ensureBuiltinData(database);
+      await database.delete(database.assetViews).go();
+      await ensureBuiltinData(database);
+      await ensureBuiltinData(database);
 
-    final receivable = await (database.select(
-      database.accounts,
-    )..where((row) => row.id.equals('receivable'))).getSingle();
-    final payable = await (database.select(
-      database.accounts,
-    )..where((row) => row.id.equals('payable'))).getSingle();
-    expect(
-      receivable.groupId,
-      initialAccountGroupIdForProfile(AccountProfileKind.receivable),
-    );
-    expect(
-      payable.groupId,
-      initialAccountGroupIdForProfile(AccountProfileKind.payable),
-    );
-  });
+      final receivable = await (database.select(
+        database.accounts,
+      )..where((row) => row.id.equals('receivable'))).getSingle();
+      final payable = await (database.select(
+        database.accounts,
+      )..where((row) => row.id.equals('payable'))).getSingle();
+      final view = (await DriftAssetViewRepository(
+        database,
+      ).findView(AssetView.defaultId))!;
+      expect(view.accountIds, containsAll([receivable.id, payable.id]));
+      expect(
+        view.groupIdFor(receivable.id),
+        initialAssetViewGroupIdForProfile(AccountProfileKind.receivable),
+      );
+      expect(
+        view.groupIdFor(payable.id),
+        initialAssetViewGroupIdForProfile(AccountProfileKind.payable),
+      );
+    },
+  );
 
   test('v12 renames advance compensation classification', () async {
     final database = createTestDatabase();

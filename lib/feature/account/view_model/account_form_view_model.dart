@@ -4,13 +4,16 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../../app/provider.dart';
 import '../../../application/credit/credit_command_api.dart';
-import '../../../application/ledger/ledger_command_api.dart';
+import '../../../application/analytics/analytics_command_api.dart';
+import '../../../application/ledger/ledger_query_api.dart' show AccountType;
+import '../../../core/error/app_exception.dart';
 import '../../../core/money/money.dart';
 import '../../../core/patch/patch.dart';
 import '../../../core/text/text_normalizer.dart';
 import '../../../domain/ledger/valobj/ledger_error_code.dart';
+import '../../../domain/analytics/valobj/analytics_error_code.dart';
 import '../../../shared/account_profile/account_profile_kind.dart';
-import '../../../shared/account_group/initial_account_groups.dart';
+import 'asset_views_provider.dart';
 import '../../../widget/business/icon/business_icon_registry.dart';
 import '../../shared/view_model/action_guard.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
@@ -24,17 +27,56 @@ final _logger = Logger('feature.account.form');
 @riverpod
 class AccountFormViewModel extends _$AccountFormViewModel {
   AccountFormState? _initializedState;
+  AccountProfileKind _creationKind = AccountProfileKind.fund;
+  String? _creationIconKey;
 
   @override
-  AsyncValue<AccountFormState?> build(String? accountId) {
-    if (accountId == null) {
-      return AsyncValue.data(_initializedState ??= AccountFormState.initial());
+  AsyncValue<AccountFormState?> build(String? accountId, {String? viewId}) {
+    final views = ref.watch(assetViewsProvider);
+    final selected = _initializedState == null && viewId == null
+        ? ref.watch(selectedAssetViewProvider)
+        : null;
+    for (final value in <AsyncValue<Object?>>[views, ?selected]) {
+      if (value.hasError) return AsyncError(value.error!, value.stackTrace!);
+      if (!value.hasValue) return const AsyncLoading();
     }
-
+    final resolvedId =
+        _initializedState?.viewId ?? viewId ?? selected!.requireValue.id;
+    final view = views.requireValue
+        .where((view) => view.id == resolvedId)
+        .firstOrNull;
+    if (view == null) {
+      return AsyncError(
+        BusinessException(AnalyticsErrorCode.viewNotFound),
+        StackTrace.current,
+      );
+    }
+    if (accountId == null) {
+      return AsyncData(
+        _initializedState ??= AccountFormState.initial(
+          view: view,
+          kind: _creationKind,
+          iconKey: _creationIconKey,
+        ),
+      );
+    }
     return ref.watch(accountViewProvider(accountId)).whenData((account) {
       if (account == null) return null;
-      return _initializedState ??= AccountFormState.fromAccount(account);
+      return _initializedState ??= AccountFormState.fromAccount(
+        account,
+        view: view,
+      );
     });
+  }
+
+  String? _groupForProfile(AccountProfileKind profile) {
+    final viewId = state.value?.viewId;
+    final view = ref
+        .read(assetViewsProvider)
+        .value
+        ?.where((view) => view.id == viewId)
+        .firstOrNull;
+    return view == null ? null : initialAssetViewGroupId(view, profile);
   }
 
   void setKind(AccountProfileKind value) {
@@ -42,7 +84,7 @@ class AccountFormViewModel extends _$AccountFormViewModel {
       if (current.kind == value) return current;
       return current.copyWith(
         kind: value,
-        groupId: initialAccountGroupIdForProfile(value),
+        groupId: _groupForProfile(value),
         iconKey: value.iconKey,
         billingDay: value == AccountProfileKind.credit
             ? current.billingDay
@@ -60,10 +102,16 @@ class AccountFormViewModel extends _$AccountFormViewModel {
     required String iconKey,
   }) {
     if (accountId != null) return;
+    _creationKind = kind;
+    _creationIconKey = iconKey;
+    if (!state.hasValue) {
+      ref.invalidateSelf();
+      return;
+    }
     _update(
       (current) => current.copyWith(
         kind: kind,
-        groupId: initialAccountGroupIdForProfile(kind),
+        groupId: _groupForProfile(kind),
         iconKey: iconKey,
         billingDay: null,
         repaymentDay: null,
@@ -100,6 +148,7 @@ class AccountFormViewModel extends _$AccountFormViewModel {
   }) async {
     final current = state.asData?.value;
     if (current == null) return _invalidCommand('账户表单尚未加载');
+    if (current.submitting) return _invalidCommand('账户正在保存');
 
     final name = trimToNull(nameText);
     if (name == null) return _invalidCommand('请输入账户名称');
@@ -179,53 +228,33 @@ class AccountFormViewModel extends _$AccountFormViewModel {
     required Money? creditLimit,
     required String? note,
   }) async {
-    if (!isCreditManagedAccountKind(formState.kind)) {
-      await ref
-          .read(accountAppServiceProvider)
-          .createAccount(
-            CreateAccountCommand(
+    await ref
+        .read(assetViewAccountAppServiceProvider)
+        .createAccount(
+          CreateAssetViewAccountCommand(
+            viewId: formState.viewId,
+            groupId: formState.groupId,
+            account: AssetViewAccountDraft(
               transactionBookId:
                   (await ref
                           .read(bookSelectionViewModelProvider.notifier)
                           .snapshot())
                       .currentBook
                       .id,
+              profile: formState.kind,
               name: name,
-              type: formState.kind.accountType,
-              subtype: formState.kind.accountSubtype,
-              profileKey: formState.kind.key,
-              groupId: formState.groupId,
-              iconKey: iconRef,
               openingBalance: openingBalance,
+              iconKey: iconRef,
               note: note,
+              creditLimit: creditLimit,
+              billingDay: formState.kind == AccountProfileKind.credit
+                  ? formState.billingDay
+                  : null,
+              repaymentDay: formState.kind == AccountProfileKind.credit
+                  ? formState.repaymentDay
+                  : null,
+              billingDayToNext: formState.billingDayToNext,
             ),
-          );
-      return;
-    }
-    await ref
-        .read(creditAccountAppServiceProvider)
-        .createAccount(
-          CreateCreditLiabilityAccountCommand(
-            transactionBookId:
-                (await ref
-                        .read(bookSelectionViewModelProvider.notifier)
-                        .snapshot())
-                    .currentBook
-                    .id,
-            name: name,
-            kind: creditLiabilityKindForProfile(formState.kind),
-            iconKey: iconRef,
-            openingBalance: openingBalance,
-            note: note,
-            creditLimit: creditLimit,
-            billingDay: formState.kind == AccountProfileKind.credit
-                ? formState.billingDay
-                : null,
-            repaymentDay: formState.kind == AccountProfileKind.credit
-                ? formState.repaymentDay
-                : null,
-            billingDayToNext: formState.billingDayToNext,
-            groupId: formState.groupId,
           ),
         );
   }
@@ -239,22 +268,26 @@ class AccountFormViewModel extends _$AccountFormViewModel {
     required Money? creditLimit,
     required String? note,
   }) async {
-    if (!isCreditManagedAccountKind(formState.kind)) {
-      await ref
-          .read(accountAppServiceProvider)
-          .editAccount(
-            EditAccountCommand(
+    await ref
+        .read(assetViewAccountAppServiceProvider)
+        .editAccount(
+          EditAssetViewAccountCommand(
+            viewId: formState.viewId,
+            groupId: !formState.isInView
+                ? null
+                : formState.groupId == null
+                ? const Patch<String>.clear()
+                : Patch.set(formState.groupId!),
+            account: AssetViewAccountEdit(
               transactionBookId:
                   (await ref
                           .read(bookSelectionViewModelProvider.notifier)
                           .snapshot())
                       .currentBook
                       .id,
-              id: id,
+              accountId: id,
+              profile: formState.kind,
               name: name,
-              groupId: formState.groupId == null
-                  ? const Patch<String>.clear()
-                  : Patch.set(formState.groupId!),
               iconKey: Patch.set(iconRef),
               note: note == null
                   ? const Patch<String>.clear()
@@ -262,45 +295,24 @@ class AccountFormViewModel extends _$AccountFormViewModel {
               targetBalance: showsManualBalanceField(formState.kind)
                   ? openingBalance
                   : null,
+              creditLimit: creditLimit == null
+                  ? const Patch<Money>.clear()
+                  : Patch.set(creditLimit),
+              billingDay:
+                  formState.kind == AccountProfileKind.credit &&
+                      formState.billingDay != null
+                  ? Patch.set(formState.billingDay!)
+                  : const Patch<int>.clear(),
+              repaymentDay:
+                  formState.kind == AccountProfileKind.credit &&
+                      formState.repaymentDay != null
+                  ? Patch.set(formState.repaymentDay!)
+                  : const Patch<int>.clear(),
+              billingDayToNext: formState.billingDayToNext,
             ),
-          );
-      return;
-    }
-    await ref
-        .read(creditAccountAppServiceProvider)
-        .editAccount(
-          EditCreditLiabilityAccountCommand(
-            transactionBookId:
-                (await ref
-                        .read(bookSelectionViewModelProvider.notifier)
-                        .snapshot())
-                    .currentBook
-                    .id,
-            accountId: id,
-            name: name,
-            iconKey: Patch.set(iconRef),
-            note: note == null ? const Patch<String>.clear() : Patch.set(note),
-            groupId: formState.groupId == null
-                ? const Patch<String>.clear()
-                : Patch.set(formState.groupId!),
-            creditLimit: creditLimit == null
-                ? const Patch<Money>.clear()
-                : Patch.set(creditLimit),
-            billingDay:
-                formState.kind == AccountProfileKind.credit &&
-                    formState.billingDay != null
-                ? Patch.set(formState.billingDay!)
-                : const Patch<int>.clear(),
-            repaymentDay:
-                formState.kind == AccountProfileKind.credit &&
-                    formState.repaymentDay != null
-                ? Patch.set(formState.repaymentDay!)
-                : const Patch<int>.clear(),
-            billingDayToNext: formState.billingDayToNext,
-            targetBalance: openingBalance,
           ),
         );
-    if (ref.mounted) {
+    if (ref.mounted && isCreditManagedAccountKind(formState.kind)) {
       ref
         ..invalidate(billQueryServiceProvider)
         ..invalidate(creditAccountQueryServiceProvider);
@@ -350,36 +362,46 @@ class AccountFormState {
     required this.kind,
     required this.iconKey,
     required this.submitting,
+    required this.viewId,
+    this.isInView = true,
     this.groupId,
     this.billingDay,
     this.repaymentDay,
     this.billingDayToNext = true,
   });
 
-  factory AccountFormState.initial() {
-    return AccountFormState(
-      initialValues: const AccountFormInitialValues(),
-      kind: AccountProfileKind.fund,
-      groupId: initialAccountGroupIdForProfile(AccountProfileKind.fund),
-      iconKey: 'bank-account',
-      submitting: false,
-    );
-  }
+  factory AccountFormState.initial({
+    required AssetView view,
+    AccountProfileKind kind = AccountProfileKind.fund,
+    String? iconKey,
+  }) => AccountFormState(
+    initialValues: const AccountFormInitialValues(),
+    kind: kind,
+    viewId: view.id,
+    groupId: initialAssetViewGroupId(view, kind),
+    iconKey: iconKey ?? 'bank-account',
+    submitting: false,
+  );
 
-  factory AccountFormState.fromAccount(AccountView account) {
-    return AccountFormState(
-      initialValues: AccountFormInitialValues.fromAccount(account),
-      kind: account.kind,
-      groupId: account.groupId,
-      iconKey: account.iconKey ?? 'bank-account',
-      billingDay: account.billingDay,
-      repaymentDay: account.repaymentDay,
-      billingDayToNext: account.billingDayToNext ?? true,
-      submitting: false,
-    );
-  }
+  factory AccountFormState.fromAccount(
+    AccountView account, {
+    required AssetView view,
+  }) => AccountFormState(
+    initialValues: AccountFormInitialValues.fromAccount(account),
+    kind: account.kind,
+    viewId: view.id,
+    isInView: view.includesAccount(account.id),
+    groupId: view.groupIdFor(account.id),
+    iconKey: account.iconKey ?? 'bank-account',
+    billingDay: account.billingDay,
+    repaymentDay: account.repaymentDay,
+    billingDayToNext: account.billingDayToNext ?? true,
+    submitting: false,
+  );
 
   final AccountFormInitialValues initialValues;
+  final String viewId;
+  final bool isInView;
   final AccountProfileKind kind;
   final String iconKey;
   final int? billingDay;
@@ -400,6 +422,8 @@ class AccountFormState {
   }) {
     return AccountFormState(
       initialValues: initialValues ?? this.initialValues,
+      viewId: viewId,
+      isInView: isInView,
       kind: kind ?? this.kind,
       iconKey: iconKey ?? this.iconKey,
       billingDay: billingDay == _sentinel

@@ -4,7 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:smartflow/app/provider.dart';
-import 'package:smartflow/application/ledger/ledger_command_api.dart';
+import 'package:smartflow/application/analytics/analytics_command_api.dart';
+import 'package:smartflow/feature/account/view_model/asset_views_provider.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/design_system/widget/app_form_section.dart';
 import 'package:smartflow/design_system/widget/app_page_header.dart';
@@ -13,7 +14,6 @@ import 'package:smartflow/feature/account/presentation/account_creation_presets.
 import 'package:smartflow/feature/account/view_model/account_form_view_model.dart';
 import 'package:smartflow/feature/account/view_model/account_view.dart';
 import 'package:smartflow/feature/account/view_model/account_views_provider.dart';
-import 'package:smartflow/feature/shared/provider/ledger_query_providers.dart';
 import 'package:smartflow/shared/account_profile/account_profile_kind.dart';
 import 'package:smartflow/widget/business/form/plain_transaction_fields.dart';
 import 'package:smartflow/widget/business/icon/icon_catalog_picker.dart';
@@ -25,6 +25,7 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          ..._assetViewOverrides(),
           bookSelectionTestOverride,
           bookListTestOverride,
           accountViewProvider(
@@ -46,12 +47,12 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          ..._assetViewOverrides(),
           bookSelectionTestOverride,
           bookListTestOverride,
-          accountAppServiceProvider.overrideWith(
-            (ref) => _FakeAccountAppService(),
+          assetViewAccountAppServiceProvider.overrideWith(
+            (ref) => _FakeAssetViewAccountAppService(),
           ),
-          _accountGroupsOverride(),
         ],
         child: const MaterialApp(home: AccountFormPage()),
       ),
@@ -63,14 +64,14 @@ void main() {
   });
 
   testWidgets('name validator blocks account submit', (tester) async {
-    final service = _FakeAccountAppService();
+    final service = _FakeAssetViewAccountAppService();
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          ..._assetViewOverrides(),
           bookSelectionTestOverride,
           bookListTestOverride,
-          accountAppServiceProvider.overrideWith((ref) => service),
-          _accountGroupsOverride(),
+          assetViewAccountAppServiceProvider.overrideWith((ref) => service),
         ],
         child: const MaterialApp(home: AccountFormPage()),
       ),
@@ -88,12 +89,12 @@ void main() {
   ) async {
     final container = ProviderContainer(
       overrides: [
+        ..._assetViewOverrides(),
         bookSelectionTestOverride,
         bookListTestOverride,
-        accountAppServiceProvider.overrideWith(
-          (ref) => _FakeAccountAppService(),
+        assetViewAccountAppServiceProvider.overrideWith(
+          (ref) => _FakeAssetViewAccountAppService(),
         ),
-        _accountGroupsOverride(),
       ],
     );
     addTearDown(container.dispose);
@@ -130,12 +131,12 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          ..._assetViewOverrides(),
           bookSelectionTestOverride,
           bookListTestOverride,
-          accountAppServiceProvider.overrideWith(
-            (ref) => _FakeAccountAppService(),
+          assetViewAccountAppServiceProvider.overrideWith(
+            (ref) => _FakeAssetViewAccountAppService(),
           ),
-          _accountGroupsOverride(),
         ],
         child: MaterialApp(home: AccountFormPage(creationPreset: preset)),
       ),
@@ -154,12 +155,12 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          ..._assetViewOverrides(),
           bookSelectionTestOverride,
           bookListTestOverride,
-          accountAppServiceProvider.overrideWith(
-            (ref) => _FakeAccountAppService(),
+          assetViewAccountAppServiceProvider.overrideWith(
+            (ref) => _FakeAssetViewAccountAppService(),
           ),
-          _accountGroupsOverride(),
         ],
         child: const MaterialApp(home: AccountFormPage()),
       ),
@@ -177,12 +178,12 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          ..._assetViewOverrides(),
           bookSelectionTestOverride,
           bookListTestOverride,
-          accountAppServiceProvider.overrideWith(
-            (ref) => _FakeAccountAppService(),
+          assetViewAccountAppServiceProvider.overrideWith(
+            (ref) => _FakeAssetViewAccountAppService(),
           ),
-          _accountGroupsOverride(),
         ],
         child: const MaterialApp(home: AccountFormPage()),
       ),
@@ -209,7 +210,7 @@ void main() {
   testWidgets('saves an account immediately after edit data loads', (
     tester,
   ) async {
-    final service = _FakeAccountAppService();
+    final service = _FakeAssetViewAccountAppService();
     final account = AccountView(
       id: 'account-1',
       name: '工资卡',
@@ -240,13 +241,13 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          ..._assetViewOverrides(),
           bookSelectionTestOverride,
           bookListTestOverride,
-          accountAppServiceProvider.overrideWithValue(service),
+          assetViewAccountAppServiceProvider.overrideWithValue(service),
           accountViewProvider(
             'account-1',
           ).overrideWithValue(AsyncValue.data(account)),
-          _accountGroupsOverride(),
         ],
         child: MaterialApp.router(routerConfig: router),
       ),
@@ -259,10 +260,10 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(service.editCommands, hasLength(1));
-    expect(service.editCommands.single.id, 'account-1');
-    expect(service.editCommands.single.name, '工资卡');
+    expect(service.editCommands.single.account.accountId, 'account-1');
+    expect(service.editCommands.single.account.name, '工资卡');
     expect(
-      service.editCommands.single.targetBalance,
+      service.editCommands.single.account.targetBalance,
       const Money(minorUnits: 123400),
     );
   });
@@ -273,6 +274,7 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          ..._assetViewOverrides(),
           bookSelectionTestOverride,
           bookListTestOverride,
           accountViewProvider(
@@ -289,6 +291,7 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          ..._assetViewOverrides(),
           bookSelectionTestOverride,
           bookListTestOverride,
           accountViewProvider('error').overrideWithValue(
@@ -304,6 +307,7 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          ..._assetViewOverrides(),
           bookSelectionTestOverride,
           bookListTestOverride,
           accountViewProvider(
@@ -331,12 +335,12 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          ..._assetViewOverrides(),
           bookSelectionTestOverride,
           bookListTestOverride,
           accountViewProvider(
             'account-1',
           ).overrideWithValue(AsyncValue.data(account)),
-          _accountGroupsOverride(),
         ],
         child: const MaterialApp(home: AccountFormPage(accountId: 'account-1')),
       ),
@@ -361,12 +365,12 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          ..._assetViewOverrides(),
           bookSelectionTestOverride,
           bookListTestOverride,
           accountViewProvider(
             'account-1',
           ).overrideWithValue(AsyncValue.data(account)),
-          _accountGroupsOverride(),
         ],
         child: const MaterialApp(home: AccountFormPage(accountId: 'account-1')),
       ),
@@ -401,6 +405,7 @@ void main() {
     );
     final container = ProviderContainer(
       overrides: [
+        ..._assetViewOverrides(),
         bookSelectionTestOverride,
         bookListTestOverride,
         accountViewProvider(
@@ -409,7 +414,6 @@ void main() {
         accountViewProvider(
           'account-b',
         ).overrideWithValue(AsyncValue.data(accountB)),
-        _accountGroupsOverride(),
       ],
     );
     addTearDown(container.dispose);
@@ -452,12 +456,12 @@ void main() {
     );
     final container = ProviderContainer(
       overrides: [
+        ..._assetViewOverrides(),
         bookSelectionTestOverride,
         bookListTestOverride,
         accountViewProvider(
           'account-1',
         ).overrideWithValue(AsyncValue.data(account)),
-        _accountGroupsOverride(),
       ],
     );
     addTearDown(container.dispose);
@@ -490,36 +494,29 @@ List<TextField> _formTextFields(WidgetTester tester) {
       .toList();
 }
 
-dynamic _accountGroupsOverride() {
-  return accountGroupsProvider.overrideWith((ref) => Stream.value(const []));
-}
+final _formView = AssetView(
+  id: AssetView.defaultId,
+  name: AssetView.defaultName,
+  accountIds: ['account-1', 'account-a', 'account-b'],
+  groups: initialAssetViewGroups(),
+);
 
-class _FakeAccountAppService implements AccountAppService {
-  final createCommands = <CreateAccountCommand>[];
-  final editCommands = <EditAccountCommand>[];
+dynamic _assetViewOverrides() => [
+  assetViewsProvider.overrideWithValue(AsyncData([_formView])),
+  selectedAssetViewProvider.overrideWithValue(AsyncData(_formView)),
+];
 
+class _FakeAssetViewAccountAppService implements AssetViewAccountAppService {
+  final createCommands = <CreateAssetViewAccountCommand>[];
+  final editCommands = <EditAssetViewAccountCommand>[];
   @override
-  Future<Account> createAccount(CreateAccountCommand command) async {
+  Future<String> createAccount(CreateAssetViewAccountCommand command) async {
     createCommands.add(command);
-    return Account(
-      id: 'created',
-      name: command.name,
-      type: command.type,
-      balance: const Money(minorUnits: 0),
-    );
+    return 'created';
   }
 
   @override
-  Future<void> editAccount(EditAccountCommand command) async {
+  Future<void> editAccount(EditAssetViewAccountCommand command) async {
     editCommands.add(command);
   }
-
-  @override
-  Future<void> archiveAccount(ArchiveAccountCommand command) async {}
-
-  @override
-  Future<void> restoreAccount(RestoreAccountCommand command) async {}
-
-  @override
-  Future<void> deleteAccount(DeleteAccountCommand command) async {}
 }

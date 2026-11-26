@@ -7,6 +7,19 @@ BackupSnapshot createBackupSnapshot({
   Map<String, Object?> preferences = const {},
 }) => BackupSnapshot(
   tables: {
+    'asset_views': [
+      {
+        'id': 'builtin-asset-view-all',
+        'name': '默认',
+        'accountIdsJson': '[]',
+        'groupsJson': '[]',
+        'accountGroupIdsJson': '{}',
+        'sortOrder': 0,
+        'version': 0,
+        'createdAt': 0,
+        'updatedAt': 0,
+      },
+    ],
     'books': [
       {
         'id': Book.dailyId,

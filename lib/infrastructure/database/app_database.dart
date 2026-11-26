@@ -14,7 +14,7 @@ import '../../domain/orchestration/valobj/amortization_enums.dart';
 import '../../domain/insurance/valobj/insurance_enums.dart';
 import 'migration/app_migration_strategy.dart';
 import 'table/ledger/accounts.dart';
-import 'table/ledger/account_groups.dart';
+import 'table/analytics/asset_views.dart';
 import 'table/ledger/account_reconciliation_snapshots.dart';
 import 'table/app_metadata.dart';
 import 'table/ledger/budgets.dart';
@@ -65,7 +65,7 @@ part 'app_database.g.dart';
   tables: [
     Accounts,
     Books,
-    AccountGroups,
+    AssetViews,
     AccountReconciliationSnapshots,
     AppMetadata,
     Transactions,
@@ -115,7 +115,7 @@ class AppDatabase extends _$AppDatabase {
 
   /// The first supported schema is defined by `PersistenceBaseline`.
   @override
-  int get schemaVersion => 68;
+  int get schemaVersion => 70;
 
   @override
   MigrationStrategy get migration => buildMigrationStrategy(this);

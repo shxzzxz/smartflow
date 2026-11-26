@@ -1,4 +1,5 @@
 import '../../../helper/book_selection_override.dart';
+import '../../../helper/asset_view_dependencies.dart';
 // ignore_for_file: riverpod_lint/scoped_providers_should_specify_dependencies
 
 import 'package:flutter/material.dart';
@@ -7,13 +8,14 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:remixicon/remixicon.dart';
 import 'package:smartflow/app/provider.dart';
-import 'package:smartflow/application/ledger/account/command/account_group_app_service.dart';
-import 'package:smartflow/application/ledger/account/command/account_group_command.dart';
 import 'package:smartflow/application/ledger/ledger_query_api.dart';
+import 'package:smartflow/application/analytics/analytics_query_api.dart';
+import 'package:smartflow/application/analytics/analytics_command_api.dart';
 import 'package:smartflow/application/shared/asset_section_collapse_store.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/design_system/theme/app_theme.dart';
 import 'package:smartflow/design_system/token/spacing.dart';
+import 'package:smartflow/design_system/widget/app_page_header.dart';
 import 'package:smartflow/design_system/widget/app_surface.dart';
 import 'package:smartflow/feature/account/page/account_form_page.dart';
 import 'package:smartflow/feature/account/page/accounts_page.dart';
@@ -187,14 +189,14 @@ void main() {
     );
   });
 
-  testWidgets('shows empty predefined groups without accounts', (tester) async {
+  testWidgets('hides empty predefined groups without accounts', (tester) async {
     await tester.pumpWidget(_buildAccountsPageApp());
     await tester.pumpAndSettle();
 
     expect(find.text('还没有账户，点击右上角"+"新建'), findsNothing);
-    expect(find.text('资金'), findsOneWidget);
-    expect(find.text('信用'), findsOneWidget);
-    expect(find.byTooltip('折叠全部分组'), findsOneWidget);
+    expect(find.text('资金'), findsNothing);
+    expect(find.text('信用'), findsNothing);
+    expect(find.byTooltip('折叠全部分组'), findsNothing);
   });
 
   testWidgets('renders only sections that have accounts', (tester) async {
@@ -203,7 +205,7 @@ void main() {
 
     expect(find.text('资金'), findsOneWidget);
     expect(find.text('招行储蓄卡'), findsOneWidget);
-    expect(find.text('信用'), findsOneWidget);
+    expect(find.text('信用'), findsNothing);
   });
 
   testWidgets('collapses and expands a section on header tap', (tester) async {
@@ -242,7 +244,7 @@ void main() {
 
     expect(find.text('招行储蓄卡'), findsNothing);
     expect(find.text('招行信用卡'), findsNothing);
-    expect(store.collapsed, {'fund', 'credit', 'loan', 'reimbursement'});
+    expect(store.collapsed, {'fund', 'credit'});
 
     await tester.tap(find.byTooltip('展开全部分组'));
     await tester.pumpAndSettle();
@@ -263,27 +265,45 @@ void main() {
     expect(find.text('招行储蓄卡'), findsNothing);
   });
 
-  testWidgets('keeps collapse, add, and more actions in that order', (
-    tester,
-  ) async {
-    await tester.pumpWidget(_buildAccountsPageApp());
-    await tester.pumpAndSettle();
+  testWidgets(
+    'places view selection on the left and group actions on the right',
+    (tester) async {
+      await tester.pumpWidget(
+        _buildAccountsPageApp(accounts: [_fundAccount()]),
+      );
+      await tester.pumpAndSettle();
 
-    expect(
-      tester.getCenter(find.byTooltip('折叠全部分组')).dx,
-      lessThan(tester.getCenter(find.byTooltip('新建账户')).dx),
-    );
-    expect(
-      tester.getCenter(find.byTooltip('新建账户')).dx,
-      lessThan(tester.getCenter(find.byTooltip('更多操作')).dx),
-    );
+      final headerCenter = tester.getCenter(find.byType(AppPageHeader));
+      for (final tooltip in ['折叠全部分组', '新建账户', '更多操作']) {
+        expect(tester.getSize(find.byTooltip(tooltip)), const Size(36, 36));
+      }
+      expect(
+        tester.getCenter(find.byTooltip('切换视图：默认')).dx,
+        lessThan(headerCenter.dx),
+      );
+      expect(
+        tester.getCenter(find.byTooltip('折叠全部分组')).dx,
+        greaterThan(headerCenter.dx),
+      );
+      expect(
+        tester.getCenter(find.byTooltip('折叠全部分组')).dx,
+        lessThan(tester.getCenter(find.byTooltip('新建账户')).dx),
+      );
+      expect(
+        tester.getCenter(find.byTooltip('新建账户')).dx,
+        lessThan(tester.getCenter(find.byTooltip('更多操作')).dx),
+      );
 
-    await tester.tap(find.byTooltip('更多操作'));
-    await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip('更多操作'));
+      await tester.pumpAndSettle();
 
-    expect(find.text('管理分组'), findsOneWidget);
-    expect(find.text('隐藏余额'), findsOneWidget);
-  });
+      expect(find.text('管理视图'), findsOneWidget);
+      expect(find.text('管理分组'), findsOneWidget);
+      expect(find.text('隐藏余额'), findsOneWidget);
+      expect(find.text('编辑当前视图'), findsNothing);
+      expect(find.text('复制当前视图'), findsNothing);
+    },
+  );
 
   testWidgets('opens grouped account creation choices from add action', (
     tester,
@@ -343,11 +363,16 @@ void main() {
   testWidgets('starts group sorting after a delayed long press', (
     tester,
   ) async {
-    final groupService = _FakeAccountGroupAppService();
-    await tester.pumpWidget(_buildAccountsPageApp(groupService: groupService));
+    final groupService = _FakeAssetViewAppService();
+    await tester.pumpWidget(
+      _buildAccountsPageApp(
+        groupService: groupService,
+        accounts: [_fundAccount(), _creditAccount()],
+      ),
+    );
     await tester.pumpAndSettle();
 
-    final from = tester.getCenter(find.text('贷款'));
+    final from = tester.getCenter(find.text('信用'));
     final to = tester.getCenter(find.text('资金'));
     final gesture = await tester.startGesture(from);
     await tester.pump(const Duration(milliseconds: 600));
@@ -356,9 +381,9 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(groupService.reorderedGroupIds, [
-      'loan',
-      'fund',
       'credit',
+      'fund',
+      'loan',
       'reimbursement',
     ]);
   });
@@ -366,7 +391,7 @@ void main() {
   testWidgets('starts account sorting after a delayed long press', (
     tester,
   ) async {
-    final groupService = _FakeAccountGroupAppService();
+    final groupService = _FakeAssetViewAppService();
     await tester.pumpWidget(
       _buildAccountsPageApp(
         accounts: [_fundAccount(), _secondFundAccount()],
@@ -392,7 +417,7 @@ void main() {
   testWidgets('creates an account group without using a disposed controller', (
     tester,
   ) async {
-    final groupService = _FakeAccountGroupAppService();
+    final groupService = _FakeAssetViewAppService();
     await tester.pumpWidget(_buildAccountsPageApp(groupService: groupService));
     await tester.pumpAndSettle();
 
@@ -437,7 +462,6 @@ AccountView _fundAccount() {
     balance: Money(minorUnits: 10000),
     iconKey: null,
     isArchived: false,
-    groupId: 'fund',
   );
 }
 
@@ -449,7 +473,6 @@ AccountView _creditAccount() {
     balance: Money(minorUnits: 5000),
     iconKey: null,
     isArchived: false,
-    groupId: 'credit',
     billingDay: 1,
     repaymentDay: 15,
   );
@@ -463,7 +486,6 @@ AccountView _secondFundAccount() {
     balance: Money(minorUnits: 20000),
     iconKey: null,
     isArchived: false,
-    groupId: 'fund',
   );
 }
 
@@ -475,7 +497,6 @@ AccountView _largeFundAccount() {
     balance: Money(minorUnits: 900000000000000000),
     iconKey: null,
     isArchived: false,
-    groupId: 'fund',
   );
 }
 
@@ -487,7 +508,6 @@ AccountView _archivedCreditAccount() {
     balance: Money(minorUnits: 5000),
     iconKey: null,
     isArchived: true,
-    groupId: 'credit',
     billingDay: 1,
     repaymentDay: 15,
   );
@@ -496,35 +516,58 @@ AccountView _archivedCreditAccount() {
 Widget _buildAccountsPageApp({
   List<AccountView> accounts = const [],
   List<AccountView> archivedAccounts = const [],
-  List<AccountGroup>? groups,
+  List<AssetViewGroup>? groups,
   AssetSectionCollapseStore? collapseStore,
-  AccountGroupAppService? groupService,
+  AssetViewAppService? groupService,
   GoRouter? router,
 }) {
+  final viewGroups =
+      groups ??
+      [
+        AssetViewGroup(id: 'fund', name: '资金'),
+        AssetViewGroup(id: 'credit', name: '信用'),
+        AssetViewGroup(id: 'loan', name: '贷款'),
+        AssetViewGroup(id: 'reimbursement', name: '报销'),
+      ];
+  final allAccounts = [...accounts, ...archivedAccounts];
+  final view = AssetView(
+    id: AssetView.defaultId,
+    name: AssetView.defaultName,
+    accountIds: allAccounts.map((account) => account.id),
+    groups: viewGroups,
+    accountGroupIds: {
+      for (final account in allAccounts)
+        if (viewGroups.any((group) => group.id == account.kind.name))
+          account.id: account.kind.name,
+    },
+  );
+  final queries = FakeAssetViewQueryService(
+    views: [view],
+    statistics: (_) => const AssetViewStatistics(
+      assets: Money(minorUnits: -1700),
+      liabilities: Money(minorUnits: 32772),
+      netAssetChange: Money(minorUnits: -2472),
+      netAssetChangeRatio: -0.07725,
+    ),
+  );
   return ProviderScope(
     overrides: [
+      assetViewQueryServiceProvider.overrideWithValue(queries),
+      assetViewAppServiceProvider.overrideWithValue(
+        groupService ?? FakeAssetViewAppService(queries),
+      ),
+      assetViewPreferencesStoreProvider.overrideWithValue(
+        MemoryAssetViewPreferences(),
+      ),
       bookSelectionTestOverride,
       bookListTestOverride,
       accountViewsProvider.overrideWith((ref) => AsyncValue.data(accounts)),
       archivedAccountViewsProvider.overrideWith(
         (ref) => AsyncValue.data(archivedAccounts),
       ),
-      accountGroupsProvider.overrideWith(
-        (ref) => Stream.value(
-          groups ??
-              [
-                AccountGroup(id: 'fund', name: '资金'),
-                AccountGroup(id: 'credit', name: '信用'),
-                AccountGroup(id: 'loan', name: '贷款'),
-                AccountGroup(id: 'reimbursement', name: '报销'),
-              ],
-        ),
-      ),
       assetSectionCollapseStoreProvider.overrideWith(
         (ref) => collapseStore ?? _InMemoryAssetSectionCollapseStore(),
       ),
-      if (groupService != null)
-        accountGroupAppServiceProvider.overrideWithValue(groupService),
       balanceSheetComparisonProvider.overrideWith(
         (ref) => Stream.value(
           const BalanceSheetComparison(
@@ -546,25 +589,37 @@ Widget _buildAccountsPageApp({
   );
 }
 
-class _FakeAccountGroupAppService implements AccountGroupAppService {
+class _FakeAssetViewAppService implements AssetViewAppService {
   List<String>? reorderedGroupIds;
-  final movedCommands = <MoveAccountToGroupCommand>[];
+  String? lastViewId;
+  final movedCommands =
+      <({String accountId, String? groupId, List<String> orderedAccountIds})>[];
   final createdGroupNames = <String>[];
-
   @override
-  Future<AccountGroup> createGroup(CreateAccountGroupCommand command) async {
-    createdGroupNames.add(command.name);
-    return AccountGroup(id: 'created-group', name: command.name);
+  Future<void> createGroup(String viewId, String name) async {
+    lastViewId = viewId;
+    createdGroupNames.add(name);
   }
 
   @override
-  Future<void> reorderGroups(ReorderAccountGroupsCommand command) async {
-    reorderedGroupIds = command.orderedIds;
+  Future<void> reorderGroups(String viewId, List<String> orderedIds) async {
+    lastViewId = viewId;
+    reorderedGroupIds = orderedIds;
   }
 
   @override
-  Future<void> moveAccountToGroup(MoveAccountToGroupCommand command) async {
-    movedCommands.add(command);
+  Future<void> moveAccountToGroup(
+    String viewId,
+    String accountId,
+    String? groupId,
+    List<String> ids,
+  ) async {
+    lastViewId = viewId;
+    movedCommands.add((
+      accountId: accountId,
+      groupId: groupId,
+      orderedAccountIds: ids,
+    ));
   }
 
   @override

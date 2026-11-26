@@ -27,9 +27,10 @@ class AssetSectionCollapseViewModel extends _$AssetSectionCollapseViewModel {
     return _save((collapsed) => collapsed..clear());
   }
 
-  Future<void> _save(
-    Set<String> Function(Set<String> collapsed) change,
-  ) async {
+  Future<void> expandSections(Iterable<String> keys) =>
+      _save((collapsed) => collapsed..removeAll(keys));
+
+  Future<void> _save(Set<String> Function(Set<String> collapsed) change) async {
     final next = change({...state.value ?? const <String>{}});
     state = AsyncData(next);
     await ref.read(assetSectionCollapseStoreProvider).save(next);
