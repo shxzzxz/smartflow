@@ -1,130 +1,62 @@
 import 'dart:io';
 
 import 'package:flutter/services.dart';
-import 'package:logging/logging.dart';
 
 import 'app_update_info.dart';
 
-final _logger = Logger('core.update');
+abstract class AppUpdatePlatform {
+  const AppUpdatePlatform();
 
-class AppUpdatePlatform {
-  const AppUpdatePlatform({
-    this.downloadPollInterval = const Duration(milliseconds: 500),
+  const factory AppUpdatePlatform.unsupported() = _UnsupportedAppUpdatePlatform;
+
+  bool get supported;
+
+  Future<AppUpdatePackage?> prepareUpdate(AppUpdateInfo update);
+
+  Future<AppUpdateDownloadResult> downloadPackage(
+    AppUpdatePackage package, {
+    required String versionName,
+    void Function(AppUpdateDownloadProgress progress)? onProgress,
   });
 
-  final Duration downloadPollInterval;
+  Future<void> removeDownload(int downloadId);
 
-  static const MethodChannel _channel = MethodChannel(
-    'com.shxzz.smartflow/app_update',
+  Future<void> installPackage(String filePath);
+}
+
+class _UnsupportedAppUpdatePlatform extends AppUpdatePlatform {
+  const _UnsupportedAppUpdatePlatform();
+
+  @override
+  bool get supported => false;
+
+  PlatformException _unsupported() => PlatformException(
+    code: 'unsupportedPlatform',
+    message: 'In-app updates are not supported on this platform.',
   );
 
-  Future<AppVersionInfo> getVersionInfo() async {
-    final result = await _channel.invokeMapMethod<String, Object?>(
-      'getVersionInfo',
-    );
-    if (result == null) {
-      throw StateError('Missing app version info.');
-    }
-
-    final versionName = result['versionName'];
-    final buildNumber = result['buildNumber'];
-
-    return AppVersionInfo(
-      versionName: versionName is String ? versionName : '',
-      buildNumber:
-          buildNumber is int
-              ? buildNumber
-              : int.tryParse(buildNumber.toString()) ?? 0,
-    );
+  @override
+  Future<AppUpdatePackage?> prepareUpdate(AppUpdateInfo update) async {
+    throw _unsupported();
   }
 
-  Future<List<String>> getSupportedAbis() async {
-    final result = await _channel.invokeListMethod<String>('getSupportedAbis');
-    return result ?? const [];
-  }
-
-  Future<AppUpdateDownloadResult> downloadApk(
+  @override
+  Future<AppUpdateDownloadResult> downloadPackage(
     AppUpdatePackage package, {
     required String versionName,
     void Function(AppUpdateDownloadProgress progress)? onProgress,
   }) async {
-    final safeVersionName = versionName.replaceAll(
-      RegExp('[^A-Za-z0-9._-]'),
-      '_',
-    );
-    final downloadIdValue = await _channel
-        .invokeMethod<Object?>('startApkDownload', {
-          'url': package.url,
-          'fileName': 'smartflow-$safeVersionName-${package.abi}.apk',
-        });
-    final downloadId = switch (downloadIdValue) {
-      int value => value,
-      num value => value.toInt(),
-      _ => throw StateError('Missing APK download ID.'),
-    };
-    _logger.info(
-      'APK download started: version=$versionName, abi=${package.abi}.',
-    );
-
-    while (true) {
-      final result = await _channel.invokeMapMethod<String, Object?>(
-        'getApkDownloadStatus',
-        {'downloadId': downloadId},
-      );
-      if (result == null) {
-        throw StateError('Missing APK download status.');
-      }
-
-      final receivedBytes = _readInt(result['receivedBytes']);
-      final totalBytesValue = _readInt(result['totalBytes']);
-      onProgress?.call(
-        AppUpdateDownloadProgress(
-          receivedBytes: receivedBytes,
-          totalBytes: totalBytesValue > 0 ? totalBytesValue : null,
-        ),
-      );
-
-      switch (result['status']) {
-        case 'successful':
-          final filePath = result['filePath'];
-          if (filePath is! String || filePath.isEmpty) {
-            throw StateError('Missing downloaded APK path.');
-          }
-          _logger.info('APK download completed: $filePath');
-          return AppUpdateDownloadResult(
-            downloadId: downloadId,
-            file: File(filePath),
-          );
-        case 'failed':
-          _logger.warning('APK download failed: ${result['reason']}.');
-          throw PlatformException(
-            code: 'downloadFailed',
-            message: 'APK download failed: ${result['reason']}.',
-          );
-      }
-
-      await Future<void>.delayed(downloadPollInterval);
-    }
+    throw _unsupported();
   }
 
-  Future<void> removeApkDownload(int downloadId) async {
-    await _channel.invokeMethod<void>('removeApkDownload', {
-      'downloadId': downloadId,
-    });
+  @override
+  Future<void> removeDownload(int downloadId) async {
+    throw _unsupported();
   }
 
-  Future<void> installApk(String filePath) async {
-    await _channel.invokeMethod<void>('installApk', {'filePath': filePath});
-  }
-
-  static int _readInt(Object? value) {
-    if (value is int) {
-      return value;
-    }
-    if (value is num) {
-      return value.toInt();
-    }
-    return int.tryParse(value.toString()) ?? 0;
+  @override
+  Future<void> installPackage(String filePath) async {
+    throw _unsupported();
   }
 }
 

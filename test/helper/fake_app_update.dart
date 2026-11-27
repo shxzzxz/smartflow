@@ -2,30 +2,35 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:smartflow/application/shared/update_channel_store.dart';
+import 'package:smartflow/core/update/android/android_app_update_platform.dart';
 import 'package:smartflow/core/update/app_update_channel.dart';
+import 'package:smartflow/core/update/android/android_app_update_package.dart';
 import 'package:smartflow/core/update/app_update_info.dart';
 import 'package:smartflow/core/update/app_update_platform.dart';
 import 'package:smartflow/core/update/app_update_service.dart';
+import 'package:smartflow/core/update/app_version_info.dart';
+import 'package:smartflow/core/update/app_version_reader.dart';
 
 AppUpdateInfo fakeAppUpdateInfo({
   AppUpdateChannel channel = AppUpdateChannel.beta,
-  int versionCode = 101,
+  int buildNumber = 101,
+  int? androidVersionCode,
 }) => AppUpdateInfo(
   channel: channel,
   versionName: '0.9.13',
-  buildNumber: 101,
+  buildNumber: buildNumber,
   universalApk: AppUpdateUniversalApk(
     url: 'https://example.com/universal.apk',
-    androidVersionCode: versionCode,
+    androidVersionCode: androidVersionCode ?? buildNumber,
   ),
   releaseUrl: 'https://example.com/release',
   required: false,
   notes: '修复已知问题',
   packages: [
-    AppUpdatePackage(
+    AndroidAppUpdatePackage(
       abi: 'arm64-v8a',
       url: 'https://example.com/update.apk',
-      androidVersionCode: versionCode,
+      androidVersionCode: androidVersionCode ?? buildNumber,
       size: 4,
       sha256:
           '9f64a747e1b97f131fabb6b447296c9b6f0201e79fb3c5356e6c77e89b6a806a',
@@ -52,21 +57,26 @@ class FakeAppUpdateService extends AppUpdateService {
   }
 
   @override
-  Future<void> verifyDownloadedApk(File file, AppUpdatePackage package) async {
+  Future<void> verifyDownloadedPackage(
+    File file,
+    AppUpdatePackage package,
+  ) async {
     verifications++;
     if (onVerify case final verify?) {
       await verify(file, package);
     } else {
-      await super.verifyDownloadedApk(file, package);
+      await super.verifyDownloadedPackage(file, package);
     }
   }
 }
 
-class FakeAppUpdatePlatform extends AppUpdatePlatform {
+class FakeAppUpdatePlatform extends AndroidAppUpdatePlatform
+    implements AppVersionReader {
   AppVersionInfo version = const AppVersionInfo(
     versionName: '0.9.12',
     buildNumber: 100,
   );
+  int androidVersionCode = 100;
   List<String> abis = const ['arm64-v8a'];
   Completer<AppUpdateDownloadResult> downloadResult = Completer();
   Exception? installError;
@@ -79,10 +89,13 @@ class FakeAppUpdatePlatform extends AppUpdatePlatform {
   Future<AppVersionInfo> getVersionInfo() async => version;
 
   @override
+  Future<int> getAndroidVersionCode() async => androidVersionCode;
+
+  @override
   Future<List<String>> getSupportedAbis() async => abis;
 
   @override
-  Future<AppUpdateDownloadResult> downloadApk(
+  Future<AppUpdateDownloadResult> downloadPackage(
     AppUpdatePackage package, {
     required String versionName,
     void Function(AppUpdateDownloadProgress)? onProgress,
@@ -102,12 +115,12 @@ class FakeAppUpdatePlatform extends AppUpdatePlatform {
   }
 
   @override
-  Future<void> removeApkDownload(int downloadId) async {
+  Future<void> removeDownload(int downloadId) async {
     removedDownloads.add(downloadId);
   }
 
   @override
-  Future<void> installApk(String filePath) async {
+  Future<void> installPackage(String filePath) async {
     installationPaths.add(filePath);
     if (installError != null) throw installError!;
   }

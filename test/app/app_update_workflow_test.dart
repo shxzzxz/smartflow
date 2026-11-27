@@ -92,6 +92,7 @@ void main() {
           }),
           appUpdatesSupportedProvider.overrideWithValue(true),
           appUpdatePlatformProvider.overrideWithValue(platform),
+          appVersionReaderProvider.overrideWithValue(platform),
           updateChannelStoreProvider.overrideWithValue(
             FakeUpdateChannelStore(),
           ),
@@ -203,7 +204,7 @@ void main() {
   testWidgets('the version page can manually show the same update prompt', (
     tester,
   ) async {
-    service.info = fakeAppUpdateInfo(versionCode: 100);
+    service.info = fakeAppUpdateInfo(buildNumber: 100);
     await withApp(tester, (container) async {
       expect(find.byType(AlertDialog), findsNothing);
       appRouter.go('/profile/software-version');

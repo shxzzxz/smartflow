@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/core/update/app_update_channel.dart';
+import 'package:smartflow/core/update/android/android_app_update_package.dart';
 import 'package:smartflow/core/update/app_update_info.dart';
 
 void main() {
@@ -59,47 +60,33 @@ void main() {
       });
 
       expect(info.packages, hasLength(2));
-      expect(info.packages.first.abi, 'arm64-v8a');
-      expect(info.packages.first.sha256, 'abcdef');
-      expect(info.packages.first.size, 123);
-      expect(info.packages.first.androidVersionCode, 2031);
-      expect(info.packages.last.androidVersionCode, 1031);
+      final packages = info.packages.cast<AndroidAppUpdatePackage>();
+      expect(packages.first.abi, 'arm64-v8a');
+      expect(packages.first.sha256, 'abcdef');
+      expect(packages.first.size, 123);
+      expect(packages.first.androidVersionCode, 2031);
+      expect(packages.last.androidVersionCode, 1031);
     });
 
-    test('resolves package by supported ABI without universal fallback', () {
+    test('compares the shared release build number', () {
       final info = AppUpdateInfo.fromJson(_manifest(apks: [_arm64Package()]));
 
-      expect(
-        info.resolvePackage(['x86_64', 'arm64-v8a'])?.url,
-        'https://example.com/smartflow-arm64.apk',
-      );
-      expect(info.resolvePackage(['armeabi-v7a']), isNull);
+      expect(info.hasNewerBuild(20), isTrue);
+      expect(info.hasNewerBuild(31), isFalse);
+      expect(info.hasNewerBuild(32), isFalse);
     });
 
-    test('compares installable update by matching split APK versionCode', () {
-      final info = AppUpdateInfo.fromJson(_manifest(apks: [_arm64Package()]));
+    test('compares release builds above the ABI offset unit', () {
+      final info = AppUpdateInfo.fromJson(
+        _manifest(
+          buildNumber: 1031,
+          apks: [_arm64Package(androidVersionCode: 3031)],
+        ),
+      );
 
-      expect(
-        info.hasInstallableUpdate(
-          currentAndroidVersionCode: 2020,
-          supportedAbis: ['arm64-v8a'],
-        ),
-        isTrue,
-      );
-      expect(
-        info.hasInstallableUpdate(
-          currentAndroidVersionCode: 2031,
-          supportedAbis: ['arm64-v8a'],
-        ),
-        isFalse,
-      );
-      expect(
-        info.hasInstallableUpdate(
-          currentAndroidVersionCode: 20,
-          supportedAbis: ['x86_64'],
-        ),
-        isFalse,
-      );
+      expect(info.hasNewerBuild(1020), isTrue);
+      expect(info.hasNewerBuild(1031), isFalse);
+      expect(info.hasNewerBuild(1032), isFalse);
     });
 
     test('rejects incomplete manifest', () {
@@ -115,26 +102,29 @@ void main() {
   });
 }
 
-Map<String, Object?> _manifest({List<Map<String, Object?>> apks = const []}) {
+Map<String, Object?> _manifest({
+  int buildNumber = 31,
+  List<Map<String, Object?>> apks = const [],
+}) {
   return {
     'channel': 'dev',
     'versionName': '0.3.0-dev.2',
-    'buildNumber': 31,
+    'buildNumber': buildNumber,
     'universalApk': {
       'url': 'https://example.com/smartflow.apk',
       'sha256': '123456',
       'size': 456,
-      'androidVersionCode': 31,
+      'androidVersionCode': buildNumber,
     },
     'releaseUrl': '',
     'apks': apks,
   };
 }
 
-Map<String, Object?> _arm64Package() {
+Map<String, Object?> _arm64Package({int androidVersionCode = 2031}) {
   return {
     'abi': 'arm64-v8a',
     'url': 'https://example.com/smartflow-arm64.apk',
-    'androidVersionCode': 2031,
+    'androidVersionCode': androidVersionCode,
   };
 }

@@ -6,8 +6,8 @@ import 'package:remixicon/remixicon.dart';
 import '../../../app/notification_providers.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../core/update/app_update_info.dart';
-import '../../../core/update/app_update_platform.dart';
+import '../../../core/update/app_version_info.dart';
+import '../../../core/update/app_version_reader.dart';
 import '../../../design_system/token/spacing.dart';
 import '../../../design_system/widget/app_bottom_navigation_layout_scope.dart';
 import '../../../design_system/widget/app_page_header.dart';
@@ -25,7 +25,7 @@ class ProfilePage extends ConsumerStatefulWidget {
 }
 
 class _ProfilePageState extends ConsumerState<ProfilePage> {
-  final _updatePlatform = const AppUpdatePlatform();
+  final _versionReader = const AppVersionReader();
 
   AppVersionInfo? _versionInfo;
 
@@ -37,7 +37,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
 
   Future<void> _loadVersionInfo() async {
     try {
-      final versionInfo = await _updatePlatform.getVersionInfo();
+      final versionInfo = await _versionReader.getVersionInfo();
       if (!mounted) {
         return;
       }

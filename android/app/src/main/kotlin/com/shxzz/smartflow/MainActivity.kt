@@ -3,6 +3,7 @@ package com.shxzz.smartflow
 import android.app.DownloadManager
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageInfo
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
@@ -41,6 +42,7 @@ class MainActivity : FlutterActivity() {
             .setMethodCallHandler { call, result ->
                 when (call.method) {
                     "getVersionInfo" -> result.success(getVersionInfo())
+                    "getAndroidVersionCode" -> result.success(getAndroidVersionCode())
                     "getSupportedAbis" -> result.success(Build.SUPPORTED_ABIS.toList())
                     "startApkDownload" -> {
                         val url = call.argument<String>("url")
@@ -102,30 +104,33 @@ class MainActivity : FlutterActivity() {
     }
 
     private fun getVersionInfo(): Map<String, Any> {
-        val packageInfo =
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                packageManager.getPackageInfo(
-                    packageName,
-                    PackageManager.PackageInfoFlags.of(0),
-                )
-            } else {
-                @Suppress("DEPRECATION")
-                packageManager.getPackageInfo(packageName, 0)
-            }
-
-        val buildNumber =
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-                packageInfo.longVersionCode
-            } else {
-                @Suppress("DEPRECATION")
-                packageInfo.versionCode.toLong()
-            }
-
+        val packageInfo = readInstalledPackageInfo()
         return mapOf(
             "versionName" to (packageInfo.versionName ?: ""),
-            "buildNumber" to buildNumber,
+            "buildNumber" to BuildConfig.SMARTFLOW_BUILD_NUMBER,
         )
     }
+
+    private fun getAndroidVersionCode(): Long {
+        val packageInfo = readInstalledPackageInfo()
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            packageInfo.longVersionCode
+        } else {
+            @Suppress("DEPRECATION")
+            packageInfo.versionCode.toLong()
+        }
+    }
+
+    private fun readInstalledPackageInfo(): PackageInfo =
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            packageManager.getPackageInfo(
+                packageName,
+                PackageManager.PackageInfoFlags.of(0),
+            )
+        } else {
+            @Suppress("DEPRECATION")
+            packageManager.getPackageInfo(packageName, 0)
+        }
 
     private fun startApkDownload(
         url: String,

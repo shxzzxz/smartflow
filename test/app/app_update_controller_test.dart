@@ -9,6 +9,7 @@ import 'package:smartflow/app/provider.dart';
 import 'package:smartflow/core/update/app_update_channel.dart';
 import 'package:smartflow/core/update/app_update_info.dart';
 import 'package:smartflow/core/update/app_update_platform.dart';
+import 'package:smartflow/core/update/app_version_info.dart';
 
 import '../helper/fake_app_update.dart';
 
@@ -35,6 +36,7 @@ void main() {
       overrides: [
         appUpdatesSupportedProvider.overrideWithValue(true),
         appUpdatePlatformProvider.overrideWithValue(platform),
+        appVersionReaderProvider.overrideWithValue(platform),
         updateChannelStoreProvider.overrideWithValue(store),
         for (final entry in services.entries)
           appUpdateServiceProvider(entry.key).overrideWithValue(entry.value),
@@ -66,11 +68,121 @@ void main() {
     expect(container.read(appUpdateControllerProvider).pendingUpdate, isNull);
   });
 
+  for (final startup in [true, false]) {
+    test(
+      '${startup ? 'startup' : 'manual'} check ignores the same release of a universal or debug APK',
+      () async {
+        store.code = 'dev';
+        platform.version = const AppVersionInfo(
+          versionName: '0.9.13-dev.2',
+          buildNumber: 89,
+        );
+        platform.androidVersionCode = 89;
+        platform.abis = const ['x86_64', 'arm64-v8a'];
+        services[AppUpdateChannel.dev]!.info = AppUpdateInfo.fromJson({
+          'channel': 'dev',
+          'versionName': '0.9.13-dev.2',
+          'buildNumber': 89,
+          'universalApk': {
+            'url': 'https://example.com/universal.apk',
+            'androidVersionCode': 89,
+          },
+          'apks': [
+            {
+              'abi': 'arm64-v8a',
+              'url': 'https://example.com/arm64.apk',
+              'androidVersionCode': 2089,
+            },
+            {
+              'abi': 'x86_64',
+              'url': 'https://example.com/x86_64.apk',
+              'androidVersionCode': 4089,
+            },
+          ],
+        });
+
+        if (startup) {
+          await controller.checkAtStartup();
+        } else {
+          await controller.checkForUpdate();
+        }
+        final state = container.read(appUpdateControllerProvider);
+
+        expect(state.pendingUpdate, isNull);
+        expect(state.hasCheckedLatest, isTrue);
+        expect(state.message, startup ? null : '当前已是最新版本');
+        expect(services[AppUpdateChannel.dev]!.fetches, 1);
+        expect(platform.downloadedUrls, isEmpty);
+      },
+    );
+  }
+
+  test('unreadable installation metadata can be retried', () async {
+    platform.androidVersionCode = 0;
+    await controller.checkAtStartup();
+    expect(container.read(appUpdateControllerProvider).pendingUpdate, isNull);
+    expect(
+      container.read(appUpdateControllerProvider).hasCheckedLatest,
+      isFalse,
+    );
+    expect(container.read(appUpdateControllerProvider).message, isNull);
+
+    await controller.checkForUpdate();
+    expect(controller.takeMessage(), '检查更新失败，请稍后重试');
+
+    platform.androidVersionCode = 100;
+    await controller.checkForUpdate();
+    expect(
+      container.read(appUpdateControllerProvider).pendingUpdate,
+      isNotNull,
+    );
+    expect(services[AppUpdateChannel.beta]!.fetches, 3);
+  });
+
+  test(
+    'a new release without a usable package is not reported as latest',
+    () async {
+      platform.abis = const ['x86_64'];
+
+      await controller.checkForUpdate();
+      final state = container.read(appUpdateControllerProvider);
+
+      expect(state.pendingUpdate, isNull);
+      expect(state.hasCheckedLatest, isFalse);
+      expect(controller.takeMessage(), '发现新版本，但当前设备暂无可用安装包');
+    },
+  );
+
+  test('an unsupported updater skips requests at both entry points', () async {
+    final otherContainer = ProviderContainer(
+      overrides: [
+        appUpdatePlatformProvider.overrideWithValue(
+          const AppUpdatePlatform.unsupported(),
+        ),
+        appVersionReaderProvider.overrideWithValue(platform),
+        updateChannelStoreProvider.overrideWithValue(store),
+        appUpdateServiceProvider(
+          AppUpdateChannel.beta,
+        ).overrideWithValue(services[AppUpdateChannel.beta]!),
+      ],
+    );
+    addTearDown(otherContainer.dispose);
+    final otherController = otherContainer.read(
+      appUpdateControllerProvider.notifier,
+    );
+
+    await otherController.checkAtStartup();
+    await otherController.checkForUpdate();
+
+    expect(services[AppUpdateChannel.beta]!.fetches, 0);
+    expect(otherController.takeMessage(), '当前平台暂不支持应用内更新');
+  });
+
   test(
     'startup remains quiet when current, while manual checking reports it',
     () async {
       services[AppUpdateChannel.beta]!.info = fakeAppUpdateInfo(
-        versionCode: 100,
+        buildNumber: 100,
       );
       await controller.checkAtStartup();
       expect(

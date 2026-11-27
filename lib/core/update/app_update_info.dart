@@ -1,3 +1,4 @@
+import 'android/android_app_update_package.dart';
 import 'app_update_channel.dart';
 
 class AppUpdateInfo {
@@ -50,28 +51,8 @@ class AppUpdateInfo {
     );
   }
 
-  bool hasInstallableUpdate({
-    required int currentAndroidVersionCode,
-    required List<String> supportedAbis,
-  }) {
-    final package = resolvePackage(supportedAbis);
-    return package != null &&
-        package.androidVersionCode > currentAndroidVersionCode;
-  }
-
-  AppUpdatePackage? resolvePackage(List<String> supportedAbis) {
-    final normalizedAbis = supportedAbis
-        .map((abi) => abi.trim())
-        .where((abi) => abi.isNotEmpty);
-    for (final abi in normalizedAbis) {
-      for (final package in packages) {
-        if (package.abi == abi) {
-          return package;
-        }
-      }
-    }
-    return null;
-  }
+  bool hasNewerBuild(int currentBuildNumber) =>
+      buildNumber > currentBuildNumber;
 
   static String _readString(Map<String, Object?> json, String key) {
     final value = json[key];
@@ -108,7 +89,7 @@ class AppUpdateInfo {
 
     return value
         .whereType<Map<String, Object?>>()
-        .map(AppUpdatePackage.fromJson)
+        .map(AndroidAppUpdatePackage.fromJson)
         .where(
           (package) =>
               package.abi.isNotEmpty &&
@@ -180,78 +161,12 @@ class AppUpdateUniversalApk {
   }
 }
 
-class AppUpdatePackage {
-  const AppUpdatePackage({
-    required this.abi,
-    required this.url,
-    required this.androidVersionCode,
-    this.sha256,
-    this.size,
-  });
+abstract class AppUpdatePackage {
+  const AppUpdatePackage({required this.url, this.sha256, this.size});
 
-  final String abi;
   final String url;
-  final int androidVersionCode;
   final String? sha256;
   final int? size;
-
-  factory AppUpdatePackage.fromJson(Map<String, Object?> json) {
-    final abi = _readString(json, 'abi');
-    final url = _readString(json, 'url');
-    final sha256 = _readOptionalString(json, 'sha256');
-    final size = _readOptionalInt(json, 'size');
-    final androidVersionCode = _readInt(json, 'androidVersionCode');
-
-    return AppUpdatePackage(
-      abi: abi,
-      url: url,
-      androidVersionCode: androidVersionCode,
-      sha256: sha256.isEmpty ? null : sha256.toLowerCase(),
-      size: size,
-    );
-  }
-
-  static String _readString(Map<String, Object?> json, String key) {
-    final value = json[key];
-    return value is String ? value.trim() : '';
-  }
-
-  static String _readOptionalString(Map<String, Object?> json, String key) {
-    final value = json[key];
-    return value is String ? value.trim() : '';
-  }
-
-  static int _readInt(Map<String, Object?> json, String key) {
-    final value = json[key];
-    if (value is int) {
-      return value;
-    }
-    if (value is String) {
-      return int.tryParse(value) ?? 0;
-    }
-    return 0;
-  }
-
-  static int? _readOptionalInt(Map<String, Object?> json, String key) {
-    final value = json[key];
-    if (value is int && value > 0) {
-      return value;
-    }
-    if (value is String) {
-      final parsed = int.tryParse(value);
-      return parsed != null && parsed > 0 ? parsed : null;
-    }
-    return null;
-  }
-}
-
-class AppVersionInfo {
-  const AppVersionInfo({required this.versionName, required this.buildNumber});
-
-  final String versionName;
-  final int buildNumber;
-
-  String get displayName => '$versionName+$buildNumber';
 }
 
 class AppUpdateDownloadProgress {

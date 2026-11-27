@@ -72,38 +72,27 @@ class AppUpdateService {
   }
 
   Future<AppUpdateInfo?> checkForUpdate({
-    required int currentAndroidVersionCode,
-    required List<String> supportedAbis,
+    required int currentBuildNumber,
   }) async {
     final info = await fetchUpdateInfo();
-    final installable = info.hasInstallableUpdate(
-      currentAndroidVersionCode: currentAndroidVersionCode,
-      supportedAbis: supportedAbis,
-    );
+    final newer = info.hasNewerBuild(currentBuildNumber);
     _logger.info(
-      'Update check completed: latest=${info.versionName} '
-      '(build ${info.buildNumber}), channel=${info.channel.code}, '
-      'installable=$installable.',
+      'Update check completed: currentBuild=$currentBuildNumber, '
+      'latest=${info.versionName} (build ${info.buildNumber}), '
+      'channel=${info.channel.code}, newerBuild=$newer.',
     );
-    return installable ? info : null;
+    return newer ? info : null;
   }
 
-  Future<File> downloadApk(
-    AppUpdateInfo info, {
-    List<String> supportedAbis = const [],
+  Future<File> downloadPackage(
+    AppUpdatePackage package, {
     void Function(AppUpdateDownloadProgress progress)? onProgress,
   }) async {
-    final package = info.resolvePackage(supportedAbis);
-    if (package == null) {
-      throw const FormatException('No compatible APK package.');
-    }
     final uri = Uri.parse(package.url);
     final directory = await getTemporaryDirectory();
+    final fileName = path.basename(uri.path);
     final file = File(
-      path.join(
-        directory.path,
-        'smartflow-${info.versionName}-${package.abi}.apk',
-      ),
+      path.join(directory.path, fileName.isEmpty ? 'update.bin' : fileName),
     );
 
     final client = _httpClientFactory();
@@ -117,7 +106,7 @@ class AppUpdateService {
 
       if (response.statusCode < 200 || response.statusCode >= 300) {
         throw HttpException(
-          'APK request failed: ${response.statusCode}.',
+          'Package request failed: ${response.statusCode}.',
           uri: uri,
         );
       }
@@ -146,14 +135,14 @@ class AppUpdateService {
       final expectedSize = package.size;
       if (expectedSize != null && receivedBytes != expectedSize) {
         await file.delete().catchError((_) => file);
-        throw const FormatException('Downloaded APK size mismatch.');
+        throw const FormatException('Downloaded package size mismatch.');
       }
       final expectedHash = package.sha256;
       if (expectedHash != null &&
           expectedHash.isNotEmpty &&
           digestCollector.digest.toString().toLowerCase() != expectedHash) {
         await file.delete().catchError((_) => file);
-        throw const FormatException('Downloaded APK checksum mismatch.');
+        throw const FormatException('Downloaded package checksum mismatch.');
       }
       return file;
     } finally {
@@ -162,21 +151,24 @@ class AppUpdateService {
     }
   }
 
-  Future<void> verifyDownloadedApk(File file, AppUpdatePackage package) async {
+  Future<void> verifyDownloadedPackage(
+    File file,
+    AppUpdatePackage package,
+  ) async {
     if (!await file.exists()) {
-      throw const FileSystemException('Downloaded APK does not exist.');
+      throw const FileSystemException('Downloaded package does not exist.');
     }
 
     final expectedSize = package.size;
     if (expectedSize != null && await file.length() != expectedSize) {
-      throw const FormatException('Downloaded APK size mismatch.');
+      throw const FormatException('Downloaded package size mismatch.');
     }
 
     final expectedHash = package.sha256;
     if (expectedHash != null && expectedHash.isNotEmpty) {
       final digest = await sha256.bind(file.openRead()).first;
       if (digest.toString().toLowerCase() != expectedHash) {
-        throw const FormatException('Downloaded APK checksum mismatch.');
+        throw const FormatException('Downloaded package checksum mismatch.');
       }
     }
   }

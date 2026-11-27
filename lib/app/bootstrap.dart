@@ -2,7 +2,7 @@ import 'package:logging/logging.dart';
 
 import '../core/logging/app_log_file_sink.dart';
 import '../core/logging/app_logging.dart';
-import '../core/update/app_update_platform.dart';
+import '../core/update/app_version_reader.dart';
 
 Future<AppLogFileSink> bootstrap() async {
   final sink = await configureAppLogging();
@@ -13,7 +13,7 @@ Future<AppLogFileSink> bootstrap() async {
 Future<void> _logAppStarted() async {
   final logger = Logger('app.bootstrap');
   try {
-    final version = await const AppUpdatePlatform().getVersionInfo();
+    final version = await const AppVersionReader().getVersionInfo();
     logger.info(
       'SmartFlow started: version ${version.versionName} '
       '(build ${version.buildNumber}).',

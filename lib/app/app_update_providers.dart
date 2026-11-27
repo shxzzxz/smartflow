@@ -3,16 +3,27 @@ import 'dart:io';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:logging/logging.dart';
 
+import '../core/update/android/android_app_update_platform.dart';
 import '../core/update/app_update_channel.dart';
 import '../core/update/app_update_info.dart';
 import '../core/update/app_update_platform.dart';
 import '../core/update/app_update_service.dart';
+import '../core/update/app_version_info.dart';
+import '../core/update/app_version_reader.dart';
 import 'provider.dart';
 
-final appUpdatesSupportedProvider = Provider<bool>((ref) => Platform.isAndroid);
+final appUpdatesSupportedProvider = Provider<bool>(
+  (ref) => ref.watch(appUpdatePlatformProvider).supported,
+);
 
 final appUpdatePlatformProvider = Provider<AppUpdatePlatform>(
-  (ref) => const AppUpdatePlatform(),
+  (ref) => Platform.isAndroid
+      ? const AndroidAppUpdatePlatform()
+      : const AppUpdatePlatform.unsupported(),
+);
+
+final appVersionReaderProvider = Provider<AppVersionReader>(
+  (ref) => const AppVersionReader(),
 );
 
 final appUpdateServiceProvider =
@@ -117,8 +128,9 @@ class AppUpdateController extends Notifier<AppUpdateState> {
   static final _logger = Logger('app.update');
   Future<void>? _initialization;
   bool _startupChecked = false;
-  List<String> _supportedAbis = const [];
-  File? _downloadedApk;
+  AppUpdateInfo? _preparedUpdate;
+  AppUpdatePackage? _preparedPackage;
+  File? _downloadedPackage;
 
   @override
   AppUpdateState build() {
@@ -143,9 +155,7 @@ class AppUpdateController extends Notifier<AppUpdateState> {
 
   Future<void> _loadVersionInfo() async {
     try {
-      final version = await ref
-          .read(appUpdatePlatformProvider)
-          .getVersionInfo();
+      final version = await ref.read(appVersionReaderProvider).getVersionInfo();
       if (ref.mounted) state = state.copyWith(versionInfo: version);
     } on Exception catch (error, stackTrace) {
       _logger.warning('Cannot read app version.', error, stackTrace);
@@ -185,7 +195,15 @@ class AppUpdateController extends Notifier<AppUpdateState> {
 
   Future<void> checkForUpdate({bool silent = false}) async {
     if (state.isBusy || state.canInstall) return;
+    if (!ref.read(appUpdatesSupportedProvider)) {
+      if (!silent) {
+        state = state.copyWith(message: '当前平台暂不支持应用内更新');
+      }
+      return;
+    }
     final wasInitialized = state.isInitialized;
+    _preparedUpdate = null;
+    _preparedPackage = null;
     state = state.copyWith(
       isChecking: true,
       hasCheckedLatest: false,
@@ -199,31 +217,42 @@ class AppUpdateController extends Notifier<AppUpdateState> {
         await _loadVersionInfo();
         if (!ref.mounted) return;
       }
-      final versionCode = state.versionInfo?.buildNumber ?? 0;
-      if (versionCode <= 0) {
+      final version = state.versionInfo;
+      if (version == null || version.buildNumber <= 0) {
         if (!silent) {
           state = state.copyWith(message: '暂时无法读取当前版本');
         }
         return;
       }
 
-      final channel = state.channel;
-      final platform = ref.read(appUpdatePlatformProvider);
-      final service = ref.read(appUpdateServiceProvider(channel));
-      final abis = await platform.getSupportedAbis();
-      if (!ref.mounted) return;
+      final service = ref.read(appUpdateServiceProvider(state.channel));
       final update = await service.checkForUpdate(
-        currentAndroidVersionCode: versionCode,
-        supportedAbis: abis,
+        currentBuildNumber: version.buildNumber,
       );
       if (!ref.mounted) return;
-      _supportedAbis = List.unmodifiable(abis);
-      state = state.copyWith(
-        hasCheckedLatest: update == null,
-        pendingUpdate: update,
-        clearPendingUpdate: update == null,
-        message: update == null && !silent ? '当前已是最新版本' : null,
-      );
+      if (update == null) {
+        state = state.copyWith(
+          hasCheckedLatest: true,
+          clearPendingUpdate: true,
+          message: silent ? null : '当前已是最新版本',
+        );
+        return;
+      }
+
+      final package = await ref
+          .read(appUpdatePlatformProvider)
+          .prepareUpdate(update);
+      if (!ref.mounted) return;
+      if (package == null) {
+        state = state.copyWith(
+          clearPendingUpdate: true,
+          message: silent ? null : '发现新版本，但当前设备暂无可用安装包',
+        );
+        return;
+      }
+      _preparedUpdate = update;
+      _preparedPackage = package;
+      state = state.copyWith(pendingUpdate: update);
     } on Exception catch (error, stackTrace) {
       _logger.log(
         silent ? Level.WARNING : Level.SEVERE,
@@ -249,7 +278,9 @@ class AppUpdateController extends Notifier<AppUpdateState> {
           .read(updateChannelStoreProvider)
           .saveUpdateChannel(channel.code);
       if (!ref.mounted) return;
-      _downloadedApk = null;
+      _downloadedPackage = null;
+      _preparedUpdate = null;
+      _preparedPackage = null;
       state = state.copyWith(
         channel: channel,
         hasCheckedLatest: false,
@@ -283,8 +314,8 @@ class AppUpdateController extends Notifier<AppUpdateState> {
     if (state.isBusy || state.canInstall || update.channel != state.channel) {
       return;
     }
-    final package = update.resolvePackage(_supportedAbis);
-    if (package == null) {
+    final package = _preparedPackage;
+    if (!identical(_preparedUpdate, update) || package == null) {
       state = state.copyWith(message: '当前设备暂无可用安装包');
       return;
     }
@@ -299,7 +330,7 @@ class AppUpdateController extends Notifier<AppUpdateState> {
       message: '已开始后台下载，可以继续使用应用',
     );
     try {
-      final download = await platform.downloadApk(
+      final download = await platform.downloadPackage(
         package,
         versionName: update.versionName,
         onProgress: (progress) {
@@ -307,17 +338,17 @@ class AppUpdateController extends Notifier<AppUpdateState> {
         },
       );
       try {
-        await service.verifyDownloadedApk(download.file, package);
+        await service.verifyDownloadedPackage(download.file, package);
       } on Exception {
         try {
-          await platform.removeApkDownload(download.downloadId);
+          await platform.removeDownload(download.downloadId);
         } on Exception catch (error, stackTrace) {
-          _logger.warning('Cannot discard invalid APK.', error, stackTrace);
+          _logger.warning('Cannot discard invalid package.', error, stackTrace);
         }
         rethrow;
       }
       if (!ref.mounted) return;
-      _downloadedApk = download.file;
+      _downloadedPackage = download.file;
       state = state.copyWith(
         downloadStatus: AppUpdateDownloadStatus.readyToInstall,
         clearProgress: true,
@@ -325,7 +356,7 @@ class AppUpdateController extends Notifier<AppUpdateState> {
     } on Exception catch (error, stackTrace) {
       _logger.log(
         error is FormatException ? Level.WARNING : Level.SEVERE,
-        'APK download or verification failed.',
+        'Package download or verification failed.',
         error,
         stackTrace,
       );
@@ -340,16 +371,16 @@ class AppUpdateController extends Notifier<AppUpdateState> {
   }
 
   Future<void> installDownloadedUpdate() async {
-    final file = _downloadedApk;
+    final file = _downloadedPackage;
     if (file == null || !state.canInstall || state.isBusy) return;
     state = state.copyWith(
       downloadStatus: AppUpdateDownloadStatus.installing,
       clearMessage: true,
     );
     try {
-      await ref.read(appUpdatePlatformProvider).installApk(file.path);
+      await ref.read(appUpdatePlatformProvider).installPackage(file.path);
     } on Exception catch (error, stackTrace) {
-      _logger.severe('Cannot launch APK installation.', error, stackTrace);
+      _logger.severe('Cannot launch package installation.', error, stackTrace);
       if (ref.mounted) {
         state = state.copyWith(message: '安装失败，请稍后重试');
       }

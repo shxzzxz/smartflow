@@ -5,7 +5,7 @@ import 'package:crypto/crypto.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:smartflow/core/update/app_update_channel.dart';
-import 'package:smartflow/core/update/app_update_info.dart';
+import 'package:smartflow/core/update/android/android_app_update_package.dart';
 import 'package:smartflow/core/update/app_update_service.dart';
 
 class _HttpClient extends Mock implements HttpClient {}
@@ -52,9 +52,9 @@ void main() {
         manifestUri: Uri.parse('https://example.com/update.json'),
       );
 
-      await service.verifyDownloadedApk(
+      await service.verifyDownloadedPackage(
         apk,
-        AppUpdatePackage(
+        AndroidAppUpdatePackage(
           abi: 'arm64-v8a',
           url: 'https://example.com/update.apk',
           androidVersionCode: 32,
@@ -76,9 +76,9 @@ void main() {
       );
 
       await expectLater(
-        service.verifyDownloadedApk(
+        service.verifyDownloadedPackage(
           apk,
-          const AppUpdatePackage(
+          const AndroidAppUpdatePackage(
             abi: 'arm64-v8a',
             url: 'https://example.com/update.apk',
             androidVersionCode: 32,
