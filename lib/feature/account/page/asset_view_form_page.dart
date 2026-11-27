@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:remixicon/remixicon.dart';
 import '../../../application/analytics/analytics_query_api.dart';
 import '../../../design_system/theme/app_text_styles.dart';
 import '../../../design_system/token/spacing.dart';
@@ -15,18 +14,11 @@ import '../../shared/provider/ledger_query_providers.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
 import '../view_model/asset_view_form_view_model.dart';
 import '../widget/asset_view_editor_actions.dart';
-import 'asset_view_preview_page.dart';
 
 class AssetViewFormPage extends ConsumerWidget {
-  const AssetViewFormPage({
-    this.viewId,
-    this.copyFrom,
-    this.initiallyHideBalances = false,
-    super.key,
-  });
+  const AssetViewFormPage({this.viewId, this.copyFrom, super.key});
   final String? viewId;
   final AssetView? copyFrom;
-  final bool initiallyHideBalances;
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final page = ref.watch(assetViewFormPageProvider(viewId, copyFrom));
@@ -41,7 +33,6 @@ class AssetViewFormPage extends ConsumerWidget {
         copyFrom: copyFrom,
         title: title,
         page: page,
-        initiallyHideBalances: initiallyHideBalances,
       ),
       loading: () => AppScaffold(
         body: SafeArea(
@@ -90,13 +81,11 @@ class _AssetViewEditor extends ConsumerStatefulWidget {
     required this.copyFrom,
     required this.title,
     required this.page,
-    required this.initiallyHideBalances,
   });
   final String? viewId;
   final AssetView? copyFrom;
   final String title;
   final AssetViewFormPageState page;
-  final bool initiallyHideBalances;
   @override
   ConsumerState<_AssetViewEditor> createState() => _AssetViewEditorState();
 }
@@ -134,13 +123,6 @@ class _AssetViewEditorState extends ConsumerState<_AssetViewEditor> {
                 title: widget.title,
                 onBack: _requestExit,
                 actions: [
-                  AppHeaderIconButton(
-                    icon: RemixIcons.eye_line,
-                    tooltip: '预览视图',
-                    onPressed: editor.canPreview && !editor.submitting
-                        ? _preview
-                        : null,
-                  ),
                   AppHeaderTextButton(
                     label: editor.submitting
                         ? '保存中'
@@ -253,14 +235,6 @@ class _AssetViewEditorState extends ConsumerState<_AssetViewEditor> {
     }
   }
 
-  void _preview() => Navigator.of(context).push(
-    MaterialPageRoute(
-      builder: (_) => AssetViewPreviewPage(
-        view: _controller.preview(),
-        initiallyHideBalances: widget.initiallyHideBalances,
-      ),
-    ),
-  );
   Future<void> _requestExit() async {
     if (_confirmingExit || widget.page.editor.submitting || _allowPop) return;
     _confirmingExit = true;

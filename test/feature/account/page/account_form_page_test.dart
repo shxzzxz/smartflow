@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:smartflow/app/provider.dart';
 import 'package:smartflow/application/analytics/analytics_command_api.dart';
+import 'package:smartflow/domain/analytics/valobj/initial_asset_view_groups.dart';
 import 'package:smartflow/feature/account/view_model/asset_views_provider.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/design_system/widget/app_form_section.dart';

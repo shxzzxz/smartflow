@@ -302,9 +302,7 @@ class _AccountsPageState extends ConsumerState<AccountsPage> {
   );
 
   Future<void> _createView() async {
-    final saved = await context.push<String>(
-      '/assets/views/new?hide=$_hideBalances',
-    );
+    final saved = await context.push<String>('/assets/views/new');
     if (saved == null || !mounted) return;
     ref.invalidate(assetViewsProvider, asReload: true);
     ref
@@ -318,9 +316,7 @@ class _AccountsPageState extends ConsumerState<AccountsPage> {
   }
 
   Future<void> _manageViews() async {
-    final saved = await context.push<String>(
-      '/assets/views?hide=$_hideBalances',
-    );
+    final saved = await context.push<String>('/assets/views');
     if (saved == null || !mounted) return;
     ref.invalidate(assetViewsProvider, asReload: true);
     ref

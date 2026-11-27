@@ -402,23 +402,18 @@ final appRouter = GoRouter(
     ),
     GoRoute(
       path: '/assets/views',
-      builder: (context, state) => AssetViewsPage(
-        initiallyHideBalances: state.uri.queryParameters['hide'] == 'true',
-      ),
+      builder: (context, state) => const AssetViewsPage(),
     ),
     GoRoute(
       path: '/assets/views/new',
       builder: (context, state) => AssetViewFormPage(
         copyFrom: state.extra is AssetView ? state.extra as AssetView : null,
-        initiallyHideBalances: state.uri.queryParameters['hide'] == 'true',
       ),
     ),
     GoRoute(
       path: '/assets/views/:viewId/edit',
-      builder: (context, state) => AssetViewFormPage(
-        viewId: state.pathParameters['viewId']!,
-        initiallyHideBalances: state.uri.queryParameters['hide'] == 'true',
-      ),
+      builder: (context, state) =>
+          AssetViewFormPage(viewId: state.pathParameters['viewId']!),
     ),
     GoRoute(
       path: '/account/new',

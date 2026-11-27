@@ -69,6 +69,7 @@ void main() {
       await tester.pumpAndSettle();
       await _newView(tester, '负债视图', ['信用账户B']);
       expect(find.text('展示布局'), findsNothing);
+      expect(harness.commands.savedCommands, isEmpty);
       await tester.tap(find.text('创建'));
       await tester.pumpAndSettle();
       expect(find.text('负债视图'), findsOneWidget);
@@ -89,33 +90,6 @@ void main() {
         saved.groups.firstWhere((group) => group.name == '信用').id,
       );
       expect(harness.preferences.selected, saved.id);
-    },
-  );
-
-  testWidgets(
-    'preview uses draft scope and list cards until the view is created',
-    (tester) async {
-      final harness = _Harness();
-      addTearDown(harness.dispose);
-      await tester.pumpWidget(harness.app());
-      await tester.pumpAndSettle();
-      await _newView(tester, '预览视图', ['账户A', '信用账户B']);
-      await tester.tap(find.byTooltip('预览视图'));
-      await tester.pumpAndSettle();
-      expect(find.text('预览 · 预览视图'), findsOneWidget);
-      expect(find.byType(AccountSectionCard), findsNWidgets(2));
-      expect(find.text('账户A'), findsOneWidget);
-      expect(find.text('范围外账户'), findsNothing);
-      expect(harness.commands.savedCommands, isEmpty);
-      await tester.tap(find.byTooltip('返回'));
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('创建'));
-      await tester.pumpAndSettle();
-      expect(harness.commands.savedCommands.single.accountIds.toSet(), {
-        'cash',
-        'debt',
-      });
-      expect(find.text('预览视图'), findsOneWidget);
     },
   );
 
@@ -187,7 +161,7 @@ void main() {
     );
   });
 
-  testWidgets('default view lets the user edit its account scope', (
+  testWidgets('default view displays its account count after scope edits', (
     tester,
   ) async {
     final harness = _Harness();
@@ -198,6 +172,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('管理视图'));
     await tester.pumpAndSettle();
+    expect(find.text('3 个账户'), findsOneWidget);
     await tester.tap(find.text('默认'));
     await tester.pumpAndSettle();
     expect(tester.widget<TextField>(find.byType(TextField)).readOnly, isTrue);
@@ -209,6 +184,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('保存'));
     await tester.pumpAndSettle();
+    expect(find.text('1 个账户'), findsOneWidget);
     await tester.tap(find.byTooltip('返回'));
     await tester.pumpAndSettle();
     expect(find.text('默认'), findsOneWidget);

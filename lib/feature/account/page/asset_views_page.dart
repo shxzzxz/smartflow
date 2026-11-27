@@ -12,8 +12,7 @@ import '../view_model/asset_page_view_model.dart';
 import '../widget/asset_view_editor_actions.dart';
 
 class AssetViewsPage extends ConsumerWidget {
-  const AssetViewsPage({this.initiallyHideBalances = false, super.key});
-  final bool initiallyHideBalances;
+  const AssetViewsPage({super.key});
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final views = ref.watch(assetViewsProvider);
@@ -69,11 +68,7 @@ class AssetViewsPage extends ConsumerWidget {
                                   child: const Icon(RemixIcons.draggable),
                                 ),
                           title: Text(view.name),
-                          subtitle: Text(
-                            view.isBuiltin
-                                ? '全部账户 · 可调整展示布局'
-                                : '${view.accountIds.length} 个账户',
-                          ),
+                          subtitle: Text('${view.accountIds.length} 个账户'),
                           trailing: AppPopupMenuButton(
                             icon: RemixIcons.more_2_fill,
                             tooltip: '视图操作',
@@ -115,17 +110,10 @@ class AssetViewsPage extends ConsumerWidget {
     );
   }
 
-  Future<void> _edit(
-    BuildContext context,
-    AssetView view,
-  ) => context.push<String>(
-    '/assets/views/${Uri.encodeComponent(view.id)}/edit?hide=$initiallyHideBalances',
-  );
+  Future<void> _edit(BuildContext context, AssetView view) => context
+      .push<String>('/assets/views/${Uri.encodeComponent(view.id)}/edit');
   Future<void> _create(BuildContext context, {AssetView? copyFrom}) async {
-    final id = await context.push<String>(
-      '/assets/views/new?hide=$initiallyHideBalances',
-      extra: copyFrom,
-    );
+    final id = await context.push<String>('/assets/views/new', extra: copyFrom);
     if (id != null && context.mounted) context.pop(id);
   }
 

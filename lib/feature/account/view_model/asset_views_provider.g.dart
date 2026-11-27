@@ -206,7 +206,7 @@ final class AssetViewSelectionViewModelProvider
 }
 
 String _$assetViewSelectionViewModelHash() =>
-    r'fad97de4565267d368870ec89f018bb453cf768e';
+    r'c8749d605cb6fbbab27cfb77baed6f49a466e2bc';
 
 abstract class _$AssetViewSelectionViewModel extends $AsyncNotifier<String?> {
   FutureOr<String?> build();

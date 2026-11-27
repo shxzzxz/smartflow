@@ -7,7 +7,6 @@ import '../../../application/analytics/analytics_command_api.dart';
 import '../../../application/ledger/ledger_query_api.dart';
 import '../../../core/error/app_exception.dart';
 import '../../../domain/analytics/valobj/analytics_error_code.dart';
-import '../../../shared/account_profile/account_profile_kind.dart';
 import '../../shared/provider/ledger_query_providers.dart';
 import '../../shared/view_model/action_guard.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
@@ -34,11 +33,10 @@ class AssetViewFormState {
   final bool hasChanges;
   final bool submitting;
   bool get isBuiltin => id == AssetView.defaultId;
-  bool get canPreview => isBuiltin || accountIds.isNotEmpty;
   bool get canSave =>
       !submitting &&
       name.trim().isNotEmpty &&
-      canPreview &&
+      (isBuiltin || accountIds.isNotEmpty) &&
       (id == null || hasChanges);
   AssetViewFormState copyWith({
     String? name,
@@ -113,24 +111,6 @@ class AssetViewFormViewModel extends _$AssetViewFormViewModel {
     if (!setEquals(value.accountIds, ids)) {
       state = AsyncData(value.copyWith(accountIds: ids, hasChanges: true));
     }
-  }
-
-  AssetView preview() {
-    final value = state.requireValue;
-    return configureAssetViewAccounts(
-      id: value.id ?? 'asset-view-preview',
-      name: value.name.trim().isEmpty ? '视图预览' : value.name,
-      accountIds: value.accountIds,
-      source: value.source,
-      profiles: {
-        for (final account in ref.read(accountListProvider).requireValue)
-          account.id: accountProfileKindForAccountType(
-            type: account.type,
-            subtype: account.subtype,
-            profileKey: account.profileKey,
-          ),
-      },
-    );
   }
 
   Future<UiActionOutcome<AssetView>> save() async {

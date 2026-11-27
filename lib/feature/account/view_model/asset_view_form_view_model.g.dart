@@ -52,7 +52,7 @@ final class AssetViewFormViewModelProvider
 }
 
 String _$assetViewFormViewModelHash() =>
-    r'd31bbe770ce580a225c7d0f2ea52ac038f97cfc8';
+    r'3f780c21daf042c9c52de78dd1b781a0c6235199';
 
 final class AssetViewFormViewModelFamily extends $Family
     with

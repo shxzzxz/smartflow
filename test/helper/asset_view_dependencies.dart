@@ -6,6 +6,7 @@ import 'package:smartflow/application/ledger/ledger_query_api.dart';
 import 'package:smartflow/core/error/app_exception.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/domain/analytics/valobj/analytics_error_code.dart';
+import 'package:smartflow/domain/analytics/valobj/initial_asset_view_groups.dart';
 import 'package:smartflow/shared/account_profile/account_profile_kind.dart';
 
 class FakeAssetViewQueryService implements AssetViewQueryService {

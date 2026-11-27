@@ -57,8 +57,8 @@ class AssetViewSelectionViewModel extends _$AssetViewSelectionViewModel {
         throw BusinessException(AnalyticsErrorCode.viewNotFound);
       }
       if (state.hasValue && state.value == id) return;
-      state = AsyncData(id);
       await ref.read(assetViewPreferencesStoreProvider).saveSelectedViewId(id);
+      if (ref.mounted) state = AsyncData(id);
     },
   );
 }

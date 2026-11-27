@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/app/provider.dart';
 import 'package:smartflow/application/credit/credit_command_api.dart';
 import 'package:smartflow/application/analytics/analytics_command_api.dart';
+import 'package:smartflow/domain/analytics/valobj/initial_asset_view_groups.dart';
 import 'package:smartflow/feature/account/view_model/asset_views_provider.dart';
 import 'package:smartflow/infrastructure/analytics/adapter/financial_asset_view_accounts.dart';
 import 'package:smartflow/application/ledger/ledger_command_api.dart';
